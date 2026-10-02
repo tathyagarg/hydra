@@ -5,7 +5,24 @@ mod shared;
 
 const LOWER_32: u64 = 0xFFFF_FFFF_0000_0000;
 
-pub struct Cpu {
+pub(crate) enum RegisterSP {
+    Register(usize),
+    StackPointer,
+}
+
+pub(crate) enum ExtendType {
+    UXTB = 0b000,
+    UXTH = 0b001,
+    UXTW = 0b010,
+    /// LSL|UXTX
+    UXTX = 0b011,
+    SXTB = 0b100,
+    SXTH = 0b101,
+    SXTW = 0b110,
+    SXTX = 0b111,
+}
+
+pub(crate) struct Cpu {
     /// R0-R31: 31 general-purpose registers, R0 to R30. Each can be accessed as:
     /// - A 64-bit general-purpose register named X0 to X30.
     /// - A 32-bit general-purpose register named W0 to W30.
@@ -254,16 +271,72 @@ impl Cpu {
         self.x[d] = result;
     }
 
-    fn adc<const SF: bool>(&mut self, d: usize, n: usize, m: usize) {
-        let operand1 = self._to_op(n, SF);
-        let operand2 = self._to_op(m, SF);
+    fn adc(&mut self, sf: bool, d: usize, n: usize, m: usize) {
+        let operand1 = self._to_op(n, sf);
+        let operand2 = self._to_op(m, sf);
 
-        let (result, _) = if SF {
+        let (result, _) = if sf {
             shared::add_with_carry::<64>(operand1, operand2, self.pstate.C)
         } else {
             shared::add_with_carry::<32>(operand1, operand2, self.pstate.C)
         };
 
         self.x[d] = result;
+    }
+
+    fn adcs(&mut self, sf: bool, d: usize, n: usize, m: usize) {
+        let operand1 = self._to_op(n, sf);
+        let operand2 = self._to_op(m, sf);
+
+        let (result, nzcv) = if sf {
+            shared::add_with_carry::<64>(operand1, operand2, self.pstate.C)
+        } else {
+            shared::add_with_carry::<32>(operand1, operand2, self.pstate.C)
+        };
+
+        self.x[d] = result;
+        nzcv.set(&mut self.pstate);
+    }
+
+    fn add(
+        &mut self,
+        sf: bool,
+        d: RegisterSP,
+        n: RegisterSP,
+        m: usize,
+        extend_type: Option<ExtendType>,
+        amount: Option<u8>,
+    ) {
+        let shift = amount.unwrap_or(0);
+
+        let operand1 = if let RegisterSP::Register(rn) = n {
+            self.x[rn]
+        } else {
+            self.sp
+        };
+
+        let (result, _) = if sf {
+            let operand2 = shared::extend_reg::<64>(
+                m,
+                extend_type.unwrap_or(ExtendType::UXTW),
+                shift,
+                &self.x,
+            );
+            shared::add_with_carry::<64>(operand1, operand2, false)
+        } else {
+            let operand2 = shared::extend_reg::<32>(
+                m,
+                extend_type.unwrap_or(ExtendType::UXTW),
+                shift,
+                &self.x,
+            );
+            shared::add_with_carry::<32>(operand1, operand2, false)
+        };
+
+        if let RegisterSP::Register(rd) = d {
+            self.x[rd] = result;
+        } else {
+            self.sp = result;
+        }
     }
 }
