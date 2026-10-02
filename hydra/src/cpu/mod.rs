@@ -279,14 +279,22 @@ impl Cpu {
         }
     }
 
-    /// A function for purely debug purposes to arbitrarily set the value
+    /// A function for purely debug/testing purposes to arbitrarily set the value
     /// of a X register to a provided v value
     pub fn __dbg_set_x(&mut self, n: usize, v: u64) {
         self.x[n] = v;
     }
 
+    /// A function for purely debug/testing purposes to arbitrarily fetch the value
+    /// of a X register
     pub fn __dbg_get_x(&self, n: usize) -> u64 {
         self.x[n]
+    }
+
+    /// A function for purely debug/testing purposes to get a mutable reference
+    /// to the CPU's PSTATE
+    pub fn __dbg_get_pstate(&mut self) -> &mut pstate::PState {
+        &mut self.pstate
     }
 
     /// **ABS**: Absolute value
@@ -299,9 +307,16 @@ impl Cpu {
     /// # use hydra::cpu::Cpu;
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, -5i64 as u64);
-    /// // Emulating `ABS X1, X0`
-    /// cpu.abs(true, 1, 0);
+    /// cpu.abs(true, 1, 0);  // `ABS X1, X0`
     /// assert_eq!(cpu.__dbg_get_x(1), 5);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 9223372032559808513u64);
+    /// cpu.abs(false, 1, 0);  // `ABS W1, W0`
+    /// assert_eq!(cpu.__dbg_get_x(1), 1);
     /// ```
     pub fn abs(&mut self, sf: bool, d: usize, n: usize) {
         let operand1 = self._to_op(n, sf) as i64;
@@ -310,7 +325,29 @@ impl Cpu {
         self.x[d] = result;
     }
 
-    fn adc(&mut self, sf: bool, d: usize, n: usize, m: usize) {
+    /// **ADC**: Add with carry
+    ///
+    /// This instruction adds two register values and the Carry flag value, and writes the result to the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// cpu.__dbg_set_x(1, 2);
+    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
+    /// assert_eq!(cpu.__dbg_get_x(2), 3);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// cpu.__dbg_set_x(1, 2);
+    /// cpu.__dbg_get_pstate().__dbg_set_C(true);  // Set PSTATE.C = 1
+    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
+    /// assert_eq!(cpu.__dbg_get_x(2), 4);
+    /// ```
+    pub fn adc(&mut self, sf: bool, d: usize, n: usize, m: usize) {
         let operand1 = self._to_op(n, sf);
         let operand2 = self._to_op(m, sf);
 

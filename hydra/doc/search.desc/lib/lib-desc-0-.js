@@ -1,1 +1,1 @@
-searchState.loadedDescShard("lib", 0, "<strong>ABS</strong>: Absolute value\nWARN: Use for testing only!!\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")
+searchState.loadedDescShard("lib", 0, "A function for purely debug/testing purposes to get a …\nA function for purely debug/testing purposes to …\nA function for purely debug/testing purposes to …\n<strong>ABS</strong>: Absolute value\n<strong>ADC</strong>: Add with carry\nWARN: Use for testing only!!\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

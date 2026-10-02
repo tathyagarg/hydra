@@ -1,6 +1,6 @@
 #![allow(dead_code, non_snake_case)]
 
-pub(super) struct PState {
+pub struct PState {
     pub(super) N: bool,      // Negative condition flag
     pub(super) Z: bool,      // Zero condition flag
     pub(super) C: bool,      // Carry condition flag
@@ -59,5 +59,11 @@ impl Default for PState {
             SP: true,
             SSBS: false,
         }
+    }
+}
+
+impl PState {
+    pub fn __dbg_set_C(&mut self, v: bool) {
+        self.C = v;
     }
 }
