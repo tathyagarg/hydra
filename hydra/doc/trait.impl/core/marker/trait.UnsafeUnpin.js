@@ -1,9 +1,9 @@
 (function() {
-    var implementors = Object.fromEntries([["lib",[["impl UnsafeUnpin for <a class=\"struct\" href=\"lib/cpu/struct.Cpu.html\" title=\"struct lib::cpu::Cpu\">Cpu</a>",1,["lib::cpu::Cpu"]]]]]);
+    var implementors = Object.fromEntries([["lib",[["impl UnsafeUnpin for <a class=\"enum\" href=\"lib/cpu/enum.ExtendType.html\" title=\"enum lib::cpu::ExtendType\">ExtendType</a>",1,["lib::cpu::ExtendType"]],["impl UnsafeUnpin for <a class=\"enum\" href=\"lib/cpu/enum.RegisterSP.html\" title=\"enum lib::cpu::RegisterSP\">RegisterSP</a>",1,["lib::cpu::RegisterSP"]],["impl UnsafeUnpin for <a class=\"struct\" href=\"lib/cpu/struct.Cpu.html\" title=\"struct lib::cpu::Cpu\">Cpu</a>",1,["lib::cpu::Cpu"]]]],["lib",[["impl UnsafeUnpin for <a class=\"struct\" href=\"lib/cpu/struct.Cpu.html\" title=\"struct lib::cpu::Cpu\">Cpu</a>",1,["lib::cpu::Cpu"]]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
         window.pending_implementors = implementors;
     }
 })()
-//{"start":57,"fragment_lengths":[146]}
+//{"start":57,"fragment_lengths":[464,147]}

@@ -1,16 +1,16 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cpu/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1a91846b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0 (6b00bc388 2025-06-23)" data-channel="1.88.0" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">lib/cpu/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![allow(dead_code)]
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydra/src/cpu/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1a91846b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0 (6b00bc388 2025-06-23)" data-channel="1.88.0" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">lib/cpu/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![allow(dead_code)]
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">mod </span>pstate;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">mod </span>shared;
 <a href=#5 id=5 data-nosnippet>5</a>
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">const </span>LOWER_32: u64 = <span class="number">0xFFFF_FFFF_0000_0000</span>;
 <a href=#7 id=7 data-nosnippet>7</a>
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>RegisterSP {
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">pub enum </span>RegisterSP {
 <a href=#9 id=9 data-nosnippet>9</a>    Register(usize),
 <a href=#10 id=10 data-nosnippet>10</a>    StackPointer,
 <a href=#11 id=11 data-nosnippet>11</a>}
 <a href=#12 id=12 data-nosnippet>12</a>
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ExtendType {
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">pub enum </span>ExtendType {
 <a href=#14 id=14 data-nosnippet>14</a>    UXTB = <span class="number">0b000</span>,
 <a href=#15 id=15 data-nosnippet>15</a>    UXTH = <span class="number">0b001</span>,
 <a href=#16 id=16 data-nosnippet>16</a>    UXTW = <span class="number">0b010</span>,
@@ -22,397 +22,482 @@
 <a href=#22 id=22 data-nosnippet>22</a>    SXTX = <span class="number">0b111</span>,
 <a href=#23 id=23 data-nosnippet>23</a>}
 <a href=#24 id=24 data-nosnippet>24</a>
-<a href=#25 id=25 data-nosnippet>25</a><span class="kw">pub struct </span>Cpu {
-<a href=#26 id=26 data-nosnippet>26</a>    <span class="doccomment">/// R0-R31: 31 general-purpose registers, R0 to R30. Each can be accessed as:
-<a href=#27 id=27 data-nosnippet>27</a>    /// - A 64-bit general-purpose register named X0 to X30.
-<a href=#28 id=28 data-nosnippet>28</a>    /// - A 32-bit general-purpose register named W0 to W30.
-<a href=#29 id=29 data-nosnippet>29</a>    /// The X30 general-purpose register is used as the procedure call link register.
-<a href=#30 id=30 data-nosnippet>30</a>    </span>x: [u64; <span class="number">31</span>],
-<a href=#31 id=31 data-nosnippet>31</a>
-<a href=#32 id=32 data-nosnippet>32</a>    <span class="doccomment">/// A 64-bit dedicated Stack Pointer register. The least significant 32 bits of the stack pointer can be accessed
-<a href=#33 id=33 data-nosnippet>33</a>    /// using the register name WSP.
-<a href=#34 id=34 data-nosnippet>34</a>    /// The use of SP as an operand in an instruction, indicates the use of the current stack pointer.
-<a href=#35 id=35 data-nosnippet>35</a>    </span>sp: u64,
-<a href=#36 id=36 data-nosnippet>36</a>
-<a href=#37 id=37 data-nosnippet>37</a>    <span class="doccomment">/// A 64-bit Program Counter holding the address of the current instruction.
-<a href=#38 id=38 data-nosnippet>38</a>    /// Software cannot write directly to the PC. It can be updated only on a branch, exception entry or exception
-<a href=#39 id=39 data-nosnippet>39</a>    /// return.
-<a href=#40 id=40 data-nosnippet>40</a>    </span>pc: u64,
-<a href=#41 id=41 data-nosnippet>41</a>
-<a href=#42 id=42 data-nosnippet>42</a>    <span class="doccomment">/// 32 SIMD&amp;FP registers, V0 to V31. Each can be accessed as:
-<a href=#43 id=43 data-nosnippet>43</a>    /// - A 128-bit register named Q0 to Q31.
-<a href=#44 id=44 data-nosnippet>44</a>    /// - A 64-bit register named D0 to D31.
-<a href=#45 id=45 data-nosnippet>45</a>    /// - A 32-bit register named S0 to S31.
-<a href=#46 id=46 data-nosnippet>46</a>    /// - A 16-bit register named H0 to H31.
-<a href=#47 id=47 data-nosnippet>47</a>    /// - An 8-bit register named B0 to B31.
-<a href=#48 id=48 data-nosnippet>48</a>    /// - A 128-bit vector of elements.
-<a href=#49 id=49 data-nosnippet>49</a>    /// - A 64-bit vector of elements.
-<a href=#50 id=50 data-nosnippet>50</a>    /// Where the number of bits described by a register name does not occupy an entire SIMD&amp;FP register, it
-<a href=#51 id=51 data-nosnippet>51</a>    /// refers to the least significant bits.
-<a href=#52 id=52 data-nosnippet>52</a>    </span>v: [u128; <span class="number">32</span>],
-<a href=#53 id=53 data-nosnippet>53</a>
-<a href=#54 id=54 data-nosnippet>54</a>    <span class="doccomment">/// Purpose:
-<a href=#55 id=55 data-nosnippet>55</a>    ///     Controls behavior of the floating-point instructions.
-<a href=#56 id=56 data-nosnippet>56</a>    ///
-<a href=#57 id=57 data-nosnippet>57</a>    /// Bits [63:27]
-<a href=#58 id=58 data-nosnippet>58</a>    ///     Reserved, Res0
-<a href=#59 id=59 data-nosnippet>59</a>    ///
-<a href=#60 id=60 data-nosnippet>60</a>    /// AHP, bit [26]
-<a href=#61 id=61 data-nosnippet>61</a>    ///     Alternative half-precision control bit.
-<a href=#62 id=62 data-nosnippet>62</a>    ///
-<a href=#63 id=63 data-nosnippet>63</a>    /// AHP  Meaning
-<a href=#64 id=64 data-nosnippet>64</a>    /// 0b0  IEEE half-precision format selected.
-<a href=#65 id=65 data-nosnippet>65</a>    /// 0b1  Alternative half-precision format selected.
-<a href=#66 id=66 data-nosnippet>66</a>    ///
-<a href=#67 id=67 data-nosnippet>67</a>    /// This bit is used only for conversions between half-precision floating-point and other floating-point formats.
-<a href=#68 id=68 data-nosnippet>68</a>    ///     The data-processing instructions added as part of the FEAT_FP16 extension always use the IEEE half-precision
-<a href=#69 id=69 data-nosnippet>69</a>    ///     format, and ignore the value of this bit.
-<a href=#70 id=70 data-nosnippet>70</a>    ///     The reset behavior of this field is:
-<a href=#71 id=71 data-nosnippet>71</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
-<a href=#72 id=72 data-nosnippet>72</a>    ///
-<a href=#73 id=73 data-nosnippet>73</a>    /// DN, bit [25]
-<a href=#74 id=74 data-nosnippet>74</a>    ///     Default NaN use for NaN propagation.
-<a href=#75 id=75 data-nosnippet>75</a>    ///
-<a href=#76 id=76 data-nosnippet>76</a>    /// DN   Meaning
-<a href=#77 id=77 data-nosnippet>77</a>    /// 0b0  NaN operands propagate through to the output of a floating-point operation.
-<a href=#78 id=78 data-nosnippet>78</a>    /// 0b1  Any operation involving one or more NaNs returns the default NaN.
-<a href=#79 id=79 data-nosnippet>79</a>    ///      This bit has no effect on the output of the FABS and FNEG instructions. This bit has no effect on the output
-<a href=#80 id=80 data-nosnippet>80</a>    ///      of the FMAX, FMAXP, FMAXV, FMIN, FMINP, and FMINV instructions when FPCR.AH is 1.
-<a href=#81 id=81 data-nosnippet>81</a>    ///
-<a href=#82 id=82 data-nosnippet>82</a>    /// The reset behavior of this field is:
-<a href=#83 id=83 data-nosnippet>83</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
-<a href=#84 id=84 data-nosnippet>84</a>    ///
-<a href=#85 id=85 data-nosnippet>85</a>    /// FZ, bit [24]
-<a href=#86 id=86 data-nosnippet>86</a>    ///     Flushing denormalized numbers to zero control bit.
-<a href=#87 id=87 data-nosnippet>87</a>    ///
-<a href=#88 id=88 data-nosnippet>88</a>    /// FZ   Meaning
-<a href=#89 id=89 data-nosnippet>89</a>    /// 0b0  If FPCR.AH is 0, the flushing to zero of single-precision and double-precision denormalized inputs to, and
-<a href=#90 id=90 data-nosnippet>90</a>    ///      outputs of, floating-point instructions not enabled by this control, but other factors might cause the input
-<a href=#91 id=91 data-nosnippet>91</a>    ///      denormalized numbers to be flushed to zero.
-<a href=#92 id=92 data-nosnippet>92</a>    ///      If FPCR.AH is 1, the flushing to zero of single-precision and double-precision denormalized outputs of
-<a href=#93 id=93 data-nosnippet>93</a>    ///      floating-point instructions not enabled by this control, but other factors might cause the input denormalized
-<a href=#94 id=94 data-nosnippet>94</a>    ///      numbers to be flushed to zero.
-<a href=#95 id=95 data-nosnippet>95</a>    /// 0b1  If FPCR.AH is 0, denormalized single-precision and double-precision inputs to, and outputs from,
-<a href=#96 id=96 data-nosnippet>96</a>    ///      floating-point instructions are flushed to zero.
-<a href=#97 id=97 data-nosnippet>97</a>    ///      If FPCR.AH is 1, denormalized single-precision and double-precision outputs from floating-point
-<a href=#98 id=98 data-nosnippet>98</a>    ///      instructions are flushed to zero.
-<a href=#99 id=99 data-nosnippet>99</a>    ///
-<a href=#100 id=100 data-nosnippet>100</a>    /// The reset behavior of this field is:
-<a href=#101 id=101 data-nosnippet>101</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
-<a href=#102 id=102 data-nosnippet>102</a>    ///
-<a href=#103 id=103 data-nosnippet>103</a>    /// RMode, bits [23:22]
-<a href=#104 id=104 data-nosnippet>104</a>    ///     Rounding Mode control field.
-<a href=#105 id=105 data-nosnippet>105</a>    ///
-<a href=#106 id=106 data-nosnippet>106</a>    /// Rmode  Meaning
-<a href=#107 id=107 data-nosnippet>107</a>    /// 0b00   Round to Nearest (RN) mode.
-<a href=#108 id=108 data-nosnippet>108</a>    /// 0b01   Round towards Plus Infinity (RP) mode.
-<a href=#109 id=109 data-nosnippet>109</a>    /// 0b10   Round towards Minus Infinity (RM) mode.
-<a href=#110 id=110 data-nosnippet>110</a>    /// 0b11   Round towards Zero (RZ) mode.
-<a href=#111 id=111 data-nosnippet>111</a>    ///
-<a href=#112 id=112 data-nosnippet>112</a>    /// The following instructions ignore this field and use Round to Nearest mode:
-<a href=#113 id=113 data-nosnippet>113</a>    ///     - All FP8 instructions, as described in ‘Summary of FP8 instruction behaviors’.
-<a href=#114 id=114 data-nosnippet>114</a>    ///     - When FPCR.AH is 1, then the floating-point reciprocal estimate, step and exponent instructions, floating-point
-<a href=#115 id=115 data-nosnippet>115</a>    ///       square root estimate and step instructions, and instructions that follow Alternate BFloat16 behaviors, as defined
-<a href=#116 id=116 data-nosnippet>116</a>    ///       in ‘Rounding’.
-<a href=#117 id=117 data-nosnippet>117</a>    ///
-<a href=#118 id=118 data-nosnippet>118</a>    /// The reset behavior of this field is:
-<a href=#119 id=119 data-nosnippet>119</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
-<a href=#120 id=120 data-nosnippet>120</a>    ///
-<a href=#121 id=121 data-nosnippet>121</a>    /// Stride, bits [21:20]
-<a href=#122 id=122 data-nosnippet>122</a>    ///     This field has no function in AArch64 state, and nonzero values are ignored during execution in AArch64 state.
-<a href=#123 id=123 data-nosnippet>123</a>    ///     This field is included only for context saving and restoration of the AArch32 FPSCR.Stride field.
-<a href=#124 id=124 data-nosnippet>124</a>    ///
-<a href=#125 id=125 data-nosnippet>125</a>    /// The reset behavior of this field is:
-<a href=#126 id=126 data-nosnippet>126</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
-<a href=#127 id=127 data-nosnippet>127</a>    ///
-<a href=#128 id=128 data-nosnippet>128</a>    /// When an implementation implements FPSCR.{Stride, Len} as RAZ, access to this field is RAZ/WI.
-<a href=#129 id=129 data-nosnippet>129</a>    ///
-<a href=#130 id=130 data-nosnippet>130</a>    /// FZ16, bit [19]
-<a href=#131 id=131 data-nosnippet>131</a>    /// When FEAT_FP16 is implemented:
-<a href=#132 id=132 data-nosnippet>132</a>    ///     Flushing denormalized numbers to zero control bit on half-precision data-processing instructions.
-<a href=#133 id=133 data-nosnippet>133</a>    ///
-<a href=#134 id=134 data-nosnippet>134</a>    /// FZ16  Meaning
-<a href=#135 id=135 data-nosnippet>135</a>    /// 0b0   For some instructions, this bit disables flushing to zero of inputs and outputs that are half-precision
-<a href=#136 id=136 data-nosnippet>136</a>    ///       denormalized numbers.
-<a href=#137 id=137 data-nosnippet>137</a>    /// 0b1   Flushing denormalized numbers to zero enabled.
-<a href=#138 id=138 data-nosnippet>138</a>    ///       For some instructions that do not convert a half-precision input to a higher precision output, this bit
-<a href=#139 id=139 data-nosnippet>139</a>    ///       enables flushing to zero of inputs and outputs that are half-precision denormalized numbers.
+<a href=#25 id=25 data-nosnippet>25</a><span class="kw">impl </span>ExtendType {
+<a href=#26 id=26 data-nosnippet>26</a>    <span class="kw">pub fn </span>decode(n: u8) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+<a href=#27 id=27 data-nosnippet>27</a>        <span class="kw">if </span>n &gt; <span class="number">0b111 </span>{
+<a href=#28 id=28 data-nosnippet>28</a>            <span class="prelude-val">None
+<a href=#29 id=29 data-nosnippet>29</a>        </span>} <span class="kw">else </span>{
+<a href=#30 id=30 data-nosnippet>30</a>            <span class="prelude-val">Some</span>(<span class="kw">match </span>n {
+<a href=#31 id=31 data-nosnippet>31</a>                <span class="number">0b000 </span>=&gt; <span class="self">Self</span>::UXTB,
+<a href=#32 id=32 data-nosnippet>32</a>                <span class="number">0b001 </span>=&gt; <span class="self">Self</span>::UXTH,
+<a href=#33 id=33 data-nosnippet>33</a>                <span class="number">0b010 </span>=&gt; <span class="self">Self</span>::UXTW,
+<a href=#34 id=34 data-nosnippet>34</a>                <span class="number">0b011 </span>=&gt; <span class="self">Self</span>::UXTX,
+<a href=#35 id=35 data-nosnippet>35</a>                <span class="number">0b100 </span>=&gt; <span class="self">Self</span>::SXTB,
+<a href=#36 id=36 data-nosnippet>36</a>                <span class="number">0b101 </span>=&gt; <span class="self">Self</span>::SXTH,
+<a href=#37 id=37 data-nosnippet>37</a>                <span class="number">0b110 </span>=&gt; <span class="self">Self</span>::SXTW,
+<a href=#38 id=38 data-nosnippet>38</a>                <span class="number">0b111 </span>=&gt; <span class="self">Self</span>::SXTX,
+<a href=#39 id=39 data-nosnippet>39</a>                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">"n not in (0b000..=0b111) but also not &gt; 0b111?"</span>),
+<a href=#40 id=40 data-nosnippet>40</a>            })
+<a href=#41 id=41 data-nosnippet>41</a>        }
+<a href=#42 id=42 data-nosnippet>42</a>    }
+<a href=#43 id=43 data-nosnippet>43</a>}
+<a href=#44 id=44 data-nosnippet>44</a>
+<a href=#45 id=45 data-nosnippet>45</a><span class="kw">pub struct </span>Cpu {
+<a href=#46 id=46 data-nosnippet>46</a>    <span class="doccomment">/// R0-R31: 31 general-purpose registers, R0 to R30. Each can be accessed as:
+<a href=#47 id=47 data-nosnippet>47</a>    /// - A 64-bit general-purpose register named X0 to X30.
+<a href=#48 id=48 data-nosnippet>48</a>    /// - A 32-bit general-purpose register named W0 to W30.
+<a href=#49 id=49 data-nosnippet>49</a>    /// The X30 general-purpose register is used as the procedure call link register.
+<a href=#50 id=50 data-nosnippet>50</a>    </span>x: [u64; <span class="number">31</span>],
+<a href=#51 id=51 data-nosnippet>51</a>
+<a href=#52 id=52 data-nosnippet>52</a>    <span class="doccomment">/// A 64-bit dedicated Stack Pointer register. The least significant 32 bits of the stack pointer can be accessed
+<a href=#53 id=53 data-nosnippet>53</a>    /// using the register name WSP.
+<a href=#54 id=54 data-nosnippet>54</a>    /// The use of SP as an operand in an instruction, indicates the use of the current stack pointer.
+<a href=#55 id=55 data-nosnippet>55</a>    </span>sp: u64,
+<a href=#56 id=56 data-nosnippet>56</a>
+<a href=#57 id=57 data-nosnippet>57</a>    <span class="doccomment">/// A 64-bit Program Counter holding the address of the current instruction.
+<a href=#58 id=58 data-nosnippet>58</a>    /// Software cannot write directly to the PC. It can be updated only on a branch, exception entry or exception
+<a href=#59 id=59 data-nosnippet>59</a>    /// return.
+<a href=#60 id=60 data-nosnippet>60</a>    </span>pc: u64,
+<a href=#61 id=61 data-nosnippet>61</a>
+<a href=#62 id=62 data-nosnippet>62</a>    <span class="doccomment">/// 32 SIMD&amp;FP registers, V0 to V31. Each can be accessed as:
+<a href=#63 id=63 data-nosnippet>63</a>    /// - A 128-bit register named Q0 to Q31.
+<a href=#64 id=64 data-nosnippet>64</a>    /// - A 64-bit register named D0 to D31.
+<a href=#65 id=65 data-nosnippet>65</a>    /// - A 32-bit register named S0 to S31.
+<a href=#66 id=66 data-nosnippet>66</a>    /// - A 16-bit register named H0 to H31.
+<a href=#67 id=67 data-nosnippet>67</a>    /// - An 8-bit register named B0 to B31.
+<a href=#68 id=68 data-nosnippet>68</a>    /// - A 128-bit vector of elements.
+<a href=#69 id=69 data-nosnippet>69</a>    /// - A 64-bit vector of elements.
+<a href=#70 id=70 data-nosnippet>70</a>    /// Where the number of bits described by a register name does not occupy an entire SIMD&amp;FP register, it
+<a href=#71 id=71 data-nosnippet>71</a>    /// refers to the least significant bits.
+<a href=#72 id=72 data-nosnippet>72</a>    </span>v: [u128; <span class="number">32</span>],
+<a href=#73 id=73 data-nosnippet>73</a>
+<a href=#74 id=74 data-nosnippet>74</a>    <span class="doccomment">/// Purpose:
+<a href=#75 id=75 data-nosnippet>75</a>    ///     Controls behavior of the floating-point instructions.
+<a href=#76 id=76 data-nosnippet>76</a>    ///
+<a href=#77 id=77 data-nosnippet>77</a>    /// Bits [63:27]
+<a href=#78 id=78 data-nosnippet>78</a>    ///     Reserved, Res0
+<a href=#79 id=79 data-nosnippet>79</a>    ///
+<a href=#80 id=80 data-nosnippet>80</a>    /// AHP, bit [26]
+<a href=#81 id=81 data-nosnippet>81</a>    ///     Alternative half-precision control bit.
+<a href=#82 id=82 data-nosnippet>82</a>    ///
+<a href=#83 id=83 data-nosnippet>83</a>    /// AHP  Meaning
+<a href=#84 id=84 data-nosnippet>84</a>    /// 0b0  IEEE half-precision format selected.
+<a href=#85 id=85 data-nosnippet>85</a>    /// 0b1  Alternative half-precision format selected.
+<a href=#86 id=86 data-nosnippet>86</a>    ///
+<a href=#87 id=87 data-nosnippet>87</a>    /// This bit is used only for conversions between half-precision floating-point and other floating-point formats.
+<a href=#88 id=88 data-nosnippet>88</a>    ///     The data-processing instructions added as part of the FEAT_FP16 extension always use the IEEE half-precision
+<a href=#89 id=89 data-nosnippet>89</a>    ///     format, and ignore the value of this bit.
+<a href=#90 id=90 data-nosnippet>90</a>    ///     The reset behavior of this field is:
+<a href=#91 id=91 data-nosnippet>91</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#92 id=92 data-nosnippet>92</a>    ///
+<a href=#93 id=93 data-nosnippet>93</a>    /// DN, bit [25]
+<a href=#94 id=94 data-nosnippet>94</a>    ///     Default NaN use for NaN propagation.
+<a href=#95 id=95 data-nosnippet>95</a>    ///
+<a href=#96 id=96 data-nosnippet>96</a>    /// DN   Meaning
+<a href=#97 id=97 data-nosnippet>97</a>    /// 0b0  NaN operands propagate through to the output of a floating-point operation.
+<a href=#98 id=98 data-nosnippet>98</a>    /// 0b1  Any operation involving one or more NaNs returns the default NaN.
+<a href=#99 id=99 data-nosnippet>99</a>    ///      This bit has no effect on the output of the FABS and FNEG instructions. This bit has no effect on the output
+<a href=#100 id=100 data-nosnippet>100</a>    ///      of the FMAX, FMAXP, FMAXV, FMIN, FMINP, and FMINV instructions when FPCR.AH is 1.
+<a href=#101 id=101 data-nosnippet>101</a>    ///
+<a href=#102 id=102 data-nosnippet>102</a>    /// The reset behavior of this field is:
+<a href=#103 id=103 data-nosnippet>103</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#104 id=104 data-nosnippet>104</a>    ///
+<a href=#105 id=105 data-nosnippet>105</a>    /// FZ, bit [24]
+<a href=#106 id=106 data-nosnippet>106</a>    ///     Flushing denormalized numbers to zero control bit.
+<a href=#107 id=107 data-nosnippet>107</a>    ///
+<a href=#108 id=108 data-nosnippet>108</a>    /// FZ   Meaning
+<a href=#109 id=109 data-nosnippet>109</a>    /// 0b0  If FPCR.AH is 0, the flushing to zero of single-precision and double-precision denormalized inputs to, and
+<a href=#110 id=110 data-nosnippet>110</a>    ///      outputs of, floating-point instructions not enabled by this control, but other factors might cause the input
+<a href=#111 id=111 data-nosnippet>111</a>    ///      denormalized numbers to be flushed to zero.
+<a href=#112 id=112 data-nosnippet>112</a>    ///      If FPCR.AH is 1, the flushing to zero of single-precision and double-precision denormalized outputs of
+<a href=#113 id=113 data-nosnippet>113</a>    ///      floating-point instructions not enabled by this control, but other factors might cause the input denormalized
+<a href=#114 id=114 data-nosnippet>114</a>    ///      numbers to be flushed to zero.
+<a href=#115 id=115 data-nosnippet>115</a>    /// 0b1  If FPCR.AH is 0, denormalized single-precision and double-precision inputs to, and outputs from,
+<a href=#116 id=116 data-nosnippet>116</a>    ///      floating-point instructions are flushed to zero.
+<a href=#117 id=117 data-nosnippet>117</a>    ///      If FPCR.AH is 1, denormalized single-precision and double-precision outputs from floating-point
+<a href=#118 id=118 data-nosnippet>118</a>    ///      instructions are flushed to zero.
+<a href=#119 id=119 data-nosnippet>119</a>    ///
+<a href=#120 id=120 data-nosnippet>120</a>    /// The reset behavior of this field is:
+<a href=#121 id=121 data-nosnippet>121</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#122 id=122 data-nosnippet>122</a>    ///
+<a href=#123 id=123 data-nosnippet>123</a>    /// RMode, bits [23:22]
+<a href=#124 id=124 data-nosnippet>124</a>    ///     Rounding Mode control field.
+<a href=#125 id=125 data-nosnippet>125</a>    ///
+<a href=#126 id=126 data-nosnippet>126</a>    /// Rmode  Meaning
+<a href=#127 id=127 data-nosnippet>127</a>    /// 0b00   Round to Nearest (RN) mode.
+<a href=#128 id=128 data-nosnippet>128</a>    /// 0b01   Round towards Plus Infinity (RP) mode.
+<a href=#129 id=129 data-nosnippet>129</a>    /// 0b10   Round towards Minus Infinity (RM) mode.
+<a href=#130 id=130 data-nosnippet>130</a>    /// 0b11   Round towards Zero (RZ) mode.
+<a href=#131 id=131 data-nosnippet>131</a>    ///
+<a href=#132 id=132 data-nosnippet>132</a>    /// The following instructions ignore this field and use Round to Nearest mode:
+<a href=#133 id=133 data-nosnippet>133</a>    ///     - All FP8 instructions, as described in ‘Summary of FP8 instruction behaviors’.
+<a href=#134 id=134 data-nosnippet>134</a>    ///     - When FPCR.AH is 1, then the floating-point reciprocal estimate, step and exponent instructions, floating-point
+<a href=#135 id=135 data-nosnippet>135</a>    ///       square root estimate and step instructions, and instructions that follow Alternate BFloat16 behaviors, as defined
+<a href=#136 id=136 data-nosnippet>136</a>    ///       in ‘Rounding’.
+<a href=#137 id=137 data-nosnippet>137</a>    ///
+<a href=#138 id=138 data-nosnippet>138</a>    /// The reset behavior of this field is:
+<a href=#139 id=139 data-nosnippet>139</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
 <a href=#140 id=140 data-nosnippet>140</a>    ///
-<a href=#141 id=141 data-nosnippet>141</a>    /// The reset behavior of this field is:
-<a href=#142 id=142 data-nosnippet>142</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
-<a href=#143 id=143 data-nosnippet>143</a>    ///
-<a href=#144 id=144 data-nosnippet>144</a>    /// Otherwise:
-<a href=#145 id=145 data-nosnippet>145</a>    ///     Reserved, RES0.
-<a href=#146 id=146 data-nosnippet>146</a>    ///
-<a href=#147 id=147 data-nosnippet>147</a>    /// Len, bits [18:16]
-<a href=#148 id=148 data-nosnippet>148</a>    ///     This field has no function in AArch64 state, and nonzero values are ignored during execution in AArch64 state.
-<a href=#149 id=149 data-nosnippet>149</a>    ///     This field is included only for context saving and restoration of the AArch32 FPSCR.Len field.
-<a href=#150 id=150 data-nosnippet>150</a>    ///
-<a href=#151 id=151 data-nosnippet>151</a>    /// The reset behavior of this field is:
-<a href=#152 id=152 data-nosnippet>152</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#141 id=141 data-nosnippet>141</a>    /// Stride, bits [21:20]
+<a href=#142 id=142 data-nosnippet>142</a>    ///     This field has no function in AArch64 state, and nonzero values are ignored during execution in AArch64 state.
+<a href=#143 id=143 data-nosnippet>143</a>    ///     This field is included only for context saving and restoration of the AArch32 FPSCR.Stride field.
+<a href=#144 id=144 data-nosnippet>144</a>    ///
+<a href=#145 id=145 data-nosnippet>145</a>    /// The reset behavior of this field is:
+<a href=#146 id=146 data-nosnippet>146</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#147 id=147 data-nosnippet>147</a>    ///
+<a href=#148 id=148 data-nosnippet>148</a>    /// When an implementation implements FPSCR.{Stride, Len} as RAZ, access to this field is RAZ/WI.
+<a href=#149 id=149 data-nosnippet>149</a>    ///
+<a href=#150 id=150 data-nosnippet>150</a>    /// FZ16, bit [19]
+<a href=#151 id=151 data-nosnippet>151</a>    /// When FEAT_FP16 is implemented:
+<a href=#152 id=152 data-nosnippet>152</a>    ///     Flushing denormalized numbers to zero control bit on half-precision data-processing instructions.
 <a href=#153 id=153 data-nosnippet>153</a>    ///
-<a href=#154 id=154 data-nosnippet>154</a>    /// When an implementation implements FPSCR.{Stride, Len} as RAZ, access to this field is RAZ/WI.
-<a href=#155 id=155 data-nosnippet>155</a>    ///
-<a href=#156 id=156 data-nosnippet>156</a>    /// IDE, bit [15]
-<a href=#157 id=157 data-nosnippet>157</a>    ///     Input Denormal floating-point exception trap enable.
-<a href=#158 id=158 data-nosnippet>158</a>    ///
-<a href=#159 id=159 data-nosnippet>159</a>    /// IDE  Meaning
-<a href=#160 id=160 data-nosnippet>160</a>    /// 0b0  Untrapped exception handling selected. If the floating-point exception occurs, the
-<a href=#161 id=161 data-nosnippet>161</a>    ///      FPSR.IDC bit is set to 1.
-<a href=#162 id=162 data-nosnippet>162</a>    /// 0b1  Trapped exception handling selected. If the floating-point exception occurs, the PE does not update the
-<a href=#163 id=163 data-nosnippet>163</a>    ///      FPSR.IDC bit.
-<a href=#164 id=164 data-nosnippet>164</a>    ///
-<a href=#165 id=165 data-nosnippet>165</a>    /// When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
-<a href=#166 id=166 data-nosnippet>166</a>    ///     FPCR.IDE is treated as 0 for all purposes other than a direct read or write of the FPCR.
-<a href=#167 id=167 data-nosnippet>167</a>    ///     The Effective value of this bit controls both scalar and vector floating-point arithmetic.
-<a href=#168 id=168 data-nosnippet>168</a>    ///
-<a href=#169 id=169 data-nosnippet>169</a>    /// The reset behavior of this field is:
-<a href=#170 id=170 data-nosnippet>170</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
-<a href=#171 id=171 data-nosnippet>171</a>    ///
-<a href=#172 id=172 data-nosnippet>172</a>    /// When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
-<a href=#173 id=173 data-nosnippet>173</a>    ///     RAZ/WI.
-<a href=#174 id=174 data-nosnippet>174</a>    ///
-<a href=#175 id=175 data-nosnippet>175</a>    /// Bit [14]
-<a href=#176 id=176 data-nosnippet>176</a>    ///     Reserved, RES0.
-<a href=#177 id=177 data-nosnippet>177</a>    ///
-<a href=#178 id=178 data-nosnippet>178</a>    /// EBF, bit [13]
-<a href=#179 id=179 data-nosnippet>179</a>    /// When FEAT_EBF16 is implemented:
-<a href=#180 id=180 data-nosnippet>180</a>    ///     The value of this bit controls the numeric behaviors of BFloat16 dot product calculations performed by the
-<a href=#181 id=181 data-nosnippet>181</a>    ///     BFDOT, BFMMLA, BFMOPA, and BFMOPS instructions. If FEAT_SME2 is implemented, this also controls
-<a href=#182 id=182 data-nosnippet>182</a>    ///     BFVDOT instruction.
-<a href=#183 id=183 data-nosnippet>183</a>    ///
-<a href=#184 id=184 data-nosnippet>184</a>    /// When ID_AA64ISAR1_EL1.BF16 and ID_AA64ZFR0_EL1.BF16 are 0b0010, the PE supports the
-<a href=#185 id=185 data-nosnippet>185</a>    ///     FPCR.EBF field. Otherwise, FPCR.EBF is RES0.
-<a href=#186 id=186 data-nosnippet>186</a>    ///
-<a href=#187 id=187 data-nosnippet>187</a>    /// EBF  Meaning
-<a href=#188 id=188 data-nosnippet>188</a>    /// 0b0  These instructions use the standard BFloat16 behaviors:
-<a href=#189 id=189 data-nosnippet>189</a>    ///      - Ignoring the FPCR.RMode control and using the rounding mode defined for BFloat16. For more
-<a href=#190 id=190 data-nosnippet>190</a>    ///        information, see ‘Round to Odd mode’.
-<a href=#191 id=191 data-nosnippet>191</a>    ///      - Flushing denormalized inputs and outputs to zero, as if the FPCR.FZ and FPCR.FIZ controls had the
-<a href=#192 id=192 data-nosnippet>192</a>    ///        value ‘1’.
-<a href=#193 id=193 data-nosnippet>193</a>    ///      - Performing unfused multiplies and additions with intermediate rounding of all products and sums.
-<a href=#194 id=194 data-nosnippet>194</a>    /// 0b1  These instructions use the extended BFloat16 behaviors:
-<a href=#195 id=195 data-nosnippet>195</a>    ///      - Supporting all four IEEE 754 rounding modes selected by the FPCR.RMode control.
-<a href=#196 id=196 data-nosnippet>196</a>    ///      - Optionally, flushing denormalized inputs and outputs to zero, as governed by the FPCR.FZ and
-<a href=#197 id=197 data-nosnippet>197</a>    ///        FPCR.FIZ controls.
-<a href=#198 id=198 data-nosnippet>198</a>    ///      - Performing a fused two-way sum-of-products for each pair of adjacent BFloat16 elements, without
-<a href=#199 id=199 data-nosnippet>199</a>    ///        intermediate rounding of the products, but rounding the single-precision sum before addition to the
-<a href=#200 id=200 data-nosnippet>200</a>    ///        accumulator.
-<a href=#201 id=201 data-nosnippet>201</a>    ///      - Generating the default NaN as intermediate sum-of-products when any multiplier input is a NaN, or
-<a href=#202 id=202 data-nosnippet>202</a>    ///        any product is infinity × 0.0, or there are infinite products with differing signs.
-<a href=#203 id=203 data-nosnippet>203</a>    ///      - Generating an intermediate sum-of-products of the same infinity when there are infinite products all
-<a href=#204 id=204 data-nosnippet>204</a>    ///        with the same sign.
-<a href=#205 id=205 data-nosnippet>205</a>    ///
-<a href=#206 id=206 data-nosnippet>206</a>    /// The reset behavior of this field is:
-<a href=#207 id=207 data-nosnippet>207</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
-<a href=#208 id=208 data-nosnippet>208</a>    ///
-<a href=#209 id=209 data-nosnippet>209</a>    /// Otherwise:
-<a href=#210 id=210 data-nosnippet>210</a>    ///     Reserved, RES0.
-<a href=#211 id=211 data-nosnippet>211</a>    ///
-<a href=#212 id=212 data-nosnippet>212</a>    /// IXE, bit [12]
-<a href=#213 id=213 data-nosnippet>213</a>    ///     Inexact floating-point exception trap enable.
-<a href=#214 id=214 data-nosnippet>214</a>    ///
-<a href=#215 id=215 data-nosnippet>215</a>    /// IXE  Meaning
-<a href=#216 id=216 data-nosnippet>216</a>    /// 0b0  Untrapped exception handling selected. If the floating-point exception occurs, the FPSR.IXC bit is set to 1.
-<a href=#217 id=217 data-nosnippet>217</a>    /// 0b1  Trapped exception handling selected. If the floating-point exception occurs, the PE does not update the FPSR.IXC bit.
-<a href=#218 id=218 data-nosnippet>218</a>    ///
-<a href=#219 id=219 data-nosnippet>219</a>    /// When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
-<a href=#220 id=220 data-nosnippet>220</a>    ///     FPCR.IXE is treated as 0 for all purposes other than a direct read or write of the FPCR.
-<a href=#221 id=221 data-nosnippet>221</a>    ///     The Effective value of this bit controls both scalar and vector floating-point arithmetic.
-<a href=#222 id=222 data-nosnippet>222</a>    ///
-<a href=#223 id=223 data-nosnippet>223</a>    /// The reset behavior of this field is:
-<a href=#224 id=224 data-nosnippet>224</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#154 id=154 data-nosnippet>154</a>    /// FZ16  Meaning
+<a href=#155 id=155 data-nosnippet>155</a>    /// 0b0   For some instructions, this bit disables flushing to zero of inputs and outputs that are half-precision
+<a href=#156 id=156 data-nosnippet>156</a>    ///       denormalized numbers.
+<a href=#157 id=157 data-nosnippet>157</a>    /// 0b1   Flushing denormalized numbers to zero enabled.
+<a href=#158 id=158 data-nosnippet>158</a>    ///       For some instructions that do not convert a half-precision input to a higher precision output, this bit
+<a href=#159 id=159 data-nosnippet>159</a>    ///       enables flushing to zero of inputs and outputs that are half-precision denormalized numbers.
+<a href=#160 id=160 data-nosnippet>160</a>    ///
+<a href=#161 id=161 data-nosnippet>161</a>    /// The reset behavior of this field is:
+<a href=#162 id=162 data-nosnippet>162</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#163 id=163 data-nosnippet>163</a>    ///
+<a href=#164 id=164 data-nosnippet>164</a>    /// Otherwise:
+<a href=#165 id=165 data-nosnippet>165</a>    ///     Reserved, RES0.
+<a href=#166 id=166 data-nosnippet>166</a>    ///
+<a href=#167 id=167 data-nosnippet>167</a>    /// Len, bits [18:16]
+<a href=#168 id=168 data-nosnippet>168</a>    ///     This field has no function in AArch64 state, and nonzero values are ignored during execution in AArch64 state.
+<a href=#169 id=169 data-nosnippet>169</a>    ///     This field is included only for context saving and restoration of the AArch32 FPSCR.Len field.
+<a href=#170 id=170 data-nosnippet>170</a>    ///
+<a href=#171 id=171 data-nosnippet>171</a>    /// The reset behavior of this field is:
+<a href=#172 id=172 data-nosnippet>172</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#173 id=173 data-nosnippet>173</a>    ///
+<a href=#174 id=174 data-nosnippet>174</a>    /// When an implementation implements FPSCR.{Stride, Len} as RAZ, access to this field is RAZ/WI.
+<a href=#175 id=175 data-nosnippet>175</a>    ///
+<a href=#176 id=176 data-nosnippet>176</a>    /// IDE, bit [15]
+<a href=#177 id=177 data-nosnippet>177</a>    ///     Input Denormal floating-point exception trap enable.
+<a href=#178 id=178 data-nosnippet>178</a>    ///
+<a href=#179 id=179 data-nosnippet>179</a>    /// IDE  Meaning
+<a href=#180 id=180 data-nosnippet>180</a>    /// 0b0  Untrapped exception handling selected. If the floating-point exception occurs, the
+<a href=#181 id=181 data-nosnippet>181</a>    ///      FPSR.IDC bit is set to 1.
+<a href=#182 id=182 data-nosnippet>182</a>    /// 0b1  Trapped exception handling selected. If the floating-point exception occurs, the PE does not update the
+<a href=#183 id=183 data-nosnippet>183</a>    ///      FPSR.IDC bit.
+<a href=#184 id=184 data-nosnippet>184</a>    ///
+<a href=#185 id=185 data-nosnippet>185</a>    /// When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
+<a href=#186 id=186 data-nosnippet>186</a>    ///     FPCR.IDE is treated as 0 for all purposes other than a direct read or write of the FPCR.
+<a href=#187 id=187 data-nosnippet>187</a>    ///     The Effective value of this bit controls both scalar and vector floating-point arithmetic.
+<a href=#188 id=188 data-nosnippet>188</a>    ///
+<a href=#189 id=189 data-nosnippet>189</a>    /// The reset behavior of this field is:
+<a href=#190 id=190 data-nosnippet>190</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#191 id=191 data-nosnippet>191</a>    ///
+<a href=#192 id=192 data-nosnippet>192</a>    /// When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
+<a href=#193 id=193 data-nosnippet>193</a>    ///     RAZ/WI.
+<a href=#194 id=194 data-nosnippet>194</a>    ///
+<a href=#195 id=195 data-nosnippet>195</a>    /// Bit [14]
+<a href=#196 id=196 data-nosnippet>196</a>    ///     Reserved, RES0.
+<a href=#197 id=197 data-nosnippet>197</a>    ///
+<a href=#198 id=198 data-nosnippet>198</a>    /// EBF, bit [13]
+<a href=#199 id=199 data-nosnippet>199</a>    /// When FEAT_EBF16 is implemented:
+<a href=#200 id=200 data-nosnippet>200</a>    ///     The value of this bit controls the numeric behaviors of BFloat16 dot product calculations performed by the
+<a href=#201 id=201 data-nosnippet>201</a>    ///     BFDOT, BFMMLA, BFMOPA, and BFMOPS instructions. If FEAT_SME2 is implemented, this also controls
+<a href=#202 id=202 data-nosnippet>202</a>    ///     BFVDOT instruction.
+<a href=#203 id=203 data-nosnippet>203</a>    ///
+<a href=#204 id=204 data-nosnippet>204</a>    /// When ID_AA64ISAR1_EL1.BF16 and ID_AA64ZFR0_EL1.BF16 are 0b0010, the PE supports the
+<a href=#205 id=205 data-nosnippet>205</a>    ///     FPCR.EBF field. Otherwise, FPCR.EBF is RES0.
+<a href=#206 id=206 data-nosnippet>206</a>    ///
+<a href=#207 id=207 data-nosnippet>207</a>    /// EBF  Meaning
+<a href=#208 id=208 data-nosnippet>208</a>    /// 0b0  These instructions use the standard BFloat16 behaviors:
+<a href=#209 id=209 data-nosnippet>209</a>    ///      - Ignoring the FPCR.RMode control and using the rounding mode defined for BFloat16. For more
+<a href=#210 id=210 data-nosnippet>210</a>    ///        information, see ‘Round to Odd mode’.
+<a href=#211 id=211 data-nosnippet>211</a>    ///      - Flushing denormalized inputs and outputs to zero, as if the FPCR.FZ and FPCR.FIZ controls had the
+<a href=#212 id=212 data-nosnippet>212</a>    ///        value ‘1’.
+<a href=#213 id=213 data-nosnippet>213</a>    ///      - Performing unfused multiplies and additions with intermediate rounding of all products and sums.
+<a href=#214 id=214 data-nosnippet>214</a>    /// 0b1  These instructions use the extended BFloat16 behaviors:
+<a href=#215 id=215 data-nosnippet>215</a>    ///      - Supporting all four IEEE 754 rounding modes selected by the FPCR.RMode control.
+<a href=#216 id=216 data-nosnippet>216</a>    ///      - Optionally, flushing denormalized inputs and outputs to zero, as governed by the FPCR.FZ and
+<a href=#217 id=217 data-nosnippet>217</a>    ///        FPCR.FIZ controls.
+<a href=#218 id=218 data-nosnippet>218</a>    ///      - Performing a fused two-way sum-of-products for each pair of adjacent BFloat16 elements, without
+<a href=#219 id=219 data-nosnippet>219</a>    ///        intermediate rounding of the products, but rounding the single-precision sum before addition to the
+<a href=#220 id=220 data-nosnippet>220</a>    ///        accumulator.
+<a href=#221 id=221 data-nosnippet>221</a>    ///      - Generating the default NaN as intermediate sum-of-products when any multiplier input is a NaN, or
+<a href=#222 id=222 data-nosnippet>222</a>    ///        any product is infinity × 0.0, or there are infinite products with differing signs.
+<a href=#223 id=223 data-nosnippet>223</a>    ///      - Generating an intermediate sum-of-products of the same infinity when there are infinite products all
+<a href=#224 id=224 data-nosnippet>224</a>    ///        with the same sign.
 <a href=#225 id=225 data-nosnippet>225</a>    ///
-<a href=#226 id=226 data-nosnippet>226</a>    /// When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
-<a href=#227 id=227 data-nosnippet>227</a>    ///     RAZ/WI.
+<a href=#226 id=226 data-nosnippet>226</a>    /// The reset behavior of this field is:
+<a href=#227 id=227 data-nosnippet>227</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
 <a href=#228 id=228 data-nosnippet>228</a>    ///
-<a href=#229 id=229 data-nosnippet>229</a>    /// UFE, bit [11]
-<a href=#230 id=230 data-nosnippet>230</a>    ///     Underflow floating-point exception trap enable.
+<a href=#229 id=229 data-nosnippet>229</a>    /// Otherwise:
+<a href=#230 id=230 data-nosnippet>230</a>    ///     Reserved, RES0.
 <a href=#231 id=231 data-nosnippet>231</a>    ///
-<a href=#232 id=232 data-nosnippet>232</a>    /// UFE  Meaning
-<a href=#233 id=233 data-nosnippet>233</a>    /// 0b0  Untrapped exception handling selected. If the floating-point exception occurs, the FPSR.UFC bit is set to 1.
-<a href=#234 id=234 data-nosnippet>234</a>    /// 0b1  Trapped exception handling selected. If the floating-point exception occurs and Flush-to-zero is not enabled, the PE does not update the FPSR.UFC bit.
-<a href=#235 id=235 data-nosnippet>235</a>    ///
-<a href=#236 id=236 data-nosnippet>236</a>    /// When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
-<a href=#237 id=237 data-nosnippet>237</a>    ///     FPCR.UFE is treated as 0 for all purposes other than a direct read or write of the FPCR.
-<a href=#238 id=238 data-nosnippet>238</a>    ///     The Effective value of this bit controls both scalar and vector floating-point arithmetic.
-<a href=#239 id=239 data-nosnippet>239</a>    ///
-<a href=#240 id=240 data-nosnippet>240</a>    /// The reset behavior of this field is:
-<a href=#241 id=241 data-nosnippet>241</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#232 id=232 data-nosnippet>232</a>    /// IXE, bit [12]
+<a href=#233 id=233 data-nosnippet>233</a>    ///     Inexact floating-point exception trap enable.
+<a href=#234 id=234 data-nosnippet>234</a>    ///
+<a href=#235 id=235 data-nosnippet>235</a>    /// IXE  Meaning
+<a href=#236 id=236 data-nosnippet>236</a>    /// 0b0  Untrapped exception handling selected. If the floating-point exception occurs, the FPSR.IXC bit is set to 1.
+<a href=#237 id=237 data-nosnippet>237</a>    /// 0b1  Trapped exception handling selected. If the floating-point exception occurs, the PE does not update the FPSR.IXC bit.
+<a href=#238 id=238 data-nosnippet>238</a>    ///
+<a href=#239 id=239 data-nosnippet>239</a>    /// When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
+<a href=#240 id=240 data-nosnippet>240</a>    ///     FPCR.IXE is treated as 0 for all purposes other than a direct read or write of the FPCR.
+<a href=#241 id=241 data-nosnippet>241</a>    ///     The Effective value of this bit controls both scalar and vector floating-point arithmetic.
 <a href=#242 id=242 data-nosnippet>242</a>    ///
-<a href=#243 id=243 data-nosnippet>243</a>    /// When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
-<a href=#244 id=244 data-nosnippet>244</a>    ///     RAZ/WI.
+<a href=#243 id=243 data-nosnippet>243</a>    /// The reset behavior of this field is:
+<a href=#244 id=244 data-nosnippet>244</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
 <a href=#245 id=245 data-nosnippet>245</a>    ///
-<a href=#246 id=246 data-nosnippet>246</a>    /// OFE, bit [10]
-<a href=#247 id=247 data-nosnippet>247</a>    ///     Overflow floating-point exception trap enable.
+<a href=#246 id=246 data-nosnippet>246</a>    /// When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
+<a href=#247 id=247 data-nosnippet>247</a>    ///     RAZ/WI.
 <a href=#248 id=248 data-nosnippet>248</a>    ///
-<a href=#249 id=249 data-nosnippet>249</a>    /// TODO: Finish the rest of this (from page 979)
-<a href=#250 id=250 data-nosnippet>250</a>    </span>fcpr: u64,
-<a href=#251 id=251 data-nosnippet>251</a>
-<a href=#252 id=252 data-nosnippet>252</a>    <span class="doccomment">/// TODO: Finish the documentation (from page 992)
-<a href=#253 id=253 data-nosnippet>253</a>    </span>fpsr: u64,
-<a href=#254 id=254 data-nosnippet>254</a>
-<a href=#255 id=255 data-nosnippet>255</a>    pstate: pstate::PState,
-<a href=#256 id=256 data-nosnippet>256</a>}
-<a href=#257 id=257 data-nosnippet>257</a>
-<a href=#258 id=258 data-nosnippet>258</a><span class="kw">impl </span>Default <span class="kw">for </span>Cpu {
-<a href=#259 id=259 data-nosnippet>259</a>    <span class="doccomment">/// WARN: Use for testing only!!
-<a href=#260 id=260 data-nosnippet>260</a>    </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-<a href=#261 id=261 data-nosnippet>261</a>        <span class="self">Self </span>{
-<a href=#262 id=262 data-nosnippet>262</a>            x: [<span class="number">0</span>; <span class="number">31</span>],
-<a href=#263 id=263 data-nosnippet>263</a>            sp: <span class="number">0</span>,
-<a href=#264 id=264 data-nosnippet>264</a>            pc: <span class="number">0</span>,
-<a href=#265 id=265 data-nosnippet>265</a>            v: [<span class="number">0</span>; <span class="number">32</span>],
-<a href=#266 id=266 data-nosnippet>266</a>            fcpr: <span class="number">0</span>,
-<a href=#267 id=267 data-nosnippet>267</a>            fpsr: <span class="number">0</span>,
-<a href=#268 id=268 data-nosnippet>268</a>            pstate: pstate::PState::default(),
-<a href=#269 id=269 data-nosnippet>269</a>        }
-<a href=#270 id=270 data-nosnippet>270</a>    }
-<a href=#271 id=271 data-nosnippet>271</a>}
-<a href=#272 id=272 data-nosnippet>272</a>
-<a href=#273 id=273 data-nosnippet>273</a><span class="kw">impl </span>Cpu {
-<a href=#274 id=274 data-nosnippet>274</a>    <span class="kw">fn </span>_to_op(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize, sf: bool) -&gt; u64 {
-<a href=#275 id=275 data-nosnippet>275</a>        <span class="kw">if </span>sf {
-<a href=#276 id=276 data-nosnippet>276</a>            <span class="self">self</span>.x[n]
-<a href=#277 id=277 data-nosnippet>277</a>        } <span class="kw">else </span>{
-<a href=#278 id=278 data-nosnippet>278</a>            <span class="self">self</span>.x[n] <span class="kw">as </span>u32 <span class="kw">as </span>u64
-<a href=#279 id=279 data-nosnippet>279</a>        }
-<a href=#280 id=280 data-nosnippet>280</a>    }
-<a href=#281 id=281 data-nosnippet>281</a>
-<a href=#282 id=282 data-nosnippet>282</a>    <span class="doccomment">/// A function for purely debug/testing purposes to arbitrarily set the value
-<a href=#283 id=283 data-nosnippet>283</a>    /// of a X register to a provided v value
-<a href=#284 id=284 data-nosnippet>284</a>    </span><span class="kw">pub fn </span>__dbg_set_x(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: usize, v: u64) {
-<a href=#285 id=285 data-nosnippet>285</a>        <span class="self">self</span>.x[n] = v;
-<a href=#286 id=286 data-nosnippet>286</a>    }
-<a href=#287 id=287 data-nosnippet>287</a>
-<a href=#288 id=288 data-nosnippet>288</a>    <span class="doccomment">/// A function for purely debug/testing purposes to arbitrarily fetch the value
-<a href=#289 id=289 data-nosnippet>289</a>    /// of a X register
-<a href=#290 id=290 data-nosnippet>290</a>    </span><span class="kw">pub fn </span>__dbg_get_x(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize) -&gt; u64 {
-<a href=#291 id=291 data-nosnippet>291</a>        <span class="self">self</span>.x[n]
-<a href=#292 id=292 data-nosnippet>292</a>    }
-<a href=#293 id=293 data-nosnippet>293</a>
-<a href=#294 id=294 data-nosnippet>294</a>    <span class="doccomment">/// A function for purely debug/testing purposes to get a mutable reference
-<a href=#295 id=295 data-nosnippet>295</a>    /// to the CPU's PSTATE
-<a href=#296 id=296 data-nosnippet>296</a>    </span><span class="kw">pub fn </span>__dbg_get_pstate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>pstate::PState {
-<a href=#297 id=297 data-nosnippet>297</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.pstate
-<a href=#298 id=298 data-nosnippet>298</a>    }
-<a href=#299 id=299 data-nosnippet>299</a>
-<a href=#300 id=300 data-nosnippet>300</a>    <span class="doccomment">/// **ABS**: Absolute value
-<a href=#301 id=301 data-nosnippet>301</a>    ///
-<a href=#302 id=302 data-nosnippet>302</a>    /// This instruction calculates the absolute value of the signed integer value in the source register, and writes the result to the
-<a href=#303 id=303 data-nosnippet>303</a>    /// destination register. If the value in the source register is the most negative value, the result is the same as the value in the
-<a href=#304 id=304 data-nosnippet>304</a>    /// source register.
-<a href=#305 id=305 data-nosnippet>305</a>    ///
-<a href=#306 id=306 data-nosnippet>306</a>    /// ```
-<a href=#307 id=307 data-nosnippet>307</a>    /// # use hydra::cpu::Cpu;
-<a href=#308 id=308 data-nosnippet>308</a>    /// # let mut cpu = Cpu::default();
-<a href=#309 id=309 data-nosnippet>309</a>    /// cpu.__dbg_set_x(0, -5i64 as u64);
-<a href=#310 id=310 data-nosnippet>310</a>    /// cpu.abs(true, 1, 0);  // `ABS X1, X0`
-<a href=#311 id=311 data-nosnippet>311</a>    /// assert_eq!(cpu.__dbg_get_x(1), 5);
-<a href=#312 id=312 data-nosnippet>312</a>    /// ```
-<a href=#313 id=313 data-nosnippet>313</a>    ///
-<a href=#314 id=314 data-nosnippet>314</a>    /// ```
-<a href=#315 id=315 data-nosnippet>315</a>    /// # use hydra::cpu::Cpu;
-<a href=#316 id=316 data-nosnippet>316</a>    /// # let mut cpu = Cpu::default();
-<a href=#317 id=317 data-nosnippet>317</a>    /// cpu.__dbg_set_x(0, -4294967298i64 as u64);
-<a href=#318 id=318 data-nosnippet>318</a>    /// cpu.abs(false, 1, 0);  // `ABS W1, W0`
-<a href=#319 id=319 data-nosnippet>319</a>    /// assert_eq!(cpu.__dbg_get_x(1), u32::MAX.into());
-<a href=#320 id=320 data-nosnippet>320</a>    /// ```
-<a href=#321 id=321 data-nosnippet>321</a>    </span><span class="kw">pub fn </span>abs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, d: usize, n: usize) {
-<a href=#322 id=322 data-nosnippet>322</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._to_op(n, sf) <span class="kw">as </span>i64;
-<a href=#323 id=323 data-nosnippet>323</a>
-<a href=#324 id=324 data-nosnippet>324</a>        <span class="kw">let </span>result = operand1.abs() <span class="kw">as </span>u64;
-<a href=#325 id=325 data-nosnippet>325</a>        <span class="self">self</span>.x[d] = result;
-<a href=#326 id=326 data-nosnippet>326</a>    }
-<a href=#327 id=327 data-nosnippet>327</a>
-<a href=#328 id=328 data-nosnippet>328</a>    <span class="doccomment">/// **ADC**: Add with carry
-<a href=#329 id=329 data-nosnippet>329</a>    ///
-<a href=#330 id=330 data-nosnippet>330</a>    /// This instruction adds two register values and the Carry flag value, and writes the result to the destination register.
-<a href=#331 id=331 data-nosnippet>331</a>    ///
+<a href=#249 id=249 data-nosnippet>249</a>    /// UFE, bit [11]
+<a href=#250 id=250 data-nosnippet>250</a>    ///     Underflow floating-point exception trap enable.
+<a href=#251 id=251 data-nosnippet>251</a>    ///
+<a href=#252 id=252 data-nosnippet>252</a>    /// UFE  Meaning
+<a href=#253 id=253 data-nosnippet>253</a>    /// 0b0  Untrapped exception handling selected. If the floating-point exception occurs, the FPSR.UFC bit is set to 1.
+<a href=#254 id=254 data-nosnippet>254</a>    /// 0b1  Trapped exception handling selected. If the floating-point exception occurs and Flush-to-zero is not enabled, the PE does not update the FPSR.UFC bit.
+<a href=#255 id=255 data-nosnippet>255</a>    ///
+<a href=#256 id=256 data-nosnippet>256</a>    /// When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
+<a href=#257 id=257 data-nosnippet>257</a>    ///     FPCR.UFE is treated as 0 for all purposes other than a direct read or write of the FPCR.
+<a href=#258 id=258 data-nosnippet>258</a>    ///     The Effective value of this bit controls both scalar and vector floating-point arithmetic.
+<a href=#259 id=259 data-nosnippet>259</a>    ///
+<a href=#260 id=260 data-nosnippet>260</a>    /// The reset behavior of this field is:
+<a href=#261 id=261 data-nosnippet>261</a>    ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
+<a href=#262 id=262 data-nosnippet>262</a>    ///
+<a href=#263 id=263 data-nosnippet>263</a>    /// When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
+<a href=#264 id=264 data-nosnippet>264</a>    ///     RAZ/WI.
+<a href=#265 id=265 data-nosnippet>265</a>    ///
+<a href=#266 id=266 data-nosnippet>266</a>    /// OFE, bit [10]
+<a href=#267 id=267 data-nosnippet>267</a>    ///     Overflow floating-point exception trap enable.
+<a href=#268 id=268 data-nosnippet>268</a>    ///
+<a href=#269 id=269 data-nosnippet>269</a>    /// TODO: Finish the rest of this (from page 979)
+<a href=#270 id=270 data-nosnippet>270</a>    </span>fcpr: u64,
+<a href=#271 id=271 data-nosnippet>271</a>
+<a href=#272 id=272 data-nosnippet>272</a>    <span class="doccomment">/// TODO: Finish the documentation (from page 992)
+<a href=#273 id=273 data-nosnippet>273</a>    </span>fpsr: u64,
+<a href=#274 id=274 data-nosnippet>274</a>
+<a href=#275 id=275 data-nosnippet>275</a>    pstate: pstate::PState,
+<a href=#276 id=276 data-nosnippet>276</a>}
+<a href=#277 id=277 data-nosnippet>277</a>
+<a href=#278 id=278 data-nosnippet>278</a><span class="kw">impl </span>Default <span class="kw">for </span>Cpu {
+<a href=#279 id=279 data-nosnippet>279</a>    <span class="doccomment">/// WARN: Use for testing only!!
+<a href=#280 id=280 data-nosnippet>280</a>    </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#281 id=281 data-nosnippet>281</a>        <span class="self">Self </span>{
+<a href=#282 id=282 data-nosnippet>282</a>            x: [<span class="number">0</span>; <span class="number">31</span>],
+<a href=#283 id=283 data-nosnippet>283</a>            sp: <span class="number">0</span>,
+<a href=#284 id=284 data-nosnippet>284</a>            pc: <span class="number">0</span>,
+<a href=#285 id=285 data-nosnippet>285</a>            v: [<span class="number">0</span>; <span class="number">32</span>],
+<a href=#286 id=286 data-nosnippet>286</a>            fcpr: <span class="number">0</span>,
+<a href=#287 id=287 data-nosnippet>287</a>            fpsr: <span class="number">0</span>,
+<a href=#288 id=288 data-nosnippet>288</a>            pstate: pstate::PState::default(),
+<a href=#289 id=289 data-nosnippet>289</a>        }
+<a href=#290 id=290 data-nosnippet>290</a>    }
+<a href=#291 id=291 data-nosnippet>291</a>}
+<a href=#292 id=292 data-nosnippet>292</a>
+<a href=#293 id=293 data-nosnippet>293</a><span class="kw">impl </span>Cpu {
+<a href=#294 id=294 data-nosnippet>294</a>    <span class="kw">fn </span>_to_op(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize, sf: bool) -&gt; u64 {
+<a href=#295 id=295 data-nosnippet>295</a>        <span class="kw">if </span>sf {
+<a href=#296 id=296 data-nosnippet>296</a>            <span class="self">self</span>.x[n]
+<a href=#297 id=297 data-nosnippet>297</a>        } <span class="kw">else </span>{
+<a href=#298 id=298 data-nosnippet>298</a>            <span class="self">self</span>.x[n] <span class="kw">as </span>u32 <span class="kw">as </span>u64
+<a href=#299 id=299 data-nosnippet>299</a>        }
+<a href=#300 id=300 data-nosnippet>300</a>    }
+<a href=#301 id=301 data-nosnippet>301</a>
+<a href=#302 id=302 data-nosnippet>302</a>    <span class="doccomment">/// A function for purely debug/testing purposes to arbitrarily set the value
+<a href=#303 id=303 data-nosnippet>303</a>    /// of a X register to a provided v value
+<a href=#304 id=304 data-nosnippet>304</a>    </span><span class="kw">pub fn </span>__dbg_set_x(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: usize, v: u64) {
+<a href=#305 id=305 data-nosnippet>305</a>        <span class="self">self</span>.x[n] = v;
+<a href=#306 id=306 data-nosnippet>306</a>    }
+<a href=#307 id=307 data-nosnippet>307</a>
+<a href=#308 id=308 data-nosnippet>308</a>    <span class="doccomment">/// A function for purely debug/testing purposes to arbitrarily fetch the value
+<a href=#309 id=309 data-nosnippet>309</a>    /// of a X register
+<a href=#310 id=310 data-nosnippet>310</a>    </span><span class="kw">pub fn </span>__dbg_get_x(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize) -&gt; u64 {
+<a href=#311 id=311 data-nosnippet>311</a>        <span class="self">self</span>.x[n]
+<a href=#312 id=312 data-nosnippet>312</a>    }
+<a href=#313 id=313 data-nosnippet>313</a>
+<a href=#314 id=314 data-nosnippet>314</a>    <span class="doccomment">/// A function for purely debug/testing purposes to get a mutable reference
+<a href=#315 id=315 data-nosnippet>315</a>    /// to the CPU's PSTATE
+<a href=#316 id=316 data-nosnippet>316</a>    </span><span class="kw">pub fn </span>__dbg_get_pstate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>pstate::PState {
+<a href=#317 id=317 data-nosnippet>317</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.pstate
+<a href=#318 id=318 data-nosnippet>318</a>    }
+<a href=#319 id=319 data-nosnippet>319</a>
+<a href=#320 id=320 data-nosnippet>320</a>    <span class="doccomment">/// **ABS**: Absolute value
+<a href=#321 id=321 data-nosnippet>321</a>    ///
+<a href=#322 id=322 data-nosnippet>322</a>    /// This instruction calculates the absolute value of the signed integer value in the source register, and writes the result to the
+<a href=#323 id=323 data-nosnippet>323</a>    /// destination register. If the value in the source register is the most negative value, the result is the same as the value in the
+<a href=#324 id=324 data-nosnippet>324</a>    /// source register.
+<a href=#325 id=325 data-nosnippet>325</a>    ///
+<a href=#326 id=326 data-nosnippet>326</a>    /// ```
+<a href=#327 id=327 data-nosnippet>327</a>    /// # use hydra::cpu::Cpu;
+<a href=#328 id=328 data-nosnippet>328</a>    /// # let mut cpu = Cpu::default();
+<a href=#329 id=329 data-nosnippet>329</a>    /// cpu.__dbg_set_x(0, -5i64 as u64);
+<a href=#330 id=330 data-nosnippet>330</a>    /// cpu.abs(true, 1, 0);  // `ABS X1, X0`
+<a href=#331 id=331 data-nosnippet>331</a>    /// assert_eq!(cpu.__dbg_get_x(1), 5);
 <a href=#332 id=332 data-nosnippet>332</a>    /// ```
-<a href=#333 id=333 data-nosnippet>333</a>    /// # use hydra::cpu::Cpu;
-<a href=#334 id=334 data-nosnippet>334</a>    /// # let mut cpu = Cpu::default();
-<a href=#335 id=335 data-nosnippet>335</a>    /// cpu.__dbg_set_x(0, 1);
-<a href=#336 id=336 data-nosnippet>336</a>    /// cpu.__dbg_set_x(1, 2);
-<a href=#337 id=337 data-nosnippet>337</a>    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
-<a href=#338 id=338 data-nosnippet>338</a>    /// assert_eq!(cpu.__dbg_get_x(2), 3);
-<a href=#339 id=339 data-nosnippet>339</a>    /// ```
-<a href=#340 id=340 data-nosnippet>340</a>    ///
-<a href=#341 id=341 data-nosnippet>341</a>    /// ```
-<a href=#342 id=342 data-nosnippet>342</a>    /// # use hydra::cpu::Cpu;
-<a href=#343 id=343 data-nosnippet>343</a>    /// # let mut cpu = Cpu::default();
-<a href=#344 id=344 data-nosnippet>344</a>    /// cpu.__dbg_set_x(0, 1);
-<a href=#345 id=345 data-nosnippet>345</a>    /// cpu.__dbg_set_x(1, 2);
-<a href=#346 id=346 data-nosnippet>346</a>    /// cpu.__dbg_get_pstate().__dbg_set_C(true);  // Set PSTATE.C = 1
-<a href=#347 id=347 data-nosnippet>347</a>    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
-<a href=#348 id=348 data-nosnippet>348</a>    /// assert_eq!(cpu.__dbg_get_x(2), 4);
-<a href=#349 id=349 data-nosnippet>349</a>    /// ```
-<a href=#350 id=350 data-nosnippet>350</a>    </span><span class="kw">pub fn </span>adc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, d: usize, n: usize, m: usize) {
-<a href=#351 id=351 data-nosnippet>351</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._to_op(n, sf);
-<a href=#352 id=352 data-nosnippet>352</a>        <span class="kw">let </span>operand2 = <span class="self">self</span>._to_op(m, sf);
-<a href=#353 id=353 data-nosnippet>353</a>
-<a href=#354 id=354 data-nosnippet>354</a>        <span class="kw">let </span>(result, <span class="kw">_</span>) = <span class="kw">if </span>sf {
-<a href=#355 id=355 data-nosnippet>355</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
-<a href=#356 id=356 data-nosnippet>356</a>        } <span class="kw">else </span>{
-<a href=#357 id=357 data-nosnippet>357</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
-<a href=#358 id=358 data-nosnippet>358</a>        };
-<a href=#359 id=359 data-nosnippet>359</a>
-<a href=#360 id=360 data-nosnippet>360</a>        <span class="self">self</span>.x[d] = result;
-<a href=#361 id=361 data-nosnippet>361</a>    }
-<a href=#362 id=362 data-nosnippet>362</a>
-<a href=#363 id=363 data-nosnippet>363</a>    <span class="kw">fn </span>adcs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, d: usize, n: usize, m: usize) {
-<a href=#364 id=364 data-nosnippet>364</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._to_op(n, sf);
-<a href=#365 id=365 data-nosnippet>365</a>        <span class="kw">let </span>operand2 = <span class="self">self</span>._to_op(m, sf);
-<a href=#366 id=366 data-nosnippet>366</a>
-<a href=#367 id=367 data-nosnippet>367</a>        <span class="kw">let </span>(result, nzcv) = <span class="kw">if </span>sf {
-<a href=#368 id=368 data-nosnippet>368</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
-<a href=#369 id=369 data-nosnippet>369</a>        } <span class="kw">else </span>{
-<a href=#370 id=370 data-nosnippet>370</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
-<a href=#371 id=371 data-nosnippet>371</a>        };
-<a href=#372 id=372 data-nosnippet>372</a>
-<a href=#373 id=373 data-nosnippet>373</a>        <span class="self">self</span>.x[d] = result;
-<a href=#374 id=374 data-nosnippet>374</a>        nzcv.set(<span class="kw-2">&amp;mut </span><span class="self">self</span>.pstate);
-<a href=#375 id=375 data-nosnippet>375</a>    }
-<a href=#376 id=376 data-nosnippet>376</a>
-<a href=#377 id=377 data-nosnippet>377</a>    <span class="kw">fn </span>add(
-<a href=#378 id=378 data-nosnippet>378</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#379 id=379 data-nosnippet>379</a>        sf: bool,
-<a href=#380 id=380 data-nosnippet>380</a>        d: RegisterSP,
-<a href=#381 id=381 data-nosnippet>381</a>        n: RegisterSP,
-<a href=#382 id=382 data-nosnippet>382</a>        m: usize,
-<a href=#383 id=383 data-nosnippet>383</a>        extend_type: <span class="prelude-ty">Option</span>&lt;ExtendType&gt;,
-<a href=#384 id=384 data-nosnippet>384</a>        amount: <span class="prelude-ty">Option</span>&lt;u8&gt;,
-<a href=#385 id=385 data-nosnippet>385</a>    ) {
-<a href=#386 id=386 data-nosnippet>386</a>        <span class="kw">let </span>shift = amount.unwrap_or(<span class="number">0</span>);
-<a href=#387 id=387 data-nosnippet>387</a>
-<a href=#388 id=388 data-nosnippet>388</a>        <span class="kw">let </span>operand1 = <span class="kw">if let </span>RegisterSP::Register(rn) = n {
-<a href=#389 id=389 data-nosnippet>389</a>            <span class="self">self</span>.x[rn]
-<a href=#390 id=390 data-nosnippet>390</a>        } <span class="kw">else </span>{
-<a href=#391 id=391 data-nosnippet>391</a>            <span class="self">self</span>.sp
-<a href=#392 id=392 data-nosnippet>392</a>        };
-<a href=#393 id=393 data-nosnippet>393</a>
-<a href=#394 id=394 data-nosnippet>394</a>        <span class="kw">let </span>(result, <span class="kw">_</span>) = <span class="kw">if </span>sf {
-<a href=#395 id=395 data-nosnippet>395</a>            <span class="kw">let </span>operand2 = shared::extend_reg::&lt;<span class="number">64</span>&gt;(
-<a href=#396 id=396 data-nosnippet>396</a>                m,
-<a href=#397 id=397 data-nosnippet>397</a>                extend_type.unwrap_or(ExtendType::UXTW),
-<a href=#398 id=398 data-nosnippet>398</a>                shift,
-<a href=#399 id=399 data-nosnippet>399</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.x,
-<a href=#400 id=400 data-nosnippet>400</a>            );
-<a href=#401 id=401 data-nosnippet>401</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="bool-val">false</span>)
-<a href=#402 id=402 data-nosnippet>402</a>        } <span class="kw">else </span>{
-<a href=#403 id=403 data-nosnippet>403</a>            <span class="kw">let </span>operand2 = shared::extend_reg::&lt;<span class="number">32</span>&gt;(
-<a href=#404 id=404 data-nosnippet>404</a>                m,
-<a href=#405 id=405 data-nosnippet>405</a>                extend_type.unwrap_or(ExtendType::UXTW),
-<a href=#406 id=406 data-nosnippet>406</a>                shift,
-<a href=#407 id=407 data-nosnippet>407</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.x,
-<a href=#408 id=408 data-nosnippet>408</a>            );
-<a href=#409 id=409 data-nosnippet>409</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="bool-val">false</span>)
-<a href=#410 id=410 data-nosnippet>410</a>        };
-<a href=#411 id=411 data-nosnippet>411</a>
-<a href=#412 id=412 data-nosnippet>412</a>        <span class="kw">if let </span>RegisterSP::Register(rd) = d {
-<a href=#413 id=413 data-nosnippet>413</a>            <span class="self">self</span>.x[rd] = result;
-<a href=#414 id=414 data-nosnippet>414</a>        } <span class="kw">else </span>{
-<a href=#415 id=415 data-nosnippet>415</a>            <span class="self">self</span>.sp = result;
-<a href=#416 id=416 data-nosnippet>416</a>        }
-<a href=#417 id=417 data-nosnippet>417</a>    }
-<a href=#418 id=418 data-nosnippet>418</a>}</code></pre></div></section></main></body></html>
+<a href=#333 id=333 data-nosnippet>333</a>    ///
+<a href=#334 id=334 data-nosnippet>334</a>    /// ```
+<a href=#335 id=335 data-nosnippet>335</a>    /// # use hydra::cpu::Cpu;
+<a href=#336 id=336 data-nosnippet>336</a>    /// # let mut cpu = Cpu::default();
+<a href=#337 id=337 data-nosnippet>337</a>    /// cpu.__dbg_set_x(0, 9223372032559808513u64);
+<a href=#338 id=338 data-nosnippet>338</a>    /// cpu.abs(false, 1, 0);  // `ABS W1, W0`
+<a href=#339 id=339 data-nosnippet>339</a>    /// assert_eq!(cpu.__dbg_get_x(1), 1);
+<a href=#340 id=340 data-nosnippet>340</a>    /// ```
+<a href=#341 id=341 data-nosnippet>341</a>    </span><span class="kw">pub fn </span>abs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, d: usize, n: usize) {
+<a href=#342 id=342 data-nosnippet>342</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._to_op(n, sf) <span class="kw">as </span>i64;
+<a href=#343 id=343 data-nosnippet>343</a>
+<a href=#344 id=344 data-nosnippet>344</a>        <span class="kw">let </span>result = operand1.abs() <span class="kw">as </span>u64;
+<a href=#345 id=345 data-nosnippet>345</a>        <span class="self">self</span>.x[d] = result;
+<a href=#346 id=346 data-nosnippet>346</a>    }
+<a href=#347 id=347 data-nosnippet>347</a>
+<a href=#348 id=348 data-nosnippet>348</a>    <span class="doccomment">/// **ADC**: Add with carry
+<a href=#349 id=349 data-nosnippet>349</a>    ///
+<a href=#350 id=350 data-nosnippet>350</a>    /// This instruction adds two register values and the Carry flag value, and writes the result to the destination register.
+<a href=#351 id=351 data-nosnippet>351</a>    ///
+<a href=#352 id=352 data-nosnippet>352</a>    /// ```
+<a href=#353 id=353 data-nosnippet>353</a>    /// # use hydra::cpu::Cpu;
+<a href=#354 id=354 data-nosnippet>354</a>    /// # let mut cpu = Cpu::default();
+<a href=#355 id=355 data-nosnippet>355</a>    /// cpu.__dbg_set_x(0, 1);
+<a href=#356 id=356 data-nosnippet>356</a>    /// cpu.__dbg_set_x(1, 2);
+<a href=#357 id=357 data-nosnippet>357</a>    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
+<a href=#358 id=358 data-nosnippet>358</a>    /// assert_eq!(cpu.__dbg_get_x(2), 3);
+<a href=#359 id=359 data-nosnippet>359</a>    /// ```
+<a href=#360 id=360 data-nosnippet>360</a>    ///
+<a href=#361 id=361 data-nosnippet>361</a>    /// ```
+<a href=#362 id=362 data-nosnippet>362</a>    /// # use hydra::cpu::Cpu;
+<a href=#363 id=363 data-nosnippet>363</a>    /// # let mut cpu = Cpu::default();
+<a href=#364 id=364 data-nosnippet>364</a>    /// cpu.__dbg_set_x(0, 1);
+<a href=#365 id=365 data-nosnippet>365</a>    /// cpu.__dbg_set_x(1, 2);
+<a href=#366 id=366 data-nosnippet>366</a>    /// cpu.__dbg_get_pstate().__dbg_set_C(true);  // Set PSTATE.C = 1
+<a href=#367 id=367 data-nosnippet>367</a>    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
+<a href=#368 id=368 data-nosnippet>368</a>    /// assert_eq!(cpu.__dbg_get_x(2), 4);
+<a href=#369 id=369 data-nosnippet>369</a>    /// ```
+<a href=#370 id=370 data-nosnippet>370</a>    </span><span class="kw">pub fn </span>adc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, d: usize, n: usize, m: usize) {
+<a href=#371 id=371 data-nosnippet>371</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._to_op(n, sf);
+<a href=#372 id=372 data-nosnippet>372</a>        <span class="kw">let </span>operand2 = <span class="self">self</span>._to_op(m, sf);
+<a href=#373 id=373 data-nosnippet>373</a>
+<a href=#374 id=374 data-nosnippet>374</a>        <span class="kw">let </span>(result, <span class="kw">_</span>) = <span class="kw">if </span>sf {
+<a href=#375 id=375 data-nosnippet>375</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
+<a href=#376 id=376 data-nosnippet>376</a>        } <span class="kw">else </span>{
+<a href=#377 id=377 data-nosnippet>377</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
+<a href=#378 id=378 data-nosnippet>378</a>        };
+<a href=#379 id=379 data-nosnippet>379</a>
+<a href=#380 id=380 data-nosnippet>380</a>        <span class="self">self</span>.x[d] = result;
+<a href=#381 id=381 data-nosnippet>381</a>    }
+<a href=#382 id=382 data-nosnippet>382</a>
+<a href=#383 id=383 data-nosnippet>383</a>    <span class="doccomment">/// **ADCS**: Add with carry, setting flags
+<a href=#384 id=384 data-nosnippet>384</a>    ///
+<a href=#385 id=385 data-nosnippet>385</a>    /// This instruction adds two register values and the Carry flag value, and writes the result to the destination register. It updates
+<a href=#386 id=386 data-nosnippet>386</a>    /// the condition flags based on the result.
+<a href=#387 id=387 data-nosnippet>387</a>    ///
+<a href=#388 id=388 data-nosnippet>388</a>    /// ```
+<a href=#389 id=389 data-nosnippet>389</a>    /// # use hydra::cpu::Cpu;
+<a href=#390 id=390 data-nosnippet>390</a>    /// # let mut cpu = Cpu::default();
+<a href=#391 id=391 data-nosnippet>391</a>    /// cpu.__dbg_set_x(0, 1);
+<a href=#392 id=392 data-nosnippet>392</a>    /// cpu.__dbg_set_x(1, 2);
+<a href=#393 id=393 data-nosnippet>393</a>    /// cpu.adcs(true, 2, 0, 1);  // `ADCS X2, X0, X1`
+<a href=#394 id=394 data-nosnippet>394</a>    /// assert_eq!(cpu.__dbg_get_x(2), 3);
+<a href=#395 id=395 data-nosnippet>395</a>    /// assert!(!cpu.__dbg_get_pstate().__dbg_get_C());
+<a href=#396 id=396 data-nosnippet>396</a>    /// ```
+<a href=#397 id=397 data-nosnippet>397</a>    ///
+<a href=#398 id=398 data-nosnippet>398</a>    /// ```
+<a href=#399 id=399 data-nosnippet>399</a>    /// # use hydra::cpu::Cpu;
+<a href=#400 id=400 data-nosnippet>400</a>    /// # let mut cpu = Cpu::default();
+<a href=#401 id=401 data-nosnippet>401</a>    /// cpu.__dbg_set_x(0, u64::MAX);
+<a href=#402 id=402 data-nosnippet>402</a>    /// cpu.__dbg_set_x(1, 1);
+<a href=#403 id=403 data-nosnippet>403</a>    /// cpu.adcs(true, 2, 0, 1);  // `ADCS X2, X0, X1`
+<a href=#404 id=404 data-nosnippet>404</a>    /// assert_eq!(cpu.__dbg_get_x(2), 0);
+<a href=#405 id=405 data-nosnippet>405</a>    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
+<a href=#406 id=406 data-nosnippet>406</a>    /// ```
+<a href=#407 id=407 data-nosnippet>407</a>    </span><span class="kw">pub fn </span>adcs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, d: usize, n: usize, m: usize) {
+<a href=#408 id=408 data-nosnippet>408</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._to_op(n, sf);
+<a href=#409 id=409 data-nosnippet>409</a>        <span class="kw">let </span>operand2 = <span class="self">self</span>._to_op(m, sf);
+<a href=#410 id=410 data-nosnippet>410</a>
+<a href=#411 id=411 data-nosnippet>411</a>        <span class="kw">let </span>(result, nzcv) = <span class="kw">if </span>sf {
+<a href=#412 id=412 data-nosnippet>412</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
+<a href=#413 id=413 data-nosnippet>413</a>        } <span class="kw">else </span>{
+<a href=#414 id=414 data-nosnippet>414</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
+<a href=#415 id=415 data-nosnippet>415</a>        };
+<a href=#416 id=416 data-nosnippet>416</a>
+<a href=#417 id=417 data-nosnippet>417</a>        <span class="self">self</span>.x[d] = result;
+<a href=#418 id=418 data-nosnippet>418</a>        nzcv.set(<span class="kw-2">&amp;mut </span><span class="self">self</span>.pstate);
+<a href=#419 id=419 data-nosnippet>419</a>    }
+<a href=#420 id=420 data-nosnippet>420</a>
+<a href=#421 id=421 data-nosnippet>421</a>    <span class="doccomment">/// **ADD (extended register)**: Add extended and scaled register
+<a href=#422 id=422 data-nosnippet>422</a>    ///
+<a href=#423 id=423 data-nosnippet>423</a>    /// This instruction adds a register value and a sign-extended or zero-extended register value, followed by an optional left shift
+<a href=#424 id=424 data-nosnippet>424</a>    /// amount, and writes the result to the destination register. The argument that is extended from the &lt;Rm&gt; register can be a byte,
+<a href=#425 id=425 data-nosnippet>425</a>    /// halfword, word, or doubleword.
+<a href=#426 id=426 data-nosnippet>426</a>    ///
+<a href=#427 id=427 data-nosnippet>427</a>    /// ```
+<a href=#428 id=428 data-nosnippet>428</a>    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+<a href=#429 id=429 data-nosnippet>429</a>    /// # let mut cpu = Cpu::default();
+<a href=#430 id=430 data-nosnippet>430</a>    /// cpu.__dbg_set_x(0, 1);
+<a href=#431 id=431 data-nosnippet>431</a>    /// cpu.__dbg_set_x(1, 2);
+<a href=#432 id=432 data-nosnippet>432</a>    /// // ADD X2, X0, X1, UXTB #3
+<a href=#433 id=433 data-nosnippet>433</a>    /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
+<a href=#434 id=434 data-nosnippet>434</a>    /// assert_eq!(cpu.__dbg_get_x(2), 17);
+<a href=#435 id=435 data-nosnippet>435</a>    /// ```
+<a href=#436 id=436 data-nosnippet>436</a>    ///
+<a href=#437 id=437 data-nosnippet>437</a>    /// We get 17 because 17 = 1 + (2 &lt;&lt; 3)
+<a href=#438 id=438 data-nosnippet>438</a>    /// The ExtendType is not very consequential because we are dealing with such small values.
+<a href=#439 id=439 data-nosnippet>439</a>    ///
+<a href=#440 id=440 data-nosnippet>440</a>    /// ```
+<a href=#441 id=441 data-nosnippet>441</a>    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+<a href=#442 id=442 data-nosnippet>442</a>    /// # let mut cpu = Cpu::default();
+<a href=#443 id=443 data-nosnippet>443</a>    /// cpu.__dbg_set_x(0, 1);
+<a href=#444 id=444 data-nosnippet>444</a>    /// cpu.__dbg_set_x(1, 500);
+<a href=#445 id=445 data-nosnippet>445</a>    /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
+<a href=#446 id=446 data-nosnippet>446</a>    /// assert_eq!(cpu.__dbg_get_x(2), 1953);
+<a href=#447 id=447 data-nosnippet>447</a>    /// ```
+<a href=#448 id=448 data-nosnippet>448</a>    ///
+<a href=#449 id=449 data-nosnippet>449</a>    /// We get 1953 because 1953 = 1 + (244 &lt;&lt; 3), where 244 = 500 &amp; 0xFF (due to UXTB extending)
+<a href=#450 id=450 data-nosnippet>450</a>    ///
+<a href=#451 id=451 data-nosnippet>451</a>    /// ```
+<a href=#452 id=452 data-nosnippet>452</a>    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+<a href=#453 id=453 data-nosnippet>453</a>    /// # let mut cpu = Cpu::default();
+<a href=#454 id=454 data-nosnippet>454</a>    /// cpu.__dbg_set_x(0, 1);
+<a href=#455 id=455 data-nosnippet>455</a>    /// cpu.__dbg_set_x(1, 500);
+<a href=#456 id=456 data-nosnippet>456</a>    /// cpu._add_er(true, 1, 0b011, 3, RegisterSP::Register(0), RegisterSP::Register(2));
+<a href=#457 id=457 data-nosnippet>457</a>    /// assert_eq!(cpu.__dbg_get_x(2), 4001);
+<a href=#458 id=458 data-nosnippet>458</a>    /// ```
+<a href=#459 id=459 data-nosnippet>459</a>    ///
+<a href=#460 id=460 data-nosnippet>460</a>    /// Without the masking to byte-width, we get 4001 instead.
+<a href=#461 id=461 data-nosnippet>461</a>    </span><span class="kw">pub fn </span>_add_er(
+<a href=#462 id=462 data-nosnippet>462</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#463 id=463 data-nosnippet>463</a>        sf: bool,
+<a href=#464 id=464 data-nosnippet>464</a>        m: usize,
+<a href=#465 id=465 data-nosnippet>465</a>        option: u8,
+<a href=#466 id=466 data-nosnippet>466</a>        imm3: u8,
+<a href=#467 id=467 data-nosnippet>467</a>        n: RegisterSP,
+<a href=#468 id=468 data-nosnippet>468</a>        d: RegisterSP,
+<a href=#469 id=469 data-nosnippet>469</a>    ) {
+<a href=#470 id=470 data-nosnippet>470</a>        <span class="kw">let </span>operand1 = <span class="kw">if let </span>RegisterSP::Register(rn) = n {
+<a href=#471 id=471 data-nosnippet>471</a>            <span class="self">self</span>.x[rn]
+<a href=#472 id=472 data-nosnippet>472</a>        } <span class="kw">else </span>{
+<a href=#473 id=473 data-nosnippet>473</a>            <span class="self">self</span>.sp
+<a href=#474 id=474 data-nosnippet>474</a>        };
+<a href=#475 id=475 data-nosnippet>475</a>
+<a href=#476 id=476 data-nosnippet>476</a>        <span class="kw">let </span>mval = <span class="kw">if </span>option &amp; <span class="number">0b11 </span>== <span class="number">0b11 </span>{
+<a href=#477 id=477 data-nosnippet>477</a>            <span class="self">self</span>.x[m]
+<a href=#478 id=478 data-nosnippet>478</a>        } <span class="kw">else </span>{
+<a href=#479 id=479 data-nosnippet>479</a>            <span class="self">self</span>.x[m] <span class="kw">as </span>u32 <span class="kw">as </span>u64
+<a href=#480 id=480 data-nosnippet>480</a>        };
+<a href=#481 id=481 data-nosnippet>481</a>
+<a href=#482 id=482 data-nosnippet>482</a>        <span class="kw">let </span>extend_type = ExtendType::decode(option).unwrap();
+<a href=#483 id=483 data-nosnippet>483</a>
+<a href=#484 id=484 data-nosnippet>484</a>        <span class="kw">if </span>imm3 &gt; <span class="number">4 </span>{
+<a href=#485 id=485 data-nosnippet>485</a>            <span class="macro">panic!</span>(<span class="string">"imm3 too large"</span>);
+<a href=#486 id=486 data-nosnippet>486</a>        }
+<a href=#487 id=487 data-nosnippet>487</a>        <span class="kw">let </span>shift = imm3;
+<a href=#488 id=488 data-nosnippet>488</a>
+<a href=#489 id=489 data-nosnippet>489</a>        <span class="kw">let </span>(result, <span class="kw">_</span>) = <span class="kw">if </span>sf {
+<a href=#490 id=490 data-nosnippet>490</a>            <span class="kw">let </span>operand2 = shared::extend_reg::&lt;<span class="number">64</span>&gt;(mval, extend_type, shift);
+<a href=#491 id=491 data-nosnippet>491</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="bool-val">false</span>)
+<a href=#492 id=492 data-nosnippet>492</a>        } <span class="kw">else </span>{
+<a href=#493 id=493 data-nosnippet>493</a>            <span class="kw">let </span>operand2 = shared::extend_reg::&lt;<span class="number">32</span>&gt;(mval, extend_type, shift);
+<a href=#494 id=494 data-nosnippet>494</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="bool-val">false</span>)
+<a href=#495 id=495 data-nosnippet>495</a>        };
+<a href=#496 id=496 data-nosnippet>496</a>
+<a href=#497 id=497 data-nosnippet>497</a>        <span class="kw">if let </span>RegisterSP::Register(rd) = d {
+<a href=#498 id=498 data-nosnippet>498</a>            <span class="self">self</span>.x[rd] = result;
+<a href=#499 id=499 data-nosnippet>499</a>        } <span class="kw">else </span>{
+<a href=#500 id=500 data-nosnippet>500</a>            <span class="self">self</span>.sp = result;
+<a href=#501 id=501 data-nosnippet>501</a>        }
+<a href=#502 id=502 data-nosnippet>502</a>    }
+<a href=#503 id=503 data-nosnippet>503</a>}</code></pre></div></section></main></body></html>

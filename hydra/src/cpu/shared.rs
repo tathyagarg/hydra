@@ -25,15 +25,23 @@ fn sint<const N: usize>(n: u64) -> i64 {
 pub(super) fn add_with_carry<const N: usize>(x: u64, y: u64, carry_in: bool) -> (u64, NZCV) {
     let mask = if N == 64 { u64::MAX } else { (1u64 << N) - 1 };
 
-    let unsigned_sum = x + y + carry_in as u64;
+    let (unsigned_sum, carry) = {
+        let (temp, c1) = x.overflowing_add(y);
+        println!("temp: {}, c1: {}", temp, c1);
+        let (temp2, c2) = temp.overflowing_add(carry_in as u64);
+        (temp2, c1 || c2)
+    };
     let signed_sum = sint::<N>(x) + sint::<N>(y) + carry_in as i64;
 
     let result = unsigned_sum & mask;
 
     let n = (result >> (N - 1)) & 1 == 1;
     let z = result == 0;
-    let c = result != unsigned_sum;
+    let c = carry;
     let v = result as i64 != signed_sum;
+
+    println!("nzcv: {} {} {} {}", n, z, c, v);
+    println!("unsigned_sum: {}, signed_sum: {}", unsigned_sum, signed_sum);
 
     (result, NZCV(n, z, c, v))
 }
@@ -60,14 +68,7 @@ fn extend(val: u64, nbits: usize, unsigned: bool) -> u64 {
     }
 }
 
-pub(super) fn extend_reg<const N: usize>(
-    reg: usize,
-    exttype: ExtendType,
-    shift: u8,
-    x: &[u64; 31],
-) -> u64 {
-    let val = x[reg];
-
+pub(super) fn extend_reg<const N: usize>(val: u64, exttype: ExtendType, shift: u8) -> u64 {
     let (unsigned, len): (bool, usize) = match exttype {
         ExtendType::SXTB => (false, 8),
         ExtendType::SXTH => (false, 16),
@@ -80,6 +81,7 @@ pub(super) fn extend_reg<const N: usize>(
     };
 
     let nbits = len.min(N);
+    println!("Extending {} to {} bits", val, nbits);
     let extval = extend(val, nbits, unsigned);
 
     return extval << shift;

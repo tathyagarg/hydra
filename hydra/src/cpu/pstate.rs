@@ -66,4 +66,8 @@ impl PState {
     pub fn __dbg_set_C(&mut self, v: bool) {
         self.C = v;
     }
+
+    pub fn __dbg_get_C(&self) -> bool {
+        self.C
+    }
 }

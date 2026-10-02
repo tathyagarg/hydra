@@ -5,12 +5,12 @@ mod shared;
 
 const LOWER_32: u64 = 0xFFFF_FFFF_0000_0000;
 
-pub(crate) enum RegisterSP {
+pub enum RegisterSP {
     Register(usize),
     StackPointer,
 }
 
-pub(crate) enum ExtendType {
+pub enum ExtendType {
     UXTB = 0b000,
     UXTH = 0b001,
     UXTW = 0b010,
@@ -20,6 +20,26 @@ pub(crate) enum ExtendType {
     SXTH = 0b101,
     SXTW = 0b110,
     SXTX = 0b111,
+}
+
+impl ExtendType {
+    pub fn decode(n: u8) -> Option<Self> {
+        if n > 0b111 {
+            None
+        } else {
+            Some(match n {
+                0b000 => Self::UXTB,
+                0b001 => Self::UXTH,
+                0b010 => Self::UXTW,
+                0b011 => Self::UXTX,
+                0b100 => Self::SXTB,
+                0b101 => Self::SXTH,
+                0b110 => Self::SXTW,
+                0b111 => Self::SXTX,
+                _ => unreachable!("n not in (0b000..=0b111) but also not > 0b111?"),
+            })
+        }
+    }
 }
 
 pub struct Cpu {
@@ -360,7 +380,31 @@ impl Cpu {
         self.x[d] = result;
     }
 
-    fn adcs(&mut self, sf: bool, d: usize, n: usize, m: usize) {
+    /// **ADCS**: Add with carry, setting flags
+    ///
+    /// This instruction adds two register values and the Carry flag value, and writes the result to the destination register. It updates
+    /// the condition flags based on the result.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// cpu.__dbg_set_x(1, 2);
+    /// cpu.adcs(true, 2, 0, 1);  // `ADCS X2, X0, X1`
+    /// assert_eq!(cpu.__dbg_get_x(2), 3);
+    /// assert!(!cpu.__dbg_get_pstate().__dbg_get_C());
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, u64::MAX);
+    /// cpu.__dbg_set_x(1, 1);
+    /// cpu.adcs(true, 2, 0, 1);  // `ADCS X2, X0, X1`
+    /// assert_eq!(cpu.__dbg_get_x(2), 0);
+    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
+    /// ```
+    pub fn adcs(&mut self, sf: bool, d: usize, n: usize, m: usize) {
         let operand1 = self._to_op(n, sf);
         let operand2 = self._to_op(m, sf);
 
@@ -374,38 +418,79 @@ impl Cpu {
         nzcv.set(&mut self.pstate);
     }
 
-    fn add(
+    /// **ADD (extended register)**: Add extended and scaled register
+    ///
+    /// This instruction adds a register value and a sign-extended or zero-extended register value, followed by an optional left shift
+    /// amount, and writes the result to the destination register. The argument that is extended from the <Rm> register can be a byte,
+    /// halfword, word, or doubleword.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// cpu.__dbg_set_x(1, 2);
+    /// // ADD X2, X0, X1, UXTB #3
+    /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
+    /// assert_eq!(cpu.__dbg_get_x(2), 17);
+    /// ```
+    ///
+    /// We get 17 because 17 = 1 + (2 << 3)
+    /// The ExtendType is not very consequential because we are dealing with such small values.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// cpu.__dbg_set_x(1, 500);
+    /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
+    /// assert_eq!(cpu.__dbg_get_x(2), 1953);
+    /// ```
+    ///
+    /// We get 1953 because 1953 = 1 + (244 << 3), where 244 = 500 & 0xFF (due to UXTB extending)
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// cpu.__dbg_set_x(1, 500);
+    /// cpu._add_er(true, 1, 0b011, 3, RegisterSP::Register(0), RegisterSP::Register(2));
+    /// assert_eq!(cpu.__dbg_get_x(2), 4001);
+    /// ```
+    ///
+    /// Without the masking to byte-width, we get 4001 instead.
+    pub fn _add_er(
         &mut self,
         sf: bool,
-        d: RegisterSP,
-        n: RegisterSP,
         m: usize,
-        extend_type: Option<ExtendType>,
-        amount: Option<u8>,
+        option: u8,
+        imm3: u8,
+        n: RegisterSP,
+        d: RegisterSP,
     ) {
-        let shift = amount.unwrap_or(0);
-
         let operand1 = if let RegisterSP::Register(rn) = n {
             self.x[rn]
         } else {
             self.sp
         };
 
+        let mval = if option & 0b11 == 0b11 {
+            self.x[m]
+        } else {
+            self.x[m] as u32 as u64
+        };
+
+        let extend_type = ExtendType::decode(option).unwrap();
+
+        if imm3 > 4 {
+            panic!("imm3 too large");
+        }
+        let shift = imm3;
+
         let (result, _) = if sf {
-            let operand2 = shared::extend_reg::<64>(
-                m,
-                extend_type.unwrap_or(ExtendType::UXTW),
-                shift,
-                &self.x,
-            );
+            let operand2 = shared::extend_reg::<64>(mval, extend_type, shift);
             shared::add_with_carry::<64>(operand1, operand2, false)
         } else {
-            let operand2 = shared::extend_reg::<32>(
-                m,
-                extend_type.unwrap_or(ExtendType::UXTW),
-                shift,
-                &self.x,
-            );
+            let operand2 = shared::extend_reg::<32>(mval, extend_type, shift);
             shared::add_with_carry::<32>(operand1, operand2, false)
         };
 

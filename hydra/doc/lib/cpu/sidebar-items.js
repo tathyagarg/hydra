@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Cpu"]};
+window.SIDEBAR_ITEMS = {"enum":["ExtendType","RegisterSP"],"struct":["Cpu"]};
