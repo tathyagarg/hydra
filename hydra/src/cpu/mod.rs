@@ -614,4 +614,172 @@ impl Cpu {
 
         self.x[d] = result;
     }
+
+    fn addg(&mut self) {
+        todo!()
+    }
+
+    fn addpt(&mut self) {
+        todo!()
+    }
+
+    /// **ADDS (extended register)**: Add extended and scaled register, setting flags
+    ///
+    /// This instruction adds a register value and a sign-extended or zero-extended register value, followed by an optional left shift
+    /// amount, and writes the result to the destination register. The argument that is extended from the &lt;Rm&gt; register can be a byte,
+    /// halfword, word, or doubleword. It updates the condition flags based on the result.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.__dbg_set_x(1, u64::MAX >> 2);
+    /// // `ADDS X2, X0, X1, UXTB #3`
+    /// cpu._adds_er(true, 1, 0b011, 0b010, RegisterSP::Register(0), RegisterSP::Register(2));
+    /// assert_eq!(cpu.__dbg_get_x(2), 1);
+    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
+    /// ```
+    pub fn _adds_er(
+        &mut self,
+        sf: bool,
+        m: usize,
+        option: u8,
+        imm3: u8,
+        n: RegisterSP,
+        d: RegisterSP,
+    ) {
+        let operand1 = if let RegisterSP::Register(rn) = n {
+            self.x[rn]
+        } else {
+            self.sp
+        };
+
+        let mval = self._to_op(m, option & 0b11 == 0b11);
+        let extend_type = ExtendType::decode(option).unwrap();
+
+        let (result, nzcv) = if sf {
+            let operand2 = shared::extend_reg::<64>(mval, extend_type, imm3);
+            shared::add_with_carry::<64>(operand1, operand2, false)
+        } else {
+            let operand2 = shared::extend_reg::<32>(mval, extend_type, imm3);
+            shared::add_with_carry::<32>(operand1, operand2, false)
+        };
+
+        nzcv.set(&mut self.pstate);
+        if let RegisterSP::Register(rd) = d {
+            self.x[rd] = result;
+        } else {
+            self.sp = result;
+        }
+    }
+
+    /// **ADDS (Immediate)**: Add immediate value, setting flags
+    ///
+    /// This instruction adds a register value and an optionally-shifted immediate value, and writes the result to the destination
+    /// register. It updates the condition flags based on the result.
+    ///
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, u64::MAX);
+    /// // `ADDS X1, X0, #10 LSL #0`
+    /// cpu._adds_imm(true, false, 10, RegisterSP::Register(0), RegisterSP::Register(1));
+    /// assert_eq!(cpu.__dbg_get_x(1), 9);
+    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, u64::MAX);
+    /// // `ADDS X1, X0, #10 LSL #12`
+    /// cpu._adds_imm(true, true, 10, RegisterSP::Register(0), RegisterSP::Register(1));
+    /// assert_eq!(cpu.__dbg_get_x(1), 40959);
+    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
+    /// ```
+    pub fn _adds_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: RegisterSP, d: RegisterSP) {
+        let imm12 = imm12 & 0b1111_1111_1111;
+        let imm = if sh {
+            (imm12 as u32) << 12
+        } else {
+            imm12 as u32
+        };
+
+        let operand1 = if let RegisterSP::Register(rn) = n {
+            self.x[rn]
+        } else {
+            self.sp
+        };
+
+        let (result, nzcv) = if sf {
+            shared::add_with_carry::<64>(operand1, imm as u64, false)
+        } else {
+            shared::add_with_carry::<32>(operand1, imm as u64, false)
+        };
+
+        nzcv.set(&mut self.pstate);
+        if let RegisterSP::Register(rd) = d {
+            self.x[rd] = result;
+        } else {
+            self.sp = result;
+        }
+    }
+
+    /// **ADDS (Shifted Register)**: Add optionally-shifted register, setting flags
+    ///
+    /// This instruction adds a register value and an optionally-shifted register value, and writes the result to the destination register.
+    /// It updates the condition flags based on the result.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 8);
+    /// cpu.__dbg_set_x(1, u64::MAX >> 3);
+    /// // `ADDS X2, X0, X1, LSL #3`
+    /// cpu._adds_sr(true, 0b00, 1, 3, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 0);
+    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, u64::MAX);
+    /// cpu.__dbg_set_x(1, 36);
+    /// // `ADDS X2, X0, X1, LSR #3`
+    /// cpu._adds_sr(true, 0b01, 1, 3, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 3);
+    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, u64::MIN);
+    /// cpu.__dbg_set_x(1, -44i64 as u64);
+    /// // `ADD X2, X0, X1, ASR #2`
+    /// cpu._adds_sr(true, 0b10, 1, 2, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), -11i64 as u64);
+    /// assert!(!cpu.__dbg_get_pstate().__dbg_get_C());
+    /// ```
+    ///
+    /// This does NOT overflow
+    pub fn _adds_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+        let operand1 = self.x[n];
+
+        let mval = self.x[m];
+        let shift_type = ShiftType::decode(shift).unwrap();
+
+        let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
+
+        let (result, nzcv) = if sf {
+            shared::add_with_carry::<64>(operand1, operand2, false)
+        } else {
+            shared::add_with_carry::<32>(operand1, operand2, false)
+        };
+
+        nzcv.set(&mut self.pstate);
+        self.x[d] = result;
+    }
 }
