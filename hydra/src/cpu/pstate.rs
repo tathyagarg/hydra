@@ -28,3 +28,36 @@ pub(super) struct PState {
     pub(super) SP: bool,     // Stack pointer select: 0=SP0, 1=SPx [AArch64 only]
     pub(super) SSBS: bool,   // Speculative Store Bypass Safe
 }
+
+impl Default for PState {
+    fn default() -> Self {
+        Self {
+            N: false,
+            Z: false,
+            C: false,
+            V: false,
+            D: true,
+            A: true,
+            I: true,
+            F: true,
+            EXLOCK: false,
+            PAN: false,
+            UAO: false,
+            DIT: false,
+            TCO: false,
+            PM: false,
+            BTYPE: 0,
+            PACM: false,
+            ZA: false,
+            SM: false,
+            ALLINT: false,
+            UINJ: false,
+            SS: false,
+            IL: false,
+            EL: 0,
+            nRW: false,
+            SP: true,
+            SSBS: false,
+        }
+    }
+}

@@ -1,0 +1,4 @@
+var searchIndex = new Map(JSON.parse('[["lib",{"t":"CFNNNNNNNNNNN","n":["cpu","Cpu","__dbg_get_x","__dbg_set_x","abs","borrow","borrow_mut","default","from","into","try_from","try_into","type_id"],"q":[[0,"lib"],[1,"lib::cpu"],[13,"core::result"],[14,"core::any"]],"i":"``b0000000000","f":"``{{{d{b}}f}h}{{{d{jb}}fh}l}{{{d{jb}}nff}l}{d{{d{c}}}{}}{{{d{j}}}{{d{jc}}}{}}{{}b}{cc{}}{{}c{}}{c{{A`{e}}}{}{}}{{}{{A`{c}}}{}}{dAb}","D":"h","p":[[5,"Cpu",1],[1,"reference",null,null,1],[1,"usize"],[1,"u64"],[0,"mut"],[1,"unit"],[1,"bool"],[6,"Result",13,null,1],[5,"TypeId",14]],"r":[],"b":[],"c":"OjAAAAAAAAA=","e":"OzAAAAEAAAkAAwAAAAQABgABAAsAAgA=","P":[[5,"T"],[7,""],[8,"T"],[9,"U"],[10,"U,T"],[11,"U"],[12,""]]}]]'));
+if (typeof exports !== 'undefined') exports.searchIndex = searchIndex;
+else if (window.initSearch) window.initSearch(searchIndex);
+//{"start":39,"fragment_lengths":[669]}

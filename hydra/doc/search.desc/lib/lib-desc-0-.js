@@ -1,0 +1,1 @@
+searchState.loadedDescShard("lib", 0, "<strong>ABS</strong>: Absolute value\nWARN: Use for testing only!!\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

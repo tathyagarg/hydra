@@ -22,7 +22,7 @@ pub(crate) enum ExtendType {
     SXTX = 0b111,
 }
 
-pub(crate) struct Cpu {
+pub struct Cpu {
     /// R0-R31: 31 general-purpose registers, R0 to R30. Each can be accessed as:
     /// - A 64-bit general-purpose register named X0 to X30.
     /// - A 32-bit general-purpose register named W0 to W30.
@@ -60,11 +60,11 @@ pub(crate) struct Cpu {
     /// AHP, bit [26]
     ///     Alternative half-precision control bit.
     ///
-    ///       AHP  Meaning
-    ///       0b0  IEEE half-precision format selected.
-    ///       0b1  Alternative half-precision format selected.
+    /// AHP  Meaning
+    /// 0b0  IEEE half-precision format selected.
+    /// 0b1  Alternative half-precision format selected.
     ///
-    ///     This bit is used only for conversions between half-precision floating-point and other floating-point formats.
+    /// This bit is used only for conversions between half-precision floating-point and other floating-point formats.
     ///     The data-processing instructions added as part of the FEAT_FP16 extension always use the IEEE half-precision
     ///     format, and ignore the value of this bit.
     ///     The reset behavior of this field is:
@@ -73,72 +73,72 @@ pub(crate) struct Cpu {
     /// DN, bit [25]
     ///     Default NaN use for NaN propagation.
     ///
-    ///       DN   Meaning
-    ///       0b0  NaN operands propagate through to the output of a floating-point operation.
-    ///       0b1  Any operation involving one or more NaNs returns the default NaN.
-    ///            This bit has no effect on the output of the FABS and FNEG instructions. This bit has no effect on the output
-    ///            of the FMAX, FMAXP, FMAXV, FMIN, FMINP, and FMINV instructions when FPCR.AH is 1.
+    /// DN   Meaning
+    /// 0b0  NaN operands propagate through to the output of a floating-point operation.
+    /// 0b1  Any operation involving one or more NaNs returns the default NaN.
+    ///      This bit has no effect on the output of the FABS and FNEG instructions. This bit has no effect on the output
+    ///      of the FMAX, FMAXP, FMAXV, FMIN, FMINP, and FMINV instructions when FPCR.AH is 1.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
     /// FZ, bit [24]
     ///     Flushing denormalized numbers to zero control bit.
     ///
-    ///       FZ   Meaning
-    ///       0b0  If FPCR.AH is 0, the flushing to zero of single-precision and double-precision denormalized inputs to, and
-    ///            outputs of, floating-point instructions not enabled by this control, but other factors might cause the input
-    ///            denormalized numbers to be flushed to zero.
-    ///            If FPCR.AH is 1, the flushing to zero of single-precision and double-precision denormalized outputs of
-    ///            floating-point instructions not enabled by this control, but other factors might cause the input denormalized
-    ///            numbers to be flushed to zero.
-    ///       0b1  If FPCR.AH is 0, denormalized single-precision and double-precision inputs to, and outputs from,
-    ///            floating-point instructions are flushed to zero.
-    ///            If FPCR.AH is 1, denormalized single-precision and double-precision outputs from floating-point
-    ///            instructions are flushed to zero.
+    /// FZ   Meaning
+    /// 0b0  If FPCR.AH is 0, the flushing to zero of single-precision and double-precision denormalized inputs to, and
+    ///      outputs of, floating-point instructions not enabled by this control, but other factors might cause the input
+    ///      denormalized numbers to be flushed to zero.
+    ///      If FPCR.AH is 1, the flushing to zero of single-precision and double-precision denormalized outputs of
+    ///      floating-point instructions not enabled by this control, but other factors might cause the input denormalized
+    ///      numbers to be flushed to zero.
+    /// 0b1  If FPCR.AH is 0, denormalized single-precision and double-precision inputs to, and outputs from,
+    ///      floating-point instructions are flushed to zero.
+    ///      If FPCR.AH is 1, denormalized single-precision and double-precision outputs from floating-point
+    ///      instructions are flushed to zero.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
     /// RMode, bits [23:22]
     ///     Rounding Mode control field.
     ///
-    ///       Rmode  Meaning
-    ///       0b00   Round to Nearest (RN) mode.
-    ///       0b01   Round towards Plus Infinity (RP) mode.
-    ///       0b10   Round towards Minus Infinity (RM) mode.
-    ///       0b11   Round towards Zero (RZ) mode.
+    /// Rmode  Meaning
+    /// 0b00   Round to Nearest (RN) mode.
+    /// 0b01   Round towards Plus Infinity (RP) mode.
+    /// 0b10   Round towards Minus Infinity (RM) mode.
+    /// 0b11   Round towards Zero (RZ) mode.
     ///
-    ///     The following instructions ignore this field and use Round to Nearest mode:
+    /// The following instructions ignore this field and use Round to Nearest mode:
     ///     - All FP8 instructions, as described in ‘Summary of FP8 instruction behaviors’.
     ///     - When FPCR.AH is 1, then the floating-point reciprocal estimate, step and exponent instructions, floating-point
     ///       square root estimate and step instructions, and instructions that follow Alternate BFloat16 behaviors, as defined
     ///       in ‘Rounding’.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
     /// Stride, bits [21:20]
     ///     This field has no function in AArch64 state, and nonzero values are ignored during execution in AArch64 state.
     ///     This field is included only for context saving and restoration of the AArch32 FPSCR.Stride field.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
-    ///     When an implementation implements FPSCR.{Stride, Len} as RAZ, access to this field is RAZ/WI.
+    /// When an implementation implements FPSCR.{Stride, Len} as RAZ, access to this field is RAZ/WI.
     ///
     /// FZ16, bit [19]
     /// When FEAT_FP16 is implemented:
     ///     Flushing denormalized numbers to zero control bit on half-precision data-processing instructions.
     ///
-    ///       FZ16  Meaning
-    ///       0b0   For some instructions, this bit disables flushing to zero of inputs and outputs that are half-precision
-    ///             denormalized numbers.
-    ///       0b1   Flushing denormalized numbers to zero enabled.
-    ///             For some instructions that do not convert a half-precision input to a higher precision output, this bit
-    ///             enables flushing to zero of inputs and outputs that are half-precision denormalized numbers.
+    /// FZ16  Meaning
+    /// 0b0   For some instructions, this bit disables flushing to zero of inputs and outputs that are half-precision
+    ///       denormalized numbers.
+    /// 0b1   Flushing denormalized numbers to zero enabled.
+    ///       For some instructions that do not convert a half-precision input to a higher precision output, this bit
+    ///       enables flushing to zero of inputs and outputs that are half-precision denormalized numbers.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
     /// Otherwise:
@@ -148,28 +148,28 @@ pub(crate) struct Cpu {
     ///     This field has no function in AArch64 state, and nonzero values are ignored during execution in AArch64 state.
     ///     This field is included only for context saving and restoration of the AArch32 FPSCR.Len field.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
-    ///     When an implementation implements FPSCR.{Stride, Len} as RAZ, access to this field is RAZ/WI.
+    /// When an implementation implements FPSCR.{Stride, Len} as RAZ, access to this field is RAZ/WI.
     ///
     /// IDE, bit [15]
     ///     Input Denormal floating-point exception trap enable.
     ///
-    ///       IDE  Meaning
-    ///       0b0  Untrapped exception handling selected. If the floating-point exception occurs, the
-    ///            FPSR.IDC bit is set to 1.
-    ///       0b1  Trapped exception handling selected. If the floating-point exception occurs, the PE does not update the
-    ///            FPSR.IDC bit.
+    /// IDE  Meaning
+    /// 0b0  Untrapped exception handling selected. If the floating-point exception occurs, the
+    ///      FPSR.IDC bit is set to 1.
+    /// 0b1  Trapped exception handling selected. If the floating-point exception occurs, the PE does not update the
+    ///      FPSR.IDC bit.
     ///
-    ///     When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
+    /// When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
     ///     FPCR.IDE is treated as 0 for all purposes other than a direct read or write of the FPCR.
     ///     The Effective value of this bit controls both scalar and vector floating-point arithmetic.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
-    ///     When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
+    /// When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
     ///     RAZ/WI.
     ///
     /// Bit [14]
@@ -181,29 +181,29 @@ pub(crate) struct Cpu {
     ///     BFDOT, BFMMLA, BFMOPA, and BFMOPS instructions. If FEAT_SME2 is implemented, this also controls
     ///     BFVDOT instruction.
     ///
-    ///     When ID_AA64ISAR1_EL1.BF16 and ID_AA64ZFR0_EL1.BF16 are 0b0010, the PE supports the
+    /// When ID_AA64ISAR1_EL1.BF16 and ID_AA64ZFR0_EL1.BF16 are 0b0010, the PE supports the
     ///     FPCR.EBF field. Otherwise, FPCR.EBF is RES0.
     ///
-    ///       EBF  Meaning
-    ///       0b0  These instructions use the standard BFloat16 behaviors:
-    ///            - Ignoring the FPCR.RMode control and using the rounding mode defined for BFloat16. For more
-    ///              information, see ‘Round to Odd mode’.
-    ///            - Flushing denormalized inputs and outputs to zero, as if the FPCR.FZ and FPCR.FIZ controls had the
-    ///              value ‘1’.
-    ///            - Performing unfused multiplies and additions with intermediate rounding of all products and sums.
-    ///       0b1  These instructions use the extended BFloat16 behaviors:
-    ///            - Supporting all four IEEE 754 rounding modes selected by the FPCR.RMode control.
-    ///            - Optionally, flushing denormalized inputs and outputs to zero, as governed by the FPCR.FZ and
-    ///              FPCR.FIZ controls.
-    ///            - Performing a fused two-way sum-of-products for each pair of adjacent BFloat16 elements, without
-    ///              intermediate rounding of the products, but rounding the single-precision sum before addition to the
-    ///              accumulator.
-    ///            - Generating the default NaN as intermediate sum-of-products when any multiplier input is a NaN, or
-    ///              any product is infinity × 0.0, or there are infinite products with differing signs.
-    ///            - Generating an intermediate sum-of-products of the same infinity when there are infinite products all
-    ///              with the same sign.
+    /// EBF  Meaning
+    /// 0b0  These instructions use the standard BFloat16 behaviors:
+    ///      - Ignoring the FPCR.RMode control and using the rounding mode defined for BFloat16. For more
+    ///        information, see ‘Round to Odd mode’.
+    ///      - Flushing denormalized inputs and outputs to zero, as if the FPCR.FZ and FPCR.FIZ controls had the
+    ///        value ‘1’.
+    ///      - Performing unfused multiplies and additions with intermediate rounding of all products and sums.
+    /// 0b1  These instructions use the extended BFloat16 behaviors:
+    ///      - Supporting all four IEEE 754 rounding modes selected by the FPCR.RMode control.
+    ///      - Optionally, flushing denormalized inputs and outputs to zero, as governed by the FPCR.FZ and
+    ///        FPCR.FIZ controls.
+    ///      - Performing a fused two-way sum-of-products for each pair of adjacent BFloat16 elements, without
+    ///        intermediate rounding of the products, but rounding the single-precision sum before addition to the
+    ///        accumulator.
+    ///      - Generating the default NaN as intermediate sum-of-products when any multiplier input is a NaN, or
+    ///        any product is infinity × 0.0, or there are infinite products with differing signs.
+    ///      - Generating an intermediate sum-of-products of the same infinity when there are infinite products all
+    ///        with the same sign.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
     /// Otherwise:
@@ -212,35 +212,35 @@ pub(crate) struct Cpu {
     /// IXE, bit [12]
     ///     Inexact floating-point exception trap enable.
     ///
-    ///       IXE  Meaning
-    ///       0b0  Untrapped exception handling selected. If the floating-point exception occurs, the FPSR.IXC bit is set to 1.
-    ///       0b1  Trapped exception handling selected. If the floating-point exception occurs, the PE does not update the FPSR.IXC bit.
+    /// IXE  Meaning
+    /// 0b0  Untrapped exception handling selected. If the floating-point exception occurs, the FPSR.IXC bit is set to 1.
+    /// 0b1  Trapped exception handling selected. If the floating-point exception occurs, the PE does not update the FPSR.IXC bit.
     ///
-    ///     When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
+    /// When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
     ///     FPCR.IXE is treated as 0 for all purposes other than a direct read or write of the FPCR.
     ///     The Effective value of this bit controls both scalar and vector floating-point arithmetic.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
-    ///     When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
+    /// When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
     ///     RAZ/WI.
     ///
     /// UFE, bit [11]
     ///     Underflow floating-point exception trap enable.
     ///
-    ///       UFE  Meaning
-    ///       0b0  Untrapped exception handling selected. If the floating-point exception occurs, the FPSR.UFC bit is set to 1.
-    ///       0b1  Trapped exception handling selected. If the floating-point exception occurs and Flush-to-zero is not enabled, the PE does not update the FPSR.UFC bit.
+    /// UFE  Meaning
+    /// 0b0  Untrapped exception handling selected. If the floating-point exception occurs, the FPSR.UFC bit is set to 1.
+    /// 0b1  Trapped exception handling selected. If the floating-point exception occurs and Flush-to-zero is not enabled, the PE does not update the FPSR.UFC bit.
     ///
-    ///     When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
+    /// When the PE is in Streaming SVE mode, and FEAT_SME_FA64 is not implemented or not enabled, the value of
     ///     FPCR.UFE is treated as 0 for all purposes other than a direct read or write of the FPCR.
     ///     The Effective value of this bit controls both scalar and vector floating-point arithmetic.
     ///
-    ///     The reset behavior of this field is:
+    /// The reset behavior of this field is:
     ///     - On a Warm reset, this field resets to an architecturally UNKNOWN value.
     ///
-    ///     When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
+    /// When FEAT_TRAPFPE is not implemented and floating-point exception traps are disabled, access to this field is
     ///     RAZ/WI.
     ///
     /// OFE, bit [10]
@@ -255,6 +255,21 @@ pub(crate) struct Cpu {
     pstate: pstate::PState,
 }
 
+impl Default for Cpu {
+    /// WARN: Use for testing only!!
+    fn default() -> Self {
+        Self {
+            x: [0; 31],
+            sp: 0,
+            pc: 0,
+            v: [0; 32],
+            fcpr: 0,
+            fpsr: 0,
+            pstate: pstate::PState::default(),
+        }
+    }
+}
+
 impl Cpu {
     fn _to_op(&self, n: usize, sf: bool) -> u64 {
         if sf {
@@ -264,7 +279,31 @@ impl Cpu {
         }
     }
 
-    fn abs(&mut self, sf: bool, d: usize, n: usize) {
+    /// A function for purely debug purposes to arbitrarily set the value
+    /// of a X register to a provided v value
+    pub fn __dbg_set_x(&mut self, n: usize, v: u64) {
+        self.x[n] = v;
+    }
+
+    pub fn __dbg_get_x(&self, n: usize) -> u64 {
+        self.x[n]
+    }
+
+    /// **ABS**: Absolute value
+    ///
+    /// This instruction calculates the absolute value of the signed integer value in the source register, and writes the result to the
+    /// destination register. If the value in the source register is the most negative value, the result is the same as the value in the
+    /// source register.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, -5i64 as u64);
+    /// // Emulating `ABS X1, X0`
+    /// cpu.abs(true, 1, 0);
+    /// assert_eq!(cpu.__dbg_get_x(1), 5);
+    /// ```
+    pub fn abs(&mut self, sf: bool, d: usize, n: usize) {
         let operand1 = self._to_op(n, sf) as i64;
 
         let result = operand1.abs() as u64;
