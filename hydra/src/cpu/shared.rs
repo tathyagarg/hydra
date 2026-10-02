@@ -1,4 +1,4 @@
-use crate::cpu::{ExtendType, pstate::PState};
+use crate::cpu::{ExtendType, ShiftType, pstate::PState};
 
 pub struct NZCV(bool, bool, bool, bool);
 
@@ -85,4 +85,13 @@ pub(super) fn extend_reg<const N: usize>(val: u64, exttype: ExtendType, shift: u
     let extval = extend(val, nbits, unsigned);
 
     return extval << shift;
+}
+
+pub(super) fn shift_reg(val: u64, shift_type: ShiftType, amount: usize) -> u64 {
+    match shift_type {
+        ShiftType::LSL => val << amount,
+        ShiftType::LSR => val >> amount,
+        ShiftType::ASR => (val as i64 >> amount) as u64,
+        ShiftType::ROR => val,
+    }
 }

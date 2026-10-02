@@ -42,6 +42,29 @@ impl ExtendType {
     }
 }
 
+pub enum ShiftType {
+    LSL = 0b00,
+    LSR = 0b01,
+    ASR = 0b10,
+    ROR = 0b11,
+}
+
+impl ShiftType {
+    pub fn decode(n: u8) -> Option<Self> {
+        if n > 0b11 {
+            None
+        } else {
+            Some(match n {
+                0b00 => Self::LSL,
+                0b01 => Self::LSR,
+                0b10 => Self::ASR,
+                0b11 => Self::ROR,
+                _ => unreachable!("n not in (0b00..=0b11) but also not > 0b11?"),
+            })
+        }
+    }
+}
+
 pub struct Cpu {
     /// R0-R31: 31 general-purpose registers, R0 to R30. Each can be accessed as:
     /// - A 64-bit general-purpose register named X0 to X30.
@@ -540,5 +563,55 @@ impl Cpu {
         } else {
             self.sp = result;
         }
+    }
+
+    /// **ADD (Shifted Register)**: Add optionally-shifted register
+    ///
+    /// This instruction adds a register value and an optionally-shifted register value, and writes the result to the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// cpu.__dbg_set_x(1, 2);
+    /// // `ADD X2, X0, X1, LSL #3`
+    /// cpu._add_sr(true, 0b00, 1, 3, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 17);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// cpu.__dbg_set_x(1, 36);
+    /// // `ADD X2, X0, X1, LSR #3`
+    /// cpu._add_sr(true, 0b01, 1, 3, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 5);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// cpu.__dbg_set_x(1, -44i64 as u64);
+    /// // `ADD X2, X0, X1, ASR #2`
+    /// cpu._add_sr(true, 0b10, 1, 2, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), -10i64 as u64);
+    /// ```
+    pub fn _add_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+        let operand1 = self.x[n];
+
+        let mval = self.x[m];
+        let shift_type = ShiftType::decode(shift).unwrap();
+
+        let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
+
+        let (result, _) = if sf {
+            shared::add_with_carry::<64>(operand1, operand2, false)
+        } else {
+            shared::add_with_carry::<32>(operand1, operand2, false)
+        };
+
+        self.x[d] = result;
     }
 }
