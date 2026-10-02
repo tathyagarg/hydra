@@ -291,8 +291,8 @@
 <a href=#291 id=291 data-nosnippet>291</a>}
 <a href=#292 id=292 data-nosnippet>292</a>
 <a href=#293 id=293 data-nosnippet>293</a><span class="kw">impl </span>Cpu {
-<a href=#294 id=294 data-nosnippet>294</a>    <span class="kw">fn </span>_to_op(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize, sf: bool) -&gt; u64 {
-<a href=#295 id=295 data-nosnippet>295</a>        <span class="kw">if </span>sf {
+<a href=#294 id=294 data-nosnippet>294</a>    <span class="kw">fn </span>_to_op(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize, cond: bool) -&gt; u64 {
+<a href=#295 id=295 data-nosnippet>295</a>        <span class="kw">if </span>cond {
 <a href=#296 id=296 data-nosnippet>296</a>            <span class="self">self</span>.x[n]
 <a href=#297 id=297 data-nosnippet>297</a>        } <span class="kw">else </span>{
 <a href=#298 id=298 data-nosnippet>298</a>            <span class="self">self</span>.x[n] <span class="kw">as </span>u32 <span class="kw">as </span>u64
@@ -327,7 +327,7 @@
 <a href=#327 id=327 data-nosnippet>327</a>    /// # use hydra::cpu::Cpu;
 <a href=#328 id=328 data-nosnippet>328</a>    /// # let mut cpu = Cpu::default();
 <a href=#329 id=329 data-nosnippet>329</a>    /// cpu.__dbg_set_x(0, -5i64 as u64);
-<a href=#330 id=330 data-nosnippet>330</a>    /// cpu.abs(true, 1, 0);  // `ABS X1, X0`
+<a href=#330 id=330 data-nosnippet>330</a>    /// cpu.abs(true, 0, 1);  // `ABS X1, X0`
 <a href=#331 id=331 data-nosnippet>331</a>    /// assert_eq!(cpu.__dbg_get_x(1), 5);
 <a href=#332 id=332 data-nosnippet>332</a>    /// ```
 <a href=#333 id=333 data-nosnippet>333</a>    ///
@@ -335,10 +335,10 @@
 <a href=#335 id=335 data-nosnippet>335</a>    /// # use hydra::cpu::Cpu;
 <a href=#336 id=336 data-nosnippet>336</a>    /// # let mut cpu = Cpu::default();
 <a href=#337 id=337 data-nosnippet>337</a>    /// cpu.__dbg_set_x(0, 9223372032559808513u64);
-<a href=#338 id=338 data-nosnippet>338</a>    /// cpu.abs(false, 1, 0);  // `ABS W1, W0`
+<a href=#338 id=338 data-nosnippet>338</a>    /// cpu.abs(false, 0, 1);  // `ABS W1, W0`
 <a href=#339 id=339 data-nosnippet>339</a>    /// assert_eq!(cpu.__dbg_get_x(1), 1);
 <a href=#340 id=340 data-nosnippet>340</a>    /// ```
-<a href=#341 id=341 data-nosnippet>341</a>    </span><span class="kw">pub fn </span>abs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, d: usize, n: usize) {
+<a href=#341 id=341 data-nosnippet>341</a>    </span><span class="kw">pub fn </span>abs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, n: usize, d: usize) {
 <a href=#342 id=342 data-nosnippet>342</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._to_op(n, sf) <span class="kw">as </span>i64;
 <a href=#343 id=343 data-nosnippet>343</a>
 <a href=#344 id=344 data-nosnippet>344</a>        <span class="kw">let </span>result = operand1.abs() <span class="kw">as </span>u64;
@@ -354,7 +354,7 @@
 <a href=#354 id=354 data-nosnippet>354</a>    /// # let mut cpu = Cpu::default();
 <a href=#355 id=355 data-nosnippet>355</a>    /// cpu.__dbg_set_x(0, 1);
 <a href=#356 id=356 data-nosnippet>356</a>    /// cpu.__dbg_set_x(1, 2);
-<a href=#357 id=357 data-nosnippet>357</a>    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
+<a href=#357 id=357 data-nosnippet>357</a>    /// cpu.adc(true, 1, 0, 2);  // `ADC X2, X0, X1`
 <a href=#358 id=358 data-nosnippet>358</a>    /// assert_eq!(cpu.__dbg_get_x(2), 3);
 <a href=#359 id=359 data-nosnippet>359</a>    /// ```
 <a href=#360 id=360 data-nosnippet>360</a>    ///
@@ -364,10 +364,10 @@
 <a href=#364 id=364 data-nosnippet>364</a>    /// cpu.__dbg_set_x(0, 1);
 <a href=#365 id=365 data-nosnippet>365</a>    /// cpu.__dbg_set_x(1, 2);
 <a href=#366 id=366 data-nosnippet>366</a>    /// cpu.__dbg_get_pstate().__dbg_set_C(true);  // Set PSTATE.C = 1
-<a href=#367 id=367 data-nosnippet>367</a>    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
+<a href=#367 id=367 data-nosnippet>367</a>    /// cpu.adc(true, 1, 0, 2);  // `ADC X2, X0, X1`
 <a href=#368 id=368 data-nosnippet>368</a>    /// assert_eq!(cpu.__dbg_get_x(2), 4);
 <a href=#369 id=369 data-nosnippet>369</a>    /// ```
-<a href=#370 id=370 data-nosnippet>370</a>    </span><span class="kw">pub fn </span>adc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, d: usize, n: usize, m: usize) {
+<a href=#370 id=370 data-nosnippet>370</a>    </span><span class="kw">pub fn </span>adc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, m: usize, n: usize, d: usize) {
 <a href=#371 id=371 data-nosnippet>371</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._to_op(n, sf);
 <a href=#372 id=372 data-nosnippet>372</a>        <span class="kw">let </span>operand2 = <span class="self">self</span>._to_op(m, sf);
 <a href=#373 id=373 data-nosnippet>373</a>
@@ -390,7 +390,7 @@
 <a href=#390 id=390 data-nosnippet>390</a>    /// # let mut cpu = Cpu::default();
 <a href=#391 id=391 data-nosnippet>391</a>    /// cpu.__dbg_set_x(0, 1);
 <a href=#392 id=392 data-nosnippet>392</a>    /// cpu.__dbg_set_x(1, 2);
-<a href=#393 id=393 data-nosnippet>393</a>    /// cpu.adcs(true, 2, 0, 1);  // `ADCS X2, X0, X1`
+<a href=#393 id=393 data-nosnippet>393</a>    /// cpu.adcs(true, 1, 0, 2);  // `ADCS X2, X0, X1`
 <a href=#394 id=394 data-nosnippet>394</a>    /// assert_eq!(cpu.__dbg_get_x(2), 3);
 <a href=#395 id=395 data-nosnippet>395</a>    /// assert!(!cpu.__dbg_get_pstate().__dbg_get_C());
 <a href=#396 id=396 data-nosnippet>396</a>    /// ```
@@ -400,11 +400,11 @@
 <a href=#400 id=400 data-nosnippet>400</a>    /// # let mut cpu = Cpu::default();
 <a href=#401 id=401 data-nosnippet>401</a>    /// cpu.__dbg_set_x(0, u64::MAX);
 <a href=#402 id=402 data-nosnippet>402</a>    /// cpu.__dbg_set_x(1, 1);
-<a href=#403 id=403 data-nosnippet>403</a>    /// cpu.adcs(true, 2, 0, 1);  // `ADCS X2, X0, X1`
+<a href=#403 id=403 data-nosnippet>403</a>    /// cpu.adcs(true, 1, 0, 2);  // `ADCS X2, X0, X1`
 <a href=#404 id=404 data-nosnippet>404</a>    /// assert_eq!(cpu.__dbg_get_x(2), 0);
 <a href=#405 id=405 data-nosnippet>405</a>    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
 <a href=#406 id=406 data-nosnippet>406</a>    /// ```
-<a href=#407 id=407 data-nosnippet>407</a>    </span><span class="kw">pub fn </span>adcs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, d: usize, n: usize, m: usize) {
+<a href=#407 id=407 data-nosnippet>407</a>    </span><span class="kw">pub fn </span>adcs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, m: usize, n: usize, d: usize) {
 <a href=#408 id=408 data-nosnippet>408</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._to_op(n, sf);
 <a href=#409 id=409 data-nosnippet>409</a>        <span class="kw">let </span>operand2 = <span class="self">self</span>._to_op(m, sf);
 <a href=#410 id=410 data-nosnippet>410</a>
@@ -429,7 +429,7 @@
 <a href=#429 id=429 data-nosnippet>429</a>    /// # let mut cpu = Cpu::default();
 <a href=#430 id=430 data-nosnippet>430</a>    /// cpu.__dbg_set_x(0, 1);
 <a href=#431 id=431 data-nosnippet>431</a>    /// cpu.__dbg_set_x(1, 2);
-<a href=#432 id=432 data-nosnippet>432</a>    /// // ADD X2, X0, X1, UXTB #3
+<a href=#432 id=432 data-nosnippet>432</a>    /// // `ADD X2, X0, X1, UXTB #3`
 <a href=#433 id=433 data-nosnippet>433</a>    /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
 <a href=#434 id=434 data-nosnippet>434</a>    /// assert_eq!(cpu.__dbg_get_x(2), 17);
 <a href=#435 id=435 data-nosnippet>435</a>    /// ```
@@ -442,62 +442,58 @@
 <a href=#442 id=442 data-nosnippet>442</a>    /// # let mut cpu = Cpu::default();
 <a href=#443 id=443 data-nosnippet>443</a>    /// cpu.__dbg_set_x(0, 1);
 <a href=#444 id=444 data-nosnippet>444</a>    /// cpu.__dbg_set_x(1, 500);
-<a href=#445 id=445 data-nosnippet>445</a>    /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
-<a href=#446 id=446 data-nosnippet>446</a>    /// assert_eq!(cpu.__dbg_get_x(2), 1953);
-<a href=#447 id=447 data-nosnippet>447</a>    /// ```
-<a href=#448 id=448 data-nosnippet>448</a>    ///
-<a href=#449 id=449 data-nosnippet>449</a>    /// We get 1953 because 1953 = 1 + (244 &lt;&lt; 3), where 244 = 500 &amp; 0xFF (due to UXTB extending)
-<a href=#450 id=450 data-nosnippet>450</a>    ///
-<a href=#451 id=451 data-nosnippet>451</a>    /// ```
-<a href=#452 id=452 data-nosnippet>452</a>    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-<a href=#453 id=453 data-nosnippet>453</a>    /// # let mut cpu = Cpu::default();
-<a href=#454 id=454 data-nosnippet>454</a>    /// cpu.__dbg_set_x(0, 1);
-<a href=#455 id=455 data-nosnippet>455</a>    /// cpu.__dbg_set_x(1, 500);
-<a href=#456 id=456 data-nosnippet>456</a>    /// cpu._add_er(true, 1, 0b011, 3, RegisterSP::Register(0), RegisterSP::Register(2));
-<a href=#457 id=457 data-nosnippet>457</a>    /// assert_eq!(cpu.__dbg_get_x(2), 4001);
-<a href=#458 id=458 data-nosnippet>458</a>    /// ```
-<a href=#459 id=459 data-nosnippet>459</a>    ///
-<a href=#460 id=460 data-nosnippet>460</a>    /// Without the masking to byte-width, we get 4001 instead.
-<a href=#461 id=461 data-nosnippet>461</a>    </span><span class="kw">pub fn </span>_add_er(
-<a href=#462 id=462 data-nosnippet>462</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#463 id=463 data-nosnippet>463</a>        sf: bool,
-<a href=#464 id=464 data-nosnippet>464</a>        m: usize,
-<a href=#465 id=465 data-nosnippet>465</a>        option: u8,
-<a href=#466 id=466 data-nosnippet>466</a>        imm3: u8,
-<a href=#467 id=467 data-nosnippet>467</a>        n: RegisterSP,
-<a href=#468 id=468 data-nosnippet>468</a>        d: RegisterSP,
-<a href=#469 id=469 data-nosnippet>469</a>    ) {
-<a href=#470 id=470 data-nosnippet>470</a>        <span class="kw">let </span>operand1 = <span class="kw">if let </span>RegisterSP::Register(rn) = n {
-<a href=#471 id=471 data-nosnippet>471</a>            <span class="self">self</span>.x[rn]
-<a href=#472 id=472 data-nosnippet>472</a>        } <span class="kw">else </span>{
-<a href=#473 id=473 data-nosnippet>473</a>            <span class="self">self</span>.sp
-<a href=#474 id=474 data-nosnippet>474</a>        };
+<a href=#445 id=445 data-nosnippet>445</a>    /// // `ADD X2, X0, X1, UXTB #3`
+<a href=#446 id=446 data-nosnippet>446</a>    /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
+<a href=#447 id=447 data-nosnippet>447</a>    /// assert_eq!(cpu.__dbg_get_x(2), 1953);
+<a href=#448 id=448 data-nosnippet>448</a>    /// ```
+<a href=#449 id=449 data-nosnippet>449</a>    ///
+<a href=#450 id=450 data-nosnippet>450</a>    /// We get 1953 because 1953 = 1 + (244 &lt;&lt; 3), where 244 = 500 &amp; 0xFF (due to UXTB extending)
+<a href=#451 id=451 data-nosnippet>451</a>    ///
+<a href=#452 id=452 data-nosnippet>452</a>    /// ```
+<a href=#453 id=453 data-nosnippet>453</a>    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+<a href=#454 id=454 data-nosnippet>454</a>    /// # let mut cpu = Cpu::default();
+<a href=#455 id=455 data-nosnippet>455</a>    /// cpu.__dbg_set_x(0, 1);
+<a href=#456 id=456 data-nosnippet>456</a>    /// cpu.__dbg_set_x(1, 500);
+<a href=#457 id=457 data-nosnippet>457</a>    /// // `ADD X2, X0, X1, UXTD #3`
+<a href=#458 id=458 data-nosnippet>458</a>    /// cpu._add_er(true, 1, 0b011, 3, RegisterSP::Register(0), RegisterSP::Register(2));
+<a href=#459 id=459 data-nosnippet>459</a>    /// assert_eq!(cpu.__dbg_get_x(2), 4001);
+<a href=#460 id=460 data-nosnippet>460</a>    /// ```
+<a href=#461 id=461 data-nosnippet>461</a>    ///
+<a href=#462 id=462 data-nosnippet>462</a>    /// Without the masking to byte-width, we get 4001 instead.
+<a href=#463 id=463 data-nosnippet>463</a>    </span><span class="kw">pub fn </span>_add_er(
+<a href=#464 id=464 data-nosnippet>464</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#465 id=465 data-nosnippet>465</a>        sf: bool,
+<a href=#466 id=466 data-nosnippet>466</a>        m: usize,
+<a href=#467 id=467 data-nosnippet>467</a>        option: u8,
+<a href=#468 id=468 data-nosnippet>468</a>        imm3: u8,
+<a href=#469 id=469 data-nosnippet>469</a>        n: RegisterSP,
+<a href=#470 id=470 data-nosnippet>470</a>        d: RegisterSP,
+<a href=#471 id=471 data-nosnippet>471</a>    ) {
+<a href=#472 id=472 data-nosnippet>472</a>        <span class="kw">if </span>imm3 &gt; <span class="number">4 </span>{
+<a href=#473 id=473 data-nosnippet>473</a>            <span class="macro">panic!</span>(<span class="string">"imm3 too large"</span>);
+<a href=#474 id=474 data-nosnippet>474</a>        }
 <a href=#475 id=475 data-nosnippet>475</a>
-<a href=#476 id=476 data-nosnippet>476</a>        <span class="kw">let </span>mval = <span class="kw">if </span>option &amp; <span class="number">0b11 </span>== <span class="number">0b11 </span>{
-<a href=#477 id=477 data-nosnippet>477</a>            <span class="self">self</span>.x[m]
+<a href=#476 id=476 data-nosnippet>476</a>        <span class="kw">let </span>operand1 = <span class="kw">if let </span>RegisterSP::Register(rn) = n {
+<a href=#477 id=477 data-nosnippet>477</a>            <span class="self">self</span>.x[rn]
 <a href=#478 id=478 data-nosnippet>478</a>        } <span class="kw">else </span>{
-<a href=#479 id=479 data-nosnippet>479</a>            <span class="self">self</span>.x[m] <span class="kw">as </span>u32 <span class="kw">as </span>u64
+<a href=#479 id=479 data-nosnippet>479</a>            <span class="self">self</span>.sp
 <a href=#480 id=480 data-nosnippet>480</a>        };
 <a href=#481 id=481 data-nosnippet>481</a>
-<a href=#482 id=482 data-nosnippet>482</a>        <span class="kw">let </span>extend_type = ExtendType::decode(option).unwrap();
-<a href=#483 id=483 data-nosnippet>483</a>
-<a href=#484 id=484 data-nosnippet>484</a>        <span class="kw">if </span>imm3 &gt; <span class="number">4 </span>{
-<a href=#485 id=485 data-nosnippet>485</a>            <span class="macro">panic!</span>(<span class="string">"imm3 too large"</span>);
-<a href=#486 id=486 data-nosnippet>486</a>        }
-<a href=#487 id=487 data-nosnippet>487</a>        <span class="kw">let </span>shift = imm3;
-<a href=#488 id=488 data-nosnippet>488</a>
-<a href=#489 id=489 data-nosnippet>489</a>        <span class="kw">let </span>(result, <span class="kw">_</span>) = <span class="kw">if </span>sf {
-<a href=#490 id=490 data-nosnippet>490</a>            <span class="kw">let </span>operand2 = shared::extend_reg::&lt;<span class="number">64</span>&gt;(mval, extend_type, shift);
-<a href=#491 id=491 data-nosnippet>491</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="bool-val">false</span>)
-<a href=#492 id=492 data-nosnippet>492</a>        } <span class="kw">else </span>{
-<a href=#493 id=493 data-nosnippet>493</a>            <span class="kw">let </span>operand2 = shared::extend_reg::&lt;<span class="number">32</span>&gt;(mval, extend_type, shift);
-<a href=#494 id=494 data-nosnippet>494</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="bool-val">false</span>)
-<a href=#495 id=495 data-nosnippet>495</a>        };
-<a href=#496 id=496 data-nosnippet>496</a>
-<a href=#497 id=497 data-nosnippet>497</a>        <span class="kw">if let </span>RegisterSP::Register(rd) = d {
-<a href=#498 id=498 data-nosnippet>498</a>            <span class="self">self</span>.x[rd] = result;
-<a href=#499 id=499 data-nosnippet>499</a>        } <span class="kw">else </span>{
-<a href=#500 id=500 data-nosnippet>500</a>            <span class="self">self</span>.sp = result;
-<a href=#501 id=501 data-nosnippet>501</a>        }
-<a href=#502 id=502 data-nosnippet>502</a>    }
-<a href=#503 id=503 data-nosnippet>503</a>}</code></pre></div></section></main></body></html>
+<a href=#482 id=482 data-nosnippet>482</a>        <span class="kw">let </span>mval = <span class="self">self</span>._to_op(m, option &amp; <span class="number">0b11 </span>== <span class="number">0b11</span>);
+<a href=#483 id=483 data-nosnippet>483</a>        <span class="kw">let </span>extend_type = ExtendType::decode(option).unwrap();
+<a href=#484 id=484 data-nosnippet>484</a>
+<a href=#485 id=485 data-nosnippet>485</a>        <span class="kw">let </span>(result, <span class="kw">_</span>) = <span class="kw">if </span>sf {
+<a href=#486 id=486 data-nosnippet>486</a>            <span class="kw">let </span>operand2 = shared::extend_reg::&lt;<span class="number">64</span>&gt;(mval, extend_type, imm3);
+<a href=#487 id=487 data-nosnippet>487</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="bool-val">false</span>)
+<a href=#488 id=488 data-nosnippet>488</a>        } <span class="kw">else </span>{
+<a href=#489 id=489 data-nosnippet>489</a>            <span class="kw">let </span>operand2 = shared::extend_reg::&lt;<span class="number">32</span>&gt;(mval, extend_type, imm3);
+<a href=#490 id=490 data-nosnippet>490</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="bool-val">false</span>)
+<a href=#491 id=491 data-nosnippet>491</a>        };
+<a href=#492 id=492 data-nosnippet>492</a>
+<a href=#493 id=493 data-nosnippet>493</a>        <span class="kw">if let </span>RegisterSP::Register(rd) = d {
+<a href=#494 id=494 data-nosnippet>494</a>            <span class="self">self</span>.x[rd] = result;
+<a href=#495 id=495 data-nosnippet>495</a>        } <span class="kw">else </span>{
+<a href=#496 id=496 data-nosnippet>496</a>            <span class="self">self</span>.sp = result;
+<a href=#497 id=497 data-nosnippet>497</a>        }
+<a href=#498 id=498 data-nosnippet>498</a>    }
+<a href=#499 id=499 data-nosnippet>499</a>}</code></pre></div></section></main></body></html>

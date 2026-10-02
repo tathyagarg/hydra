@@ -291,8 +291,8 @@ impl Default for Cpu {
 }
 
 impl Cpu {
-    fn _to_op(&self, n: usize, sf: bool) -> u64 {
-        if sf {
+    fn _to_op(&self, n: usize, cond: bool) -> u64 {
+        if cond {
             self.x[n]
         } else {
             self.x[n] as u32 as u64
@@ -327,7 +327,7 @@ impl Cpu {
     /// # use hydra::cpu::Cpu;
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, -5i64 as u64);
-    /// cpu.abs(true, 1, 0);  // `ABS X1, X0`
+    /// cpu.abs(true, 0, 1);  // `ABS X1, X0`
     /// assert_eq!(cpu.__dbg_get_x(1), 5);
     /// ```
     ///
@@ -335,10 +335,10 @@ impl Cpu {
     /// # use hydra::cpu::Cpu;
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, 9223372032559808513u64);
-    /// cpu.abs(false, 1, 0);  // `ABS W1, W0`
+    /// cpu.abs(false, 0, 1);  // `ABS W1, W0`
     /// assert_eq!(cpu.__dbg_get_x(1), 1);
     /// ```
-    pub fn abs(&mut self, sf: bool, d: usize, n: usize) {
+    pub fn abs(&mut self, sf: bool, n: usize, d: usize) {
         let operand1 = self._to_op(n, sf) as i64;
 
         let result = operand1.abs() as u64;
@@ -354,7 +354,7 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 2);
-    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
+    /// cpu.adc(true, 1, 0, 2);  // `ADC X2, X0, X1`
     /// assert_eq!(cpu.__dbg_get_x(2), 3);
     /// ```
     ///
@@ -364,10 +364,10 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 2);
     /// cpu.__dbg_get_pstate().__dbg_set_C(true);  // Set PSTATE.C = 1
-    /// cpu.adc(true, 2, 0, 1);  // `ADC X2, X0, X1`
+    /// cpu.adc(true, 1, 0, 2);  // `ADC X2, X0, X1`
     /// assert_eq!(cpu.__dbg_get_x(2), 4);
     /// ```
-    pub fn adc(&mut self, sf: bool, d: usize, n: usize, m: usize) {
+    pub fn adc(&mut self, sf: bool, m: usize, n: usize, d: usize) {
         let operand1 = self._to_op(n, sf);
         let operand2 = self._to_op(m, sf);
 
@@ -390,7 +390,7 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 2);
-    /// cpu.adcs(true, 2, 0, 1);  // `ADCS X2, X0, X1`
+    /// cpu.adcs(true, 1, 0, 2);  // `ADCS X2, X0, X1`
     /// assert_eq!(cpu.__dbg_get_x(2), 3);
     /// assert!(!cpu.__dbg_get_pstate().__dbg_get_C());
     /// ```
@@ -400,11 +400,11 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, u64::MAX);
     /// cpu.__dbg_set_x(1, 1);
-    /// cpu.adcs(true, 2, 0, 1);  // `ADCS X2, X0, X1`
+    /// cpu.adcs(true, 1, 0, 2);  // `ADCS X2, X0, X1`
     /// assert_eq!(cpu.__dbg_get_x(2), 0);
     /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
     /// ```
-    pub fn adcs(&mut self, sf: bool, d: usize, n: usize, m: usize) {
+    pub fn adcs(&mut self, sf: bool, m: usize, n: usize, d: usize) {
         let operand1 = self._to_op(n, sf);
         let operand2 = self._to_op(m, sf);
 
@@ -429,7 +429,7 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 2);
-    /// // ADD X2, X0, X1, UXTB #3
+    /// // `ADD X2, X0, X1, UXTB #3`
     /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
     /// assert_eq!(cpu.__dbg_get_x(2), 17);
     /// ```
@@ -442,6 +442,7 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 500);
+    /// // `ADD X2, X0, X1, UXTB #3`
     /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
     /// assert_eq!(cpu.__dbg_get_x(2), 1953);
     /// ```
@@ -453,6 +454,7 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 500);
+    /// // `ADD X2, X0, X1, UXTD #3`
     /// cpu._add_er(true, 1, 0b011, 3, RegisterSP::Register(0), RegisterSP::Register(2));
     /// assert_eq!(cpu.__dbg_get_x(2), 4001);
     /// ```
@@ -467,30 +469,24 @@ impl Cpu {
         n: RegisterSP,
         d: RegisterSP,
     ) {
+        if imm3 > 4 {
+            panic!("imm3 too large");
+        }
+
         let operand1 = if let RegisterSP::Register(rn) = n {
             self.x[rn]
         } else {
             self.sp
         };
 
-        let mval = if option & 0b11 == 0b11 {
-            self.x[m]
-        } else {
-            self.x[m] as u32 as u64
-        };
-
+        let mval = self._to_op(m, option & 0b11 == 0b11);
         let extend_type = ExtendType::decode(option).unwrap();
 
-        if imm3 > 4 {
-            panic!("imm3 too large");
-        }
-        let shift = imm3;
-
         let (result, _) = if sf {
-            let operand2 = shared::extend_reg::<64>(mval, extend_type, shift);
+            let operand2 = shared::extend_reg::<64>(mval, extend_type, imm3);
             shared::add_with_carry::<64>(operand1, operand2, false)
         } else {
-            let operand2 = shared::extend_reg::<32>(mval, extend_type, shift);
+            let operand2 = shared::extend_reg::<32>(mval, extend_type, imm3);
             shared::add_with_carry::<32>(operand1, operand2, false)
         };
 
