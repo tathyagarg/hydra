@@ -421,7 +421,7 @@ impl Cpu {
     /// **ADD (extended register)**: Add extended and scaled register
     ///
     /// This instruction adds a register value and a sign-extended or zero-extended register value, followed by an optional left shift
-    /// amount, and writes the result to the destination register. The argument that is extended from the <Rm> register can be a byte,
+    /// amount, and writes the result to the destination register. The argument that is extended from the &lt;Rm&gt; register can be a byte,
     /// halfword, word, or doubleword.
     ///
     /// ```
