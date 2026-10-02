@@ -469,10 +469,6 @@ impl Cpu {
         n: RegisterSP,
         d: RegisterSP,
     ) {
-        if imm3 > 4 {
-            panic!("imm3 too large");
-        }
-
         let operand1 = if let RegisterSP::Register(rn) = n {
             self.x[rn]
         } else {
@@ -488,6 +484,55 @@ impl Cpu {
         } else {
             let operand2 = shared::extend_reg::<32>(mval, extend_type, imm3);
             shared::add_with_carry::<32>(operand1, operand2, false)
+        };
+
+        if let RegisterSP::Register(rd) = d {
+            self.x[rd] = result;
+        } else {
+            self.sp = result;
+        }
+    }
+
+    /// **ADD (Immediate)**: Add immediate value
+    ///
+    /// This instruction adds a register value and an optionally-shifted immediate value, and writes the result to the destination
+    /// register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// // `ADD X1, X0, #10 LSL #0`
+    /// cpu._add_imm(true, false, 10, RegisterSP::Register(0), RegisterSP::Register(1));
+    /// assert_eq!(cpu.__dbg_get_x(1), 11);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1);
+    /// // `ADD X1, X0, #10 LSL #12`
+    /// cpu._add_imm(true, true, 10, RegisterSP::Register(0), RegisterSP::Register(1));
+    /// assert_eq!(cpu.__dbg_get_x(1), 40961);
+    /// ```
+    pub fn _add_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: RegisterSP, d: RegisterSP) {
+        let imm12 = imm12 & 0b1111_1111_1111;
+        let imm = if sh {
+            (imm12 as u32) << 12
+        } else {
+            imm12 as u32
+        };
+
+        let operand1 = if let RegisterSP::Register(rn) = n {
+            self.x[rn]
+        } else {
+            self.sp
+        };
+
+        let (result, _) = if sf {
+            shared::add_with_carry::<64>(operand1, imm as u64, false)
+        } else {
+            shared::add_with_carry::<32>(operand1, imm as u64, false)
         };
 
         if let RegisterSP::Register(rd) = d {
