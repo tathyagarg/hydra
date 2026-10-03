@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, non_snake_case)]
 
 use crate::cpu::shared::decode_bit_masks;
 
@@ -965,5 +965,231 @@ impl Cpu {
         self.pstate.Z = result == 0;
         self.pstate.C = false;
         self.pstate.V = false;
+    }
+
+    /// **ASR (register)**: Arithmetic shift right (register)
+    ///
+    /// This instruction shifts a register value right by a variable number of bits, shifting in copies of its sign bit, and writes the
+    /// result to the destination register. The value of the second source register modulo the register size in bits gives the number of
+    /// bits by which the first source register is right-shifted.
+    pub fn _asr_reg(&mut self, sf: bool, m: usize, n: usize, d: usize) {
+        self.asrv(sf, m, n, d);
+    }
+
+    /// **ASR (immediate)**: Arithmetic shift right (immediate)
+    ///
+    /// This instruction shifts a register value right by an immediate number of bits, shifting in copies of the sign bit in the upper
+    /// bits and zeros in the lower bits, and writes the result to the destination register.
+    #[allow(unused_variables)]
+    pub fn _asr_imm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
+        todo!("ASR (immediate) is an alias of SBFM which is yet to be implemented")
+    }
+
+    /// **ASRV**: Arithmetic shift right variable
+    ///
+    /// This instruction shifts a register value right by a variable number of bits, shifting in copies of its sign bit, and writes the
+    /// result to the destination register. The value of the second source register modulo the register size in bits gives the number of
+    /// bits by which the first source register is right-shifted.
+    pub fn asrv(&mut self, sf: bool, m: usize, n: usize, d: usize) {
+        let operand2 = self._get_op(m, sf);
+        let rn = self._get_op(n, sf);
+
+        let datasize = 32u64 << sf as u64;
+
+        self._set_op(
+            d,
+            shared::shift_reg(rn, ShiftType::ASR, (operand2 % datasize) as usize),
+            sf,
+        );
+    }
+
+    /// **AT**: Address translate
+    ///
+    /// For more information, see op0 == 0b01, cache maintenance, TLB maintenance, address translation, prediction restriction,
+    /// BRBE, Trace Extension, Guarded Control Stack, and FEAT_RME_GPC3 instructions.
+    #[allow(unused_variables)]
+    pub fn at(&mut self, op1: u8, CRm: u8, op2: u8, t: usize) {
+        todo!("AT is an alias of SYS which is yet to be implemented");
+    }
+
+    /// **AUTDA, AUTDZA**: Authenticate data address, using key A
+    ///
+    /// This instruction authenticates a data address, using a modifier and key A.
+    ///
+    /// The address is in the general-purpose register that is specified by &gt;Xd>.
+    ///
+    /// The modifier is:
+    /// - In the general-purpose register or stack pointer that is specified by &gt;Xn|SP>, for AUTDA.
+    /// - The value zero, for AUTDZA.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    #[allow(unused_variables)]
+    pub fn autda_autdza(&mut self, Z: bool, n: usize, d: usize) {
+        todo!("Not yet implemented");
+    }
+
+    /// **AUTDB, AUTDZB**: Authenticate data address, using key B
+    ///
+    /// This instruction authenticates a data address, using a modifier and key B.
+    ///
+    /// The address is in the general-purpose register that is specified by &gt;Xd>.
+    ///
+    /// The modifier is:
+    /// - In the general-purpose register or stack pointer that is specified by &gt;Xn|SP> for AUTDB.
+    /// - The value zero, for AUTDZB.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    #[allow(unused_variables)]
+    pub fn autdb_autdzb(&mut self, Z: bool, n: usize, d: usize) {
+        todo!("Not yet implemented");
+    }
+
+    /// AUTIA, AUTIA1716, AUTIASP, AUTIAZ, AUTIZA**: Authenticate instruction address, using key A
+    ///
+    /// This instruction authenticates an instruction address, using a modifier and key A.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    ///
+    /// The address is:
+    /// - In the general-purpose register that is specified by &gt;Xd> for AUTIA and AUTIZA.
+    /// - In X17, for AUTIA1716.
+    /// - In X30, for AUTIASP and AUTIAZ.
+    ///
+    /// The modifier is:
+    /// - In the general-purpose register or stack pointer that is specified by &gt;Xn|SP> for AUTIA.
+    /// - The value zero, for AUTIZA and AUTIAZ.
+    /// - In X16, for AUTIA1716.
+    /// - In SP, for AUTIASP.
+    ///
+    /// If FEAT_PAuth_LR is implemented and PSTATE.PACM is 1, then AUTIA1716 and AUTIASP include a second modifier
+    /// that is:
+    /// - In X15, for AUTIA1716.
+    /// - In X16, for AUTIASP.
+    ///
+    /// It has encodings from 2 classes: Integer and System
+    #[allow(unused_variables)]
+    pub fn autia_autia1716_autiasp_autiaz_autiza(&mut self, Z: bool, n: usize, d: usize) {
+        todo!("Not yet implemented");
+    }
+
+    /// **AUTIA171615**: Authenticate instruction address, using key A
+    ///
+    /// This instruction authenticates an instruction address, using two modifiers and key A. The address is in X17. The 64-bit
+    /// value of modifier1 is the value in X16. The 64-bit value of modifier2 is the value in X15.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    pub fn autia171615(&mut self) {
+        todo!("Not yet implemented");
+    }
+
+    /// **AUTIASPPC**: Authenticate return address using key A, using an immediate offset
+    ///
+    /// This instruction authenticates an instruction address, using two modifiers and key A.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    ///
+    /// The address is in X30.
+    ///
+    /// The first modifier is in SP.
+    ///
+    /// The second modifier is the address of a program label.
+    #[allow(unused_variables)]
+    pub fn autiasppc(&mut self, imm16: u16) {
+        todo!("Not yet implemented");
+    }
+
+    /// **AUTIASPPCR**: Authenticate return address using key A, using a register
+    /// This instruction authenticates an instruction address, using two modifiers and key A.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    ///
+    /// The address is in X30.
+    ///
+    /// The first modifier is in SP.
+    ///
+    /// The second modifier is in the general-purpose register that is specified by &gt;Xn>.
+    #[allow(unused_variables)]
+    pub fn autiasppcr(&mut self, n: usize) {
+        todo!("Not yet implemented");
+    }
+
+    /// **AUTIB, AUTIB1716, AUTIBSP, AUTIBZ, AUTIZB**: Authenticate instruction address, using key B
+    ///
+    /// This instruction authenticates an instruction address, using a modifier and key B.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    ///
+    /// The address is:
+    /// - In the general-purpose register that is specified by &gt;Xd&lt; for AUTIB and AUTIZB.
+    /// - In X17, for AUTIB1716.
+    /// - In X30, for AUTIBSP and AUTIBZ.
+    ///
+    /// The modifier is:
+    /// - In the general-purpose register or stack pointer that is specified by &gt;Xn|SP&lt; for AUTIB.
+    /// - The value zero, for AUTIZB and AUTIBZ.
+    /// - In X16, for AUTIB1716.
+    /// - In SP, for AUTIBSP.
+    ///
+    /// If FEAT_PAuth_LR is implemented and PSTATE.PACM is 1, then AUTIB1716 and AUTIBSP include a second modifier
+    /// that is:
+    /// - In X15, for AUTIB1716.
+    /// - In X16, for AUTIBSP.
+    ///
+    /// It has encodings from 2 classes: Integer and System
+    #[allow(unused_variables)]
+    pub fn autib_autib1716_autibsp_autibz_autizb(&mut self, Z: bool, n: usize, d: usize) {
+        todo!("Not yet implemented");
+    }
+
+    /// **AUTIB171615**: Authenticate instruction address, using key B
+    ///
+    /// This instruction authenticates an instruction address, using two modifiers and key B. The address is in X17. The 64-bit
+    /// value of modifier1 is the value in X16. The 64-bit value of modifier2 is the value in X15.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    pub fn autib171615(&mut self) {
+        todo!("Not yet implemented");
+    }
+
+    /// **AUTIBSPPC**: Authenticate return address using key B, using an immediate offset
+    ///
+    /// This instruction authenticates an instruction address, using two modifiers and key B.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    ///
+    /// The address is in X30.
+    ///
+    /// The first modifier is in SP.
+    ///
+    /// The second modifier is the address of a program label.
+    #[allow(unused_variables)]
+    pub fn autibsppc(&mut self, imm16: u16) {
+        todo!("Not yet implemented");
+    }
+
+    /// **AUTIBSPPCR**: Authenticate return address using key B, using a register
+    ///
+    /// This instruction authenticates an instruction address, using two modifiers and key B.
+    ///
+    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
+    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
+    ///
+    /// The address is in X30.
+    ///
+    /// The first modifier is in SP.
+    ///
+    /// The second modifier is in the general-purpose register that is specified by &gt;Xn>.
+    #[allow(unused_variables)]
+    pub fn autisppcr(&mut self, n: usize) {
+        todo!("Not yet implemented");
     }
 }
