@@ -65,6 +65,10 @@ impl ShiftType {
     }
 }
 
+fn to_uint<const N: usize>(v: u64) -> u64 {
+    v & ((1 << N) - 1)
+}
+
 pub struct Cpu {
     /// R0-R31: 31 general-purpose registers, R0 to R30. Each can be accessed as:
     /// - A 64-bit general-purpose register named X0 to X30.
@@ -758,7 +762,7 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, u64::MIN);
     /// cpu.__dbg_set_x(1, -44i64 as u64);
-    /// // `ADD X2, X0, X1, ASR #2`
+    /// // `ADDS X2, X0, X1, ASR #2`
     /// cpu._adds_sr(true, 0b10, 1, 2, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), -11i64 as u64);
     /// assert!(!cpu.__dbg_get_pstate().__dbg_get_C());
@@ -781,5 +785,31 @@ impl Cpu {
 
         nzcv.set(&mut self.pstate);
         self.x[d] = result;
+    }
+
+    /// **ADR**: Form PC-relative address
+    ///
+    /// This instruction adds an immediate value to the PC value to form a PC-relative address, and writes the result to the
+    /// destination register.
+    pub fn adr(&mut self, immlo: u8, immhi: u32, d: usize) {
+        let immlo = to_uint::<2>(immlo as u64);
+        let immhi = to_uint::<19>(immhi as u64);
+
+        let imm = (immhi << 2) | immlo;
+        self.x[d] = self.pc + imm;
+    }
+
+    /// **ADRP**: Form PC-relative address to 4KB page
+    ///
+    /// This instruction adds an immediate value that is shifted left by 12 bits, to the PC value to form a PC-relative address, with
+    /// the bottom 12 bits masked out, and writes the result to the destination register.
+    pub fn adrp(&mut self, immlo: u8, immhi: u32, d: usize) {
+        let immlo = to_uint::<2>(immlo as u64);
+        let immhi = to_uint::<19>(immhi as u64);
+
+        let imm = ((immhi << 2) | immlo) << 12;
+        let base = self.pc & (!0u64 << 12);
+
+        self.x[d] = base + imm;
     }
 }
