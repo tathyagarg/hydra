@@ -1192,4 +1192,18 @@ impl Cpu {
     pub fn autisppcr(&mut self, n: usize) {
         todo!("Not yet implemented");
     }
+
+    /// **AXFLAG**: Convert floating-point condition flags from Arm to external format
+    ///
+    /// This instruction converts the state of the PSTATE.{N,Z,C,V} flags from a form representing the result of an Arm
+    /// floating-point scalar compare instruction to an alternative representation required by some software.
+    pub fn axflag(&mut self) {
+        let z = self.pstate.Z || self.pstate.V;
+        let c = self.pstate.C && !self.pstate.V;
+
+        self.pstate.N = false;
+        self.pstate.Z = z;
+        self.pstate.C = c;
+        self.pstate.V = false;
+    }
 }
