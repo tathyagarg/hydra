@@ -854,6 +854,8 @@ impl Cpu {
     /// cpu._and_imm(true, false, 0b001101, 0b101011, 0, RegisterSP::Register(1));
     /// assert_eq!(cpu.__dbg_get_x(1), 2752);
     /// ```
+    ///
+    /// Special thanks to https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a
     pub fn _and_imm(&mut self, sf: bool, imm_n: bool, immr: u8, imms: u8, n: usize, d: RegisterSP) {
         let (imm, _) = if sf {
             decode_bit_masks::<64>(imm_n, imms, immr)
@@ -872,5 +874,96 @@ impl Cpu {
         } else {
             self.sp = result;
         }
+    }
+
+    /// **AND (Shifted Register)**: Bitwise AND (shifted register)
+    ///
+    /// This instruction performs a bitwise AND between a register value and an optionally-shifted register value, and writes the
+    /// result to the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 213);
+    /// cpu.__dbg_set_x(1, 82);
+    /// cpu._and_sr(true, 0b00, 1, 0, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 80);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 213);
+    /// cpu.__dbg_set_x(1, 5);
+    /// cpu._and_sr(true, 0b00, 1, 4, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 80);
+    /// ```
+    pub fn _and_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+        let operand1 = self._get_op(n, sf);
+        let operand2 = shared::shift_reg(
+            self._get_op(m, sf),
+            ShiftType::decode(shift).unwrap(),
+            imm6 as usize,
+        );
+
+        self._set_op(d, operand1 & operand2, sf);
+    }
+
+    /// **ANDS (Immediate)**: Bitwise AND (immediate), setting flags
+    ///
+    /// This instruction performs a bitwise AND between a register value and an immediate value, and writes the result to the
+    /// destination register. It updates the condition flags based on the result.
+    pub fn _ands_imm(
+        &mut self,
+        sf: bool,
+        imm_n: bool,
+        immr: u8,
+        imms: u8,
+        n: usize,
+        d: RegisterSP,
+    ) {
+        let (imm, _) = if sf {
+            decode_bit_masks::<64>(imm_n, imms, immr)
+        } else {
+            decode_bit_masks::<32>(imm_n, imms, immr)
+        };
+
+        let operand1 = self._get_op(n, sf);
+        let operand2 = imm;
+
+        println!("{} {}", operand1, operand2);
+        let result = operand1 & operand2;
+
+        if let RegisterSP::Register(rd) = d {
+            self._set_op(rd, result, sf);
+        } else {
+            self.sp = result;
+        }
+
+        self.pstate.N = (result >> ((32 << sf as u64) - 1)) == 1;
+        self.pstate.Z = result == 0;
+        self.pstate.C = false;
+        self.pstate.V = false;
+    }
+
+    /// **ANDS: (shifted register)**: Bitwise AND (shifted register), setting flags
+    ///
+    /// This instruction performs a bitwise AND between a register value and an optionally-shifted register value, and writes the
+    /// result to the destination register. It updates the condition flags based on the result.
+    pub fn _ands_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+        let operand1 = self._get_op(n, sf);
+        let operand2 = shared::shift_reg(
+            self._get_op(m, sf),
+            ShiftType::decode(shift).unwrap(),
+            imm6 as usize,
+        );
+
+        let result = operand1 & operand2;
+        self._set_op(d, result, sf);
+
+        self.pstate.N = (result >> ((32 << sf as u64) - 1)) == 1;
+        self.pstate.Z = result == 0;
+        self.pstate.C = false;
+        self.pstate.V = false;
     }
 }
