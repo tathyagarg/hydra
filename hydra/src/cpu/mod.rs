@@ -1,8 +1,16 @@
 #![allow(dead_code, non_snake_case)]
 
-use crate::cpu::shared::decode_bit_masks;
+use crate::cpu::{
+    brbe::{BRBINF_EL1_Type, BRBSRC_EL1_Type, BRBTGT_EL1_Type, Brbe},
+    pmu::Pmu,
+    shared::decode_bit_masks,
+};
 
+mod brbe;
+pub mod common;
+mod pmu;
 mod pstate;
+mod regs;
 mod shared;
 
 const LOWER_32: u64 = 0xFFFF_FFFF_0000_0000;
@@ -65,6 +73,19 @@ impl ShiftType {
             })
         }
     }
+}
+
+pub enum BranchType {
+    DIRCALL,
+    INDCALL,
+    ERET,
+    DBGEXIT,
+    RET,
+    DIR,
+    INDIR,
+    EXCEPTION,
+    RESET,
+    UNKNOWN,
 }
 
 fn to_uint<const N: usize>(v: u64) -> u64 {
@@ -301,6 +322,28 @@ pub struct Cpu {
     /// TODO: Finish the documentation (from page 992)
     fpsr: u64,
 
+    /// NOTE: TCR_EL1[31:0] map to TTBCR[31:0]
+    /// TCR_EL1[63:32] map to TTBCR2[31:0]
+    tcr_el1: u64,
+    tcr_el2: u64,
+    tcr_el3: u64,
+
+    scr: u32,
+    scr_el3: u64,
+
+    hcr_el2: u64,
+
+    brbfcr_el0: u64,
+    brbfcr_el1: u64,
+
+    brbcr_el1: u64,
+    brbcr_el2: u64,
+
+    mdcr_el3: u64,
+
+    brbe: Brbe,
+    pmu: Pmu,
+
     pstate: pstate::PState,
 }
 
@@ -314,12 +357,81 @@ impl Default for Cpu {
             v: [0; 32],
             fcpr: 0,
             fpsr: 0,
+            tcr_el1: 0,
+            tcr_el2: 0,
+            tcr_el3: 0,
+            scr: 0,
+            scr_el3: 0,
+            hcr_el2: 0,
+            brbfcr_el0: 0,
+            brbfcr_el1: 0,
+            brbcr_el1: 0,
+            brbcr_el2: 0,
+            mdcr_el3: 0,
+            brbe: Brbe {
+                records_src: [BRBSRC_EL1_Type(0); 64],
+                records_tgt: [BRBTGT_EL1_Type(0); 64],
+                records_inf: [BRBINF_EL1_Type {
+                    ccu: false,
+                    cc: 0,
+                    type_: 0,
+                    el: 0,
+                    mpred: false,
+                    valid: 0,
+                }; 64],
+            },
+            pmu: Pmu {
+                pmcr_el0: 0,
+                pmcntenset_el0: 0,
+                pmcntenclr_el0: 0,
+                pmccntr_el0: 0,
+                counters: vec![],
+                event_types: vec![],
+            },
             pstate: pstate::PState::default(),
         }
     }
 }
 
 impl Cpu {
+    pub const FEAT_AA64: bool = true;
+
+    #[allow(non_upper_case_globals)]
+    pub const FEAT_PAuth: bool = false;
+
+    pub const FEAT_AA32EL0: bool = false;
+    pub const FEAT_AA32EL1: bool = false;
+    pub const FEAT_AA32EL2: bool = false;
+    pub const FEAT_AA32EL3: bool = false;
+
+    pub const FEAT_AA64EL0: bool = false;
+    pub const FEAT_AA64EL1: bool = false;
+    pub const FEAT_AA64EL2: bool = false;
+    pub const FEAT_AA64EL3: bool = false;
+
+    pub const FEAT_SECURE: bool = false;
+
+    pub const FEAT_SEL2: bool = false;
+    pub const FEAT_VHE: bool = false;
+
+    pub const FEAT_E2H0: bool = false;
+
+    pub const FEAT_BRBE: bool = false;
+    #[allow(non_upper_case_globals)]
+    pub const FEAT_BRBEv1p1: bool = false;
+
+    pub const FEAT_RME: bool = false;
+
+    #[allow(non_upper_case_globals)]
+    pub const FEAT_PMUv3: bool = false;
+    #[allow(non_upper_case_globals)]
+    pub const FEAT_PMUv3_ICNTR: bool = false;
+    pub const NUM_PMU_COUNTERS: usize = 0;
+    pub const PMU_EVENT_INST_RETIRED: u16 = 0x08;
+    const PMU_EVENT_BRB_FILTRATE: u16 = 0x811F;
+
+    pub const FEAT_SPE: bool = false;
+
     fn _get_op(&self, n: usize, cond: bool) -> u64 {
         if cond {
             self.x[n]
@@ -1205,5 +1317,14 @@ impl Cpu {
         self.pstate.Z = z;
         self.pstate.C = c;
         self.pstate.V = false;
+    }
+
+    pub fn b_cond(&mut self, imm19: u32, cond: u8) {
+        let offset = shared::sint::<21>((imm19 << 2) as u64) as u64;
+        if self.condition_holds(cond) {
+            self.branch_to::<64>(self.pc + offset, BranchType::DIR, true);
+        } else {
+            self.branch_not_taken(BranchType::DIR, true);
+        }
     }
 }
