@@ -232,7 +232,7 @@ destination register.</p>
 <span class="comment">// `AND X1, X0, #0x00`
 </span>cpu._and_imm(<span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="number">0b001101</span>, <span class="number">0b101011</span>, <span class="number">0</span>, RegisterSP::Register(<span class="number">1</span>));
 <span class="macro">assert_eq!</span>(cpu.__dbg_get_x(<span class="number">1</span>), <span class="number">2752</span>);</code></pre></div>
-<p>Special thanks to https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a</p>
+<p>Special thanks to <a href="https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a">https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a</a></p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method._and_sr" class="method"><a class="src rightside" href="../../src/lib/cpu/mod.rs.html#901-910">Source</a><h4 class="code-header">pub fn <a href="#method._and_sr" class="fn">_and_sr</a>(
     &amp;mut self,
     sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,

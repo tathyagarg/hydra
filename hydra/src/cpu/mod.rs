@@ -855,7 +855,7 @@ impl Cpu {
     /// assert_eq!(cpu.__dbg_get_x(1), 2752);
     /// ```
     ///
-    /// Special thanks to https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a
+    /// Special thanks to <https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a>
     pub fn _and_imm(&mut self, sf: bool, imm_n: bool, immr: u8, imms: u8, n: usize, d: RegisterSP) {
         let (imm, _) = if sf {
             decode_bit_masks::<64>(imm_n, imms, immr)
