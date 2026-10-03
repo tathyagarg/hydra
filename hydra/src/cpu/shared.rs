@@ -81,7 +81,6 @@ pub(super) fn extend_reg<const N: usize>(val: u64, exttype: ExtendType, shift: u
     };
 
     let nbits = len.min(N);
-    println!("Extending {} to {} bits", val, nbits);
     let extval = extend(val, nbits, unsigned);
 
     return extval << shift;
@@ -93,5 +92,96 @@ pub(super) fn shift_reg(val: u64, shift_type: ShiftType, amount: usize) -> u64 {
         ShiftType::LSR => val >> amount,
         ShiftType::ASR => (val as i64 >> amount) as u64,
         ShiftType::ROR => val,
+    }
+}
+
+fn replicate(val: u64, elem_bits: u32, total_bits: u32) -> u64 {
+    println!("repl: {} {} {}", val, elem_bits, total_bits);
+    let elem = val & ones(elem_bits);
+
+    let mut result = 0;
+    let mut pos = 0;
+
+    while pos < total_bits {
+        result |= elem << pos;
+        pos += elem_bits;
+    }
+
+    println!("replicated: {:#X}", result);
+    result
+}
+
+fn ones(w: u32) -> u64 {
+    match w {
+        0 => 0,
+        64 => u64::MAX,
+        w => (1u64 << w) - 1,
+    }
+}
+
+fn ror(val: u64, amount: u32, width: u32) -> u64 {
+    let mask = ones(width);
+    let val = val & mask;
+    let amount = (amount % width) as u64;
+
+    if amount == 0 {
+        val
+    } else {
+        ((val >> amount) | (val << (width as u64 - amount))) & mask
+    }
+}
+
+/// DecodeBitMasks()
+/// ================
+/// Decode AArch64 bitfield and logical immediate masks which use a similar encoding structure
+pub(super) fn decode_bit_masks<const M: usize>(imm_n: bool, imms: u8, immr: u8) -> (u64, u64) {
+    let combined = ((imm_n as u8) << 6) | ((!imms) & 0x3f);
+    let len = 63 - (combined as u64).leading_zeros() as usize;
+    let levels = (1u8 << len) - 1;
+
+    let s = imms & levels;
+    let r = immr & levels;
+
+    let diff = s.wrapping_sub(r);
+
+    let esize = (1u64 << len) as u32;
+    let d = diff & levels;
+    println!("d: {}", d);
+
+    println!("s: {}, 1 << (s + 1): {}", s, (1u64 << (s + 1)) - 1);
+    let welem = (1u64 << (s + 1)) - 1;
+    let telem = (1u64 << (d + 1)) - 1;
+    println!("welem telem {} {}", welem, telem);
+    println!("esize: {}", esize);
+
+    let wmask = replicate(ror(welem, r as u32, esize), esize, M as u32);
+    let tmask = replicate(telem, esize as u32, M as u32);
+
+    (wmask, tmask)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn all_ones_8bit_repeated() {
+        assert_eq!(
+            decode_bit_masks::<32>(false, 0b110100, 0),
+            (0x1F1F_1F1F, 0x1F1F_1F1F)
+        );
+    }
+
+    #[test]
+    fn rotated_8bit_pattern() {
+        let (w, _) = decode_bit_masks::<32>(false, 0b110100, 0b000010);
+
+        assert_eq!(w, 0xC7C7_C7C7);
+    }
+    #[test]
+    fn four_bit_element() {
+        let (w, _) = decode_bit_masks::<32>(false, 0b111010, 0b000001);
+
+        assert_eq!(w, 0xBBBB_BBBB);
     }
 }

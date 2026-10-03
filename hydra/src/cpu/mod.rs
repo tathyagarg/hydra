@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use crate::cpu::shared::decode_bit_masks;
+
 mod pstate;
 mod shared;
 
@@ -318,11 +320,19 @@ impl Default for Cpu {
 }
 
 impl Cpu {
-    fn _to_op(&self, n: usize, cond: bool) -> u64 {
+    fn _get_op(&self, n: usize, cond: bool) -> u64 {
         if cond {
             self.x[n]
         } else {
             self.x[n] as u32 as u64
+        }
+    }
+
+    fn _set_op(&mut self, n: usize, v: u64, cond: bool) {
+        if cond {
+            self.x[n] = v;
+        } else {
+            self.x[n] = to_uint::<32>(v);
         }
     }
 
@@ -366,10 +376,10 @@ impl Cpu {
     /// assert_eq!(cpu.__dbg_get_x(1), 1);
     /// ```
     pub fn abs(&mut self, sf: bool, n: usize, d: usize) {
-        let operand1 = self._to_op(n, sf) as i64;
+        let operand1 = self._get_op(n, sf) as i64;
 
         let result = operand1.abs() as u64;
-        self.x[d] = result;
+        self._set_op(d, result, sf);
     }
 
     /// **ADC**: Add with carry
@@ -395,8 +405,8 @@ impl Cpu {
     /// assert_eq!(cpu.__dbg_get_x(2), 4);
     /// ```
     pub fn adc(&mut self, sf: bool, m: usize, n: usize, d: usize) {
-        let operand1 = self._to_op(n, sf);
-        let operand2 = self._to_op(m, sf);
+        let operand1 = self._get_op(n, sf);
+        let operand2 = self._get_op(m, sf);
 
         let (result, _) = if sf {
             shared::add_with_carry::<64>(operand1, operand2, self.pstate.C)
@@ -404,7 +414,7 @@ impl Cpu {
             shared::add_with_carry::<32>(operand1, operand2, self.pstate.C)
         };
 
-        self.x[d] = result;
+        self._set_op(d, result, sf);
     }
 
     /// **ADCS**: Add with carry, setting flags
@@ -432,8 +442,8 @@ impl Cpu {
     /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
     /// ```
     pub fn adcs(&mut self, sf: bool, m: usize, n: usize, d: usize) {
-        let operand1 = self._to_op(n, sf);
-        let operand2 = self._to_op(m, sf);
+        let operand1 = self._get_op(n, sf);
+        let operand2 = self._get_op(m, sf);
 
         let (result, nzcv) = if sf {
             shared::add_with_carry::<64>(operand1, operand2, self.pstate.C)
@@ -441,7 +451,7 @@ impl Cpu {
             shared::add_with_carry::<32>(operand1, operand2, self.pstate.C)
         };
 
-        self.x[d] = result;
+        self._set_op(d, result, sf);
         nzcv.set(&mut self.pstate);
     }
 
@@ -497,12 +507,12 @@ impl Cpu {
         d: RegisterSP,
     ) {
         let operand1 = if let RegisterSP::Register(rn) = n {
-            self.x[rn]
+            self._get_op(rn, sf)
         } else {
             self.sp
         };
 
-        let mval = self._to_op(m, option & 0b11 == 0b11);
+        let mval = self._get_op(m, option & 0b11 == 0b11);
         let extend_type = ExtendType::decode(option).unwrap();
 
         let (result, _) = if sf {
@@ -514,7 +524,7 @@ impl Cpu {
         };
 
         if let RegisterSP::Register(rd) = d {
-            self.x[rd] = result;
+            self._set_op(rd, result, sf);
         } else {
             self.sp = result;
         }
@@ -551,7 +561,7 @@ impl Cpu {
         };
 
         let operand1 = if let RegisterSP::Register(rn) = n {
-            self.x[rn]
+            self._get_op(rn, sf)
         } else {
             self.sp
         };
@@ -563,7 +573,7 @@ impl Cpu {
         };
 
         if let RegisterSP::Register(rd) = d {
-            self.x[rd] = result;
+            self._set_op(rd, result, sf);
         } else {
             self.sp = result;
         }
@@ -603,9 +613,9 @@ impl Cpu {
     /// assert_eq!(cpu.__dbg_get_x(2), -10i64 as u64);
     /// ```
     pub fn _add_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
-        let operand1 = self.x[n];
+        let operand1 = self._get_op(n, sf);
+        let mval = self._get_op(m, sf);
 
-        let mval = self.x[m];
         let shift_type = ShiftType::decode(shift).unwrap();
 
         let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
@@ -616,7 +626,7 @@ impl Cpu {
             shared::add_with_carry::<32>(operand1, operand2, false)
         };
 
-        self.x[d] = result;
+        self._set_op(d, result, sf);
     }
 
     fn addg(&mut self) {
@@ -653,12 +663,12 @@ impl Cpu {
         d: RegisterSP,
     ) {
         let operand1 = if let RegisterSP::Register(rn) = n {
-            self.x[rn]
+            self._get_op(rn, sf)
         } else {
             self.sp
         };
 
-        let mval = self._to_op(m, option & 0b11 == 0b11);
+        let mval = self._get_op(m, option & 0b11 == 0b11);
         let extend_type = ExtendType::decode(option).unwrap();
 
         let (result, nzcv) = if sf {
@@ -671,7 +681,7 @@ impl Cpu {
 
         nzcv.set(&mut self.pstate);
         if let RegisterSP::Register(rd) = d {
-            self.x[rd] = result;
+            self._set_op(rd, result, sf);
         } else {
             self.sp = result;
         }
@@ -711,7 +721,7 @@ impl Cpu {
         };
 
         let operand1 = if let RegisterSP::Register(rn) = n {
-            self.x[rn]
+            self._get_op(rn, sf)
         } else {
             self.sp
         };
@@ -724,7 +734,7 @@ impl Cpu {
 
         nzcv.set(&mut self.pstate);
         if let RegisterSP::Register(rd) = d {
-            self.x[rd] = result;
+            self._set_op(rd, result, sf);
         } else {
             self.sp = result;
         }
@@ -770,21 +780,21 @@ impl Cpu {
     ///
     /// This does NOT overflow
     pub fn _adds_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
-        let operand1 = self.x[n];
+        let operand1 = self._get_op(n, sf);
+        let mval = self._get_op(m, sf);
 
-        let mval = self.x[m];
         let shift_type = ShiftType::decode(shift).unwrap();
 
         let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
 
-        let (result, nzcv) = if sf {
+        let (res, nzcv) = if sf {
             shared::add_with_carry::<64>(operand1, operand2, false)
         } else {
             shared::add_with_carry::<32>(operand1, operand2, false)
         };
 
+        self._set_op(d, res, sf);
         nzcv.set(&mut self.pstate);
-        self.x[d] = result;
     }
 
     /// **ADR**: Form PC-relative address
@@ -811,5 +821,56 @@ impl Cpu {
         let base = self.pc & (!0u64 << 12);
 
         self.x[d] = base + imm;
+    }
+
+    /// **AND (immediate)**: Bitwise AND (immediate)
+    ///
+    /// This instruction performs a bitwise AND between a register value and an immediate value, and writes the result to the
+    /// destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0x1234_5678_9ABC_DEF0);
+    /// // `AND X1, X0, #0xFF`
+    /// cpu._and_imm(true, true, 0b000000, 0b000111, 0, RegisterSP::Register(1));
+    /// assert_eq!(cpu.__dbg_get_x(1), 0xF0);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0xFFFF_FFFF_FFFF_FFFF);
+    /// // `AND X1, X0, #0x00`
+    /// cpu._and_imm(true, false, 0b000000, 0b110100, 0, RegisterSP::Register(1));
+    /// assert_eq!(cpu.__dbg_get_x(1), 0x1F1F_1F1F_1F1F_1F1F);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 232131);
+    /// // `AND X1, X0, #0x00`
+    /// cpu._and_imm(true, false, 0b001101, 0b101011, 0, RegisterSP::Register(1));
+    /// assert_eq!(cpu.__dbg_get_x(1), 2752);
+    /// ```
+    pub fn _and_imm(&mut self, sf: bool, imm_n: bool, immr: u8, imms: u8, n: usize, d: RegisterSP) {
+        let (imm, _) = if sf {
+            decode_bit_masks::<64>(imm_n, imms, immr)
+        } else {
+            decode_bit_masks::<32>(imm_n, imms, immr)
+        };
+
+        let operand1 = self._get_op(n, sf);
+        let operand2 = imm;
+
+        println!("{} {}", operand1, operand2);
+        let result = operand1 & operand2;
+
+        if let RegisterSP::Register(rd) = d {
+            self._set_op(rd, result, sf);
+        } else {
+            self.sp = result;
+        }
     }
 }
