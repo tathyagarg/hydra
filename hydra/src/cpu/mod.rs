@@ -1429,4 +1429,94 @@ impl Cpu {
     pub fn blr(&mut self, n: usize) {
         todo!()
     }
+
+    /// **BLRAA, BLRAAZ, BLRAB, BLRABZ**: Branch with link to register, with pointer authentication
+    ///
+    /// This instruction authenticates the address in the general-purpose register that is specified by &lt;Xn&gt;, using a modifier and the
+    /// specified key, and calls a subroutine at the authenticated address, setting register X30 to PC+4.
+    ///
+    /// The modifier is:
+    /// - In the general-purpose register or stack pointer that is specified by <Xm|SP>, for BLRAA and BLRAB.
+    /// - The value zero, for BLRAAZ and BLRABZ.
+    ///
+    /// Key A is used for BLRAA and BLRAAZ. Key B is used for BLRAB and BLRABZ.
+    ///
+    /// If the authentication passes, the PE continues execution at the target of the branch. For information on behavior if the
+    /// authentication fails, see Faulting on pointer authentication.
+    ///
+    /// The authenticated address is not written back to the general-purpose register.
+    ///
+    /// This instruction provides a hint that this is a subroutine call.
+    #[allow(unused_variables)]
+    pub fn blraa_blraaz_blrab_blrabz(&mut self, Z: bool, M: bool, n: u8, m: u8) {
+        todo!()
+    }
+
+    /// **BR**: Branch to register
+    ///
+    /// This instruction branches unconditionally to an address in a register. This instruction provides a hint that this is not a
+    /// subroutine call or return.
+    #[allow(unused_variables)]
+    pub fn br(&mut self, n: usize) {
+        todo!()
+    }
+
+    /// **BRAA, BRAAZ, BRAB, BRABZ**: Branch to register, with pointer authentication
+    ///
+    /// This instruction authenticates the address in the general-purpose register that is specified by &lt;Xn&gt;, using a modifier and the
+    /// specified key, and branches to the authenticated address.
+    ///
+    /// The modifier is:
+    /// - In the general-purpose register or stack pointer that is specified by <Xm|SP>, for BRAA and BRAB.
+    /// - The value zero, for BRAAZ and BRABZ.
+    ///
+    /// Key A is used for BRAA and BRAAZ. Key B is used for BRAB and BRABZ.
+    ///
+    /// If the authentication passes, the PE continues execution at the target of the branch. For information on behavior if the
+    /// authentication fails, see Faulting on pointer authentication.
+    ///
+    /// The authenticated address is not written back to the general-purpose register.
+    ///
+    /// This instruction provides a hint that this is not a subroutine call or return.
+    #[allow(unused_variables)]
+    pub fn braa_braaz_brab_brabz(&mut self, Z: bool, M: bool, n: u8, m: u8) {
+        todo!()
+    }
+
+    /// **BRB**: Branch record buffer
+    ///
+    /// For more information, see op0 == 0b01, cache maintenance, TLB maintenance, address translation, prediction restriction,
+    /// BRBE, Trace Extension, Guarded Control Stack, and FEAT_RME_GPC3 instructions.
+    #[allow(unused_variables)]
+    pub fn brb(&mut self, op2: u8, t: u8) {
+        todo!()
+    }
+
+    /// **BRK**: Breakpoint instruction
+    ///
+    /// This instruction generates a Breakpoint Instruction exception. The PE records the exception in ESR_ELx, using the EC
+    /// value 0x3C, and captures the value of the immediate argument in ESR_ELx.ISS.
+    ///
+    /// Within a guarded memory region, while PSTATE.BTYPE != 0b00, a BRK instruction will not generate a Branch Target
+    /// exception and will generate a Breakpoint Instruction exception as normal. For more information, see PSTATE.BTYPE.
+    #[allow(unused_variables)]
+    pub fn brk(&mut self, imm16: u16) {
+        todo!()
+    }
+
+    /// **BTI**: Branch target identification
+    ///
+    /// This instruction is used to guard against the execution of instructions that are not the intended target of a branch.
+    ///
+    /// Outside of a guarded memory region, a BTI instruction executes as a NOP. Within a guarded memory region, while
+    /// PSTATE.BTYPE != 0b00, a BTI instruction compatible with the current value of PSTATE.BTYPE will not generate a
+    /// Branch Target Exception and will allow execution of subsequent instructions within the memory region. For more
+    /// information, see PSTATE.BTYPE.
+    ///
+    /// The operand &lt;targets&gt; passed to a BTI instruction determines the values of PSTATE.BTYPE that the BTI instruction is
+    /// compatible with.
+    #[allow(unused_variables)]
+    pub fn bti(&mut self, op2: u8) {
+        todo!()
+    }
 }

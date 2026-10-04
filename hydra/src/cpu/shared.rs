@@ -203,6 +203,7 @@ impl Cpu {
         }
     }
 
+    #[allow(unused_variables)]
     pub fn branch_not_taken(&self, branch_type: BranchType, branch_conditional: bool) {
         if Cpu::FEAT_SPE {
             todo!()
