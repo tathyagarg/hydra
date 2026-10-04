@@ -2,6 +2,7 @@
 
 use crate::cpu::{
     brbe::{BRBINF_EL1_Type, BRBSRC_EL1_Type, BRBTGT_EL1_Type, Brbe},
+    common::n_bits,
     pmu::Pmu,
     shared::decode_bit_masks,
 };
@@ -18,6 +19,16 @@ const LOWER_32: u64 = 0xFFFF_FFFF_0000_0000;
 pub enum RegisterSP {
     Register(usize),
     StackPointer,
+}
+
+pub enum CmpOp {
+    EQ,
+    NE,
+    GE,
+    GT,
+    LT,
+    LE,
+    UN,
 }
 
 pub enum ExtendType {
@@ -430,6 +441,8 @@ impl Cpu {
     const PMU_EVENT_BRB_FILTRATE: u16 = 0x811F;
 
     pub const FEAT_SPE: bool = false;
+
+    pub const FEAT_CMPBR: bool = true;
 
     fn _get_op(&self, n: usize, cond: bool) -> u64 {
         if cond {
@@ -1518,5 +1531,262 @@ impl Cpu {
     #[allow(unused_variables)]
     pub fn bti(&mut self, op2: u8) {
         todo!()
+    }
+
+    /// **CAS, CASA, CASAL, CASL**: Compare and swap word or doubleword in memory
+    ///
+    /// This instruction reads a 32-bit word or 64-bit doubleword from memory, and compares it against the value held in a first
+    /// register. If the comparison is equal, the value in a second register is written to memory. If the comparison is not equal, the
+    /// architecture permits writing the value read from the location to memory. If the write is performed, the read and write occur
+    /// atomically such that no other modification of the memory location can take place between the read and write.
+    /// - If the destination register is not one of WZR or XZR, CASA and CASAL load from memory with acquire semantics.
+    /// - CASL and CASAL store to memory with release semantics.
+    /// - CAS has neither acquire nor release semantics.
+    ///
+    /// The architecture permits that the data read clears any exclusive monitors associated with that location, even if the compare
+    /// subsequently fails.
+    ///
+    /// If the instruction generates a synchronous Data Abort, the register which is compared and loaded, that is &lt;Ws&gt;, or &lt;Xs&gt;, is
+    /// restored to the value held in the register before the instruction was executed.
+    ///
+    /// For a CAS or CASA instruction, when &lt;Ws&gt; or &lt;Xs&gt; specifies the same register as &lt;Wt&gt; or &lt;Xt&gt;, this signals to the memory
+    /// system that an additional subsequent CAS, CASA, CASAL, or CASL access to the specified location is expected to occur in the
+    /// near future in the absence of taking an exception or exceptional software conditions. The memory system can respond by
+    /// taking actions that are expected to enable the subsequent CAS, CASA, CASAL, or CASL access to succeed when it does occur.
+    ///
+    /// A code sequence starting with a CAS or CASA instruction for which &lt;Ws&gt; or &lt;Xs&gt; specifies the same register as &lt;Wt&gt; or
+    /// &lt;Xt&gt;, and ending with a subsequent CAS, CASA, CASAL, or CASL to the same location, exhibits the following properties for
+    /// best performance when the location may be accessed concurrently, on one or more other PEs:
+    /// - The sequence does not contain any direct System register writes, address translation instructions, cache or TLB
+    /// maintenance operations, exception producing instructions, exception returns, or ISB barriers.
+    /// - The execution of the sequence includes 32 or fewer instructions.
+    /// - The value provided in &lt;Ws&gt; or &lt;Xs&gt; of the first CAS or CASA is a value likely to result in the comparison failing. A
+    /// failing comparison result may lead to better performance due to the hardware not performing a write to memory.
+    ///
+    /// NOTE:
+    /// For a CAS or CASA instruction, when &lt;Ws&gt; or &lt;Xs&gt; specifies the same register as &lt;Wt&gt; or &lt;Xt&gt;, the value in memory is not
+    /// modified, because the CAS or CASA either fails its compare or writes the same value back to memory.
+    /// For performance reasons, Arm recommends that software not use a CAS or CASA instruction when &lt;Ws&gt; or &lt;Xs&gt; specifies the
+    /// same register as &lt;Wt&gt; or &lt;Xt&gt; in a routine that includes a subsequent CAS, CASA, CASAL, or CASL for any of the following
+    /// purposes:
+    /// - To load the value that will be compared to conditionally determine whether or not to execute the subsequent CAS,
+    /// CASA, CASAL, or CASL.
+    /// - As a form of prefetch executed between the instruction loading the value that will be compared and the subsequent
+    /// compare instruction that conditionally determines whether or not to execute the subsequent CAS, CASA, CASAL, or
+    /// CASL.
+    ///
+    /// This guidance does not apply when &lt;Ws&gt; or &lt;Xs&gt; specifies the same register as &lt;Wt&gt; or &lt;Xt&gt; for a CAS or CASA instruction
+    /// and the compare between the CAS or CASA and the subsequent CAS, CASA, CASAL, or CASL is intended to detect an
+    /// exceptional software condition such that the result of the compare does not prevent the subsequent CAS, CASA, CASAL,
+    /// or CASL from executing under normal operating conditions.
+    #[allow(unused_variables)]
+    pub fn cas_casa_casal_casl(
+        &mut self,
+        size: u8,
+        A: bool,
+        s: usize,
+        R: bool,
+        n: usize,
+        t: usize,
+    ) {
+        todo!()
+    }
+
+    /// **CASB, CASAB, CASALB, CASLB**: Compare and swap byte in memory
+    ///
+    /// This instruction reads an 8-bit byte from memory, and compares it against the value held in a first register. If the comparison
+    /// is equal, the value in a second register is written to memory. If the comparison is not equal, the architecture permits writing
+    /// the value read from the location to memory. If the write is performed, the read and write occur atomically such that no other
+    /// modification of the memory location can take place between the read and write.
+    /// - If the destination register is not WZR, CASAB and CASALB load from memory with acquire semantics.
+    /// - CASLB and CASALB store to memory with release semantics.
+    /// - CASB has neither acquire nor release semantics.
+    ///
+    /// The architecture permits that the data read clears any exclusive monitors associated with that location, even if the compare
+    /// subsequently fails.
+    ///
+    /// If the instruction generates a synchronous Data Abort, the register which is compared and loaded, that is &lt;Ws&gt;, is restored to
+    /// the values held in the register before the instruction was executed.
+    ///
+    /// For a CASB or CASAB instruction, when &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, this signals to the memory system that an
+    /// additional subsequent CASB, CASAB, CASALB, or CASLB access to the specified location is expected to occur in the near
+    /// future in the absence of taking an exception or exceptional software conditions. The memory system can respond by taking
+    /// actions that are expected to enable the subsequent CASB, CASAB, CASALB, or CASLB access to succeed when it does occur.
+    ///
+    /// A code sequence starting with a CASB or CASAB instruction for which &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, and ending
+    /// with a subsequent CASB, CASAB, CASALB, or CASLB to the same location, exhibits the following properties for best
+    /// performance when the location may be accessed concurrently, on one or more other PEs:
+    /// - The sequence does not contain any direct System register writes, address translation instructions, cache or TLB
+    /// maintenance operations, exception producing instructions, exception returns, or ISB barriers.
+    /// - The execution of the sequence includes 32 or fewer instructions.
+    /// - The value provided in &lt;Ws&gt; of the first CASB or CASAB is a value likely to result in the comparison failing. A failing
+    /// comparison result may lead to better performance due to the hardware not performing a write to memory.
+    ///
+    /// NOTE:
+    /// For a CASB or CASAB instruction, when &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, the value in memory is not modified,
+    /// because the CASB or CASAB either fails its compare or writes the same value back to memory.
+    /// For performance reasons, Arm recommends that software not use a CASB or CASAB instruction when &lt;Ws&gt; specifies the same
+    /// register as &lt;Wt&gt; in a routine that includes a subsequent CASB, CASAB, CASALB, or CASLB for any of the following purposes:
+    /// - To load the value that will be compared to conditionally determine whether or not to execute the subsequent CASB,
+    /// CASAB, CASALB, or CASLB.
+    /// - As a form of prefetch executed between the instruction loading the value that will be compared and the subsequent
+    /// compare instruction that conditionally determines whether or not to execute the subsequent CASB, CASAB, CASALB,
+    /// or CASLB.
+    ///
+    /// This guidance does not apply when &lt;Ws&gt; specifies the same register as &lt;Wt&gt; for a CASB or CASAB instruction and the
+    /// compare between the CASB or CASAB and the subsequent CASB, CASAB, CASALB, or CASLB is intended to detect an
+    /// exceptional software condition such that the result of the compare does not prevent the subsequent CASB, CASAB, CASALB,
+    /// or CASLB from executing under normal operating conditions.
+    #[allow(unused_variables)]
+    pub fn casb_casab_casalb_caslb(&mut self, A: bool, s: usize, R: bool, n: usize, t: usize) {
+        todo!()
+    }
+
+    /// **CASH, CASAH, CASALH, CASLH**: Compare and swap halfword in memory
+    ///
+    /// This instruction reads a 16-bit halfword from memory, and compares it against the value held in a first register. If the
+    /// comparison is equal, the value in a second register is written to memory. If the comparison is not equal, the architecture
+    /// permits writing the value read from the location to memory. If the write is performed, the read and write occur atomically
+    /// such that no other modification of the memory location can take place between the read and write.
+    /// - If the destination register is not WZR, CASAH and CASALH load from memory with acquire semantics.
+    /// - CASLH and CASALH store to memory with release semantics.
+    /// - CASH has neither acquire nor release semantics.
+    ///
+    /// The architecture permits that the data read clears any exclusive monitors associated with that location, even if the compare
+    /// subsequently fails.
+    ///
+    /// If the instruction generates a synchronous Data Abort, the register which is compared and loaded, that is &lt;Ws&gt;, is restored to
+    /// the values held in the register before the instruction was executed.
+    ///
+    /// For a CASH or CASAH instruction, when &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, this signals to the memory system that an
+    /// additional subsequent CASH, CASAH, CASALH, or CASLH access to the specified location is expected to occur in the near
+    /// future in the absence of taking an exception or exceptional software conditions. The memory system can respond by taking
+    /// actions that are expected to enable the subsequent CASH, CASAH, CASALH, or CASLH access to succeed when it does occur.
+    ///
+    /// A code sequence starting with a CASH or CASAH instruction for which &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, and ending
+    /// with a subsequent CASH, CASAH, CASALH, or CASLH to the same location, exhibits the following properties for best
+    /// performance when the location may be accessed concurrently, on one or more other PEs:
+    /// - The sequence does not contain any direct System register writes, address translation instructions, cache or TLB
+    /// maintenance operations, exception producing instructions, exception returns, or ISB barriers.
+    /// - The execution of the sequence includes 32 or fewer instructions.
+    /// - The value provided in &lt;Ws&gt; of the first CASH or CASAH is a value likely to result in the comparison failing. A failing
+    /// comparison result may lead to better performance due to the hardware not performing a write to memory.
+    ///
+    /// NOTE:
+    /// For a CASH or CASAH instruction, when &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, the value in memory is not modified,
+    /// because the CASH or CASAH either fails its compare or writes the same value back to memory.
+    /// For performance reasons, Arm recommends that software not use a CASH or CASAH instruction when &lt;Ws&gt; specifies the same
+    /// register as &lt;Wt&gt; in a routine that includes a subsequent CASH, CASAH, CASALH, or CASLH for any of the following purposes:
+    /// - To load the value that will be compared to conditionally determine whether or not to execute the subsequent CASH,
+    /// CASAH, CASALH, or CASLH.
+    /// - As a form of prefetch executed between the instruction loading the value that will be compared and the subsequent
+    /// compare instruction that conditionally determines whether or not to execute the subsequent CASH, CASAH, CASALH,
+    /// or CASLH.
+    ///
+    /// This guidance does not apply when &lt;Ws&gt; specifies the same register as &lt;Wt&gt; for a CASH or CASAH instruction and the
+    /// compare between the CASH or CASAH and the subsequent CASH, CASAH, CASALH, or CASLH is intended to detect an
+    /// exceptional software condition such that the result of the compare does not prevent the subsequent CASH, CASAH, CASALH,
+    /// or CASLH from executing under normal operating conditions.
+    #[allow(unused_variables)]
+    pub fn cash_casah_casalh_caslh(&mut self, A: bool, s: usize, R: bool, n: usize, t: usize) {
+        todo!()
+    }
+
+    // TODO: CASP, CASPA, CASPAL, CASPL
+    // TODO: CASPT, CASPAT, CASPALT, CASPLT
+    // TODO: CAST, CASAT, CASALT, CASLT
+
+    /// **CBB&lt;cc&gt;**: Compare bytes and branch
+    ///
+    /// This instruction compares the byte values in two registers, and conditionally branches to a label at a PC-relative offset if the
+    /// condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not affect
+    /// the condition flags.
+    pub fn cbb_cc(&mut self, cc: u8, m: usize, H: bool, imm9: u16, t: usize) {
+        if !Cpu::FEAT_CMPBR {
+            panic!("??");
+        }
+
+        let (op, unsigned) = match cc {
+            0b000 => (CmpOp::GT, false),
+            0b001 => (CmpOp::GE, false),
+            0b010 => (CmpOp::GT, true),
+            0b011 => (CmpOp::GE, true),
+            0b110 => (CmpOp::EQ, true),
+            0b111 => (CmpOp::NE, true),
+            _ => unreachable!(),
+        };
+
+        let offset = shared::sint::<11>((imm9 as u64) << 2);
+
+        let datasize = 8usize << (H as u8);
+        let operand1 = n_bits(self.x[t], datasize);
+        let operand2 = n_bits(self.x[m], datasize);
+
+        let cond = if unsigned {
+            let value1 = operand1;
+            let value2 = operand2;
+
+            match op {
+                CmpOp::EQ => value1 == value2,
+                CmpOp::NE => value1 != value2,
+                CmpOp::GT => value1 > value2,
+                CmpOp::GE => value1 >= value2,
+                _ => unreachable!(),
+            }
+        } else {
+            let value1 = operand1 as i64;
+            let value2 = operand2 as i64;
+
+            match op {
+                CmpOp::EQ => value1 == value2,
+                CmpOp::NE => value1 != value2,
+                CmpOp::GT => value1 > value2,
+                CmpOp::GE => value1 >= value2,
+                _ => unreachable!(),
+            }
+        };
+
+        if cond {
+            self.branch_to::<64>(((self.pc as i64) + offset) as u64, BranchType::DIR, true);
+        } else {
+            self.branch_not_taken(BranchType::DIR, true);
+        }
+    }
+
+    /// **CBBLE**: Compare signed less than or equal to bytes and branch
+    ///
+    /// This instruction compares the signed byte values in two registers, and conditionally branches to a label at a PC-relative
+    /// offset if the second value is less than or equal to the first. This instruction provides a hint that this is not a subroutine call or
+    /// return. This instruction does not affect the condition flags.
+    pub fn cbb_le(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
+        self.cbb_cc(0b001, m, H, imm9, t)
+    }
+
+    /// **CBBLO**: Compare unsigned lower than bytes and branch
+    ///
+    /// This instruction compares the unsigned byte values in two registers, and conditionally branches to a label at a PC-relative
+    /// offset if the second value is lower than the first. This instruction provides a hint that this is not a subroutine call or return.
+    ///
+    /// This instruction does not affect the condition flags.
+    pub fn cbb_lo(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
+        self.cbb_cc(0b010, m, H, imm9, t)
+    }
+
+    /// **CBBLS**: Compare unsigned lower than or same as bytes and branch
+    ///
+    /// This instruction compares the unsigned byte values in two registers, and conditionally branches to a label at a PC-relative
+    /// offset if the second value is lower than or the same as the first. This instruction provides a hint that this is not a subroutine
+    /// call or return. This instruction does not affect the condition flags.
+    pub fn cbb_ls(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
+        self.cbb_cc(0b011, m, H, imm9, t)
+    }
+
+    /// **CBBLT**: Compare signed less than bytes and branch
+    ///
+    /// This instruction compares the signed byte values in two registers, and conditionally branches to a label at a PC-relative
+    /// offset if the second value is less than the first. This instruction provides a hint that this is not a subroutine call or return. This
+    /// instruction does not affect the condition flags.
+    pub fn cbb_lt(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
+        self.cbb_cc(0b000, m, H, imm9, t)
     }
 }

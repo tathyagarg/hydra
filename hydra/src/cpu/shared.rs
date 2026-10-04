@@ -480,6 +480,7 @@ impl Cpu {
         }
     }
 
+    #[allow(unused_variables)]
     pub fn pmu_event3(&self, pmuevent: u16, increment: usize, idx: usize) {
         if !Cpu::FEAT_PMUv3 {
             return;

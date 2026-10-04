@@ -9,3 +9,7 @@ pub fn ones(w: u32) -> u64 {
         w => (1u64 << w) - 1,
     }
 }
+
+pub fn n_bits<T: Into<u64>>(v: T, n: usize) -> u64 {
+    v.into() & ones(n as u32)
+}

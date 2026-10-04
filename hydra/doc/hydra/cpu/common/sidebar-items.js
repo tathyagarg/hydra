@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["nth_bit","ones"]};
+window.SIDEBAR_ITEMS = {"fn":["n_bits","nth_bit","ones"]};
