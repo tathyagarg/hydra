@@ -1,3 +1,3 @@
-var srcIndex = new Map(JSON.parse('[["lib",["",[["cpu",[["regs",[],["brbcr_el1.rs","brbcr_el2.rs","brbfcr_el0.rs","brbfcr_el1.rs","hcr_el2.rs","mdcr_el3.rs","mod.rs","scr.rs","scr_el3.rs","tcr_el1.rs"]]],["brbe.rs","common.rs","mod.rs","pmu.rs","pstate.rs","shared.rs"]]],["lib.rs"]]],["lib",["",[["cpu",[],["mod.rs","pstate.rs","shared.rs"]]],["lib.rs"]]]]'));
+var srcIndex = new Map(JSON.parse('[["hydra",["",[["cpu",[["regs",[],["brbcr_el1.rs","brbcr_el2.rs","brbfcr_el0.rs","brbfcr_el1.rs","hcr_el2.rs","mdcr_el3.rs","mod.rs","scr.rs","scr_el3.rs","tcr_el1.rs"]]],["brbe.rs","common.rs","mod.rs","pmu.rs","pstate.rs","shared.rs"]]],["lib.rs"]]]]'));
 createSrcSidebar();
-//{"start":36,"fragment_lengths":[248,72]}
+//{"start":36,"fragment_lengths":[250]}
