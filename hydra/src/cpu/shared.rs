@@ -50,7 +50,7 @@ fn replicate(val: u64, elem_bits: u32, total_bits: u32) -> u64 {
     result
 }
 
-fn ror(val: u64, amount: u32, width: u32) -> u64 {
+pub fn ror(val: u64, amount: u32, width: u32) -> u64 {
     let mask = ones(width);
     let val = val & mask;
     let amount = (amount % width) as u64;

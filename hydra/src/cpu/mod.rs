@@ -395,6 +395,10 @@ impl Default for Cpu {
 
 impl Cpu {
     pub const FEAT_AA64: bool = true;
+    pub const FEAT_AA64EL0: bool = true;
+    pub const FEAT_AA64EL1: bool = true;
+    pub const FEAT_AA64EL2: bool = true;
+    pub const FEAT_AA64EL3: bool = true;
 
     #[allow(non_upper_case_globals)]
     pub const FEAT_PAuth: bool = false;
@@ -403,11 +407,6 @@ impl Cpu {
     pub const FEAT_AA32EL1: bool = false;
     pub const FEAT_AA32EL2: bool = false;
     pub const FEAT_AA32EL3: bool = false;
-
-    pub const FEAT_AA64EL0: bool = false;
-    pub const FEAT_AA64EL1: bool = false;
-    pub const FEAT_AA64EL2: bool = false;
-    pub const FEAT_AA64EL3: bool = false;
 
     pub const FEAT_SECURE: bool = false;
 
@@ -1319,6 +1318,10 @@ impl Cpu {
         self.pstate.V = false;
     }
 
+    /// **B.cond**: Branch conditionally
+    ///
+    /// This instruction branches conditionally to a label at a PC-relative offset. This instruction provides a hint that this is not a
+    /// subroutine call or return.
     pub fn b_cond(&mut self, imm19: u32, cond: u8) {
         let offset = shared::sint::<21>((imm19 << 2) as u64) as u64;
         if self.condition_holds(cond) {
@@ -1326,5 +1329,104 @@ impl Cpu {
         } else {
             self.branch_not_taken(BranchType::DIR, true);
         }
+    }
+
+    /// **B**: Branch
+    ///
+    /// This instruction branches unconditionally to a label at a PC-relative offset. This instruction provides a hint that this is not a
+    /// subroutine call or return.
+    pub fn b(&mut self, imm26: u32) {
+        let offset = shared::sint::<28>((imm26 << 2) as u64) as u64;
+        self.branch_to::<64>(self.pc + offset, BranchType::DIR, false);
+    }
+
+    #[allow(unused_variables)]
+    pub fn bc_cond(&mut self, imm19: u32, cond: u8) {
+        todo!()
+    }
+
+    /// **BFC**: Bitfield clear
+    ///
+    /// This instruction sets a bitfield of &lt;width&gt; bits at bit position &lt;lsb&gt; of the destination register to zero, leaving the other
+    /// destination bits unchanged.
+    pub fn bfc(&mut self, sf: bool, N: bool, immr: u8, imms: u8, d: usize) {
+        self.bfm(sf, N, immr, imms, 31, d)
+    }
+
+    /// **BFI**: Bitfield insert
+    ///
+    /// This instruction copies a bitfield of &lt;width&gt; bits from the least significant bits of the source register to bit position &lt;lsb&gt;
+    /// of the destination register, leaving the other destination bits unchanged.
+    pub fn bfi(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
+        self.bfm(sf, N, immr, imms, n, d)
+    }
+
+    /// **BFM**: Bitfield move
+    ///
+    /// This instruction is usually accessed using one of its aliases, which are always preferred for disassembly.
+    ///
+    /// If &lt;imms&gt; is greater than or equal to &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;-&lt;immr&gt;+1) bits starting from bit position
+    /// &lt;immr&gt; in the source register to the least significant bits of the destination register.
+    ///
+    /// If &lt;imms&gt; is less than &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;+1) bits from the least significant bits of the source register
+    /// to bit position (regsize-&lt;immr&gt;) of the destination register, where regsize is the destination register size of 32 or 64 bits.
+    ///
+    /// In both cases, the other bits of the destination register remain unchanged.
+    pub fn bfm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
+        let (wmask, tmask) = if sf {
+            decode_bit_masks::<64>(N, imms, immr)
+        } else {
+            decode_bit_masks::<32>(N, imms, immr)
+        };
+
+        let src = if n == 31 { self._get_op(n, sf) } else { 0 };
+        let dst = self._get_op(d, sf);
+
+        let bot = (dst & !wmask) | (shared::ror(src, immr as u32, 32u32 << (sf as u32)) & wmask);
+        self._set_op(d, (dst & !tmask) | (bot & tmask), sf);
+    }
+
+    /// **BFXIL**: Bitfield extract and insert at low end
+    ///
+    /// This instruction copies a bitfield of &lt;width&gt; bits starting from bit position &lt;lsb&gt; in the source register to the least
+    /// significant bits of the destination register, leaving the other destination bits unchanged.
+    pub fn bfxil(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
+        self.bfm(sf, N, immr, imms, n, d)
+    }
+
+    /// **BIC (shifted register)**: Bitwise bit clear (shifted register)
+    ///
+    /// This instruction performs a bitwise AND between a register value and the complement of an optionally-shifted register
+    /// value, and writes the result to the destination register.
+    #[allow(unused_variables)]
+    pub fn bic(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+        todo!()
+    }
+
+    /// **BICS (shifted register)**: Bitwise bit clear (shifted register), setting flags
+    ///
+    /// This instruction performs a bitwise AND between a register value and the complement of an optionally-shifted register
+    /// value, and writes the result to the destination register. It updates the condition flags based on the result.
+    #[allow(unused_variables)]
+    pub fn bics(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+        todo!()
+    }
+
+    /// **BL**: Branch with link
+    ///
+    /// This instruction branches to a PC-relative offset, setting register X30 to PC+4. This instruction provides a hint that this is a
+    /// subroutine call.
+    #[allow(unused_variables)]
+    pub fn bl(&mut self, imm26: u32) {
+        todo!()
+    }
+
+    /// **BLR**: Branch with link to register
+    ///
+    /// This instruction calls a subroutine at an address in a register, setting register X30 to PC+4. This instruction provides a hint
+    /// that this is a subroutine call.
+    #[allow(unused_variables)]
+    pub fn blr(&mut self, n: usize) {
+        todo!()
     }
 }
