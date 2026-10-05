@@ -1789,4 +1789,107 @@ impl Cpu {
     pub fn cbb_lt(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
         self.cbb_cc(0b000, m, H, imm9, t)
     }
+
+    /// **CB&lt;cc&gt; (immediate)**: Compare register with immediate and branch
+    ///
+    /// This instruction compares the value in a register with an immediate, and conditionally branches to a label at a PC-relative
+    /// offset if the comparison is true. This instruction provides a hint that this is not a subroutine call or return. This instruction
+    /// does not affect the condition flags.
+    pub fn cb_cc_imm(&mut self, sf: bool, cc: u8, imm6: u8, imm9: u16, t: usize) {
+        let offset = shared::sint::<11>((imm9 << 2) as u64);
+
+        let (op, unsigned) = match cc {
+            0b000 => (CmpOp::GT, false),
+            0b001 => (CmpOp::LT, false),
+            0b010 => (CmpOp::GT, true),
+            0b011 => (CmpOp::LT, true),
+            0b110 => (CmpOp::EQ, true),
+            0b111 => (CmpOp::NE, true),
+            _ => unreachable!(),
+        };
+
+        let operand1 = self._get_op(t, sf);
+
+        let cond = if unsigned {
+            let value1 = operand1;
+            let value2 = imm6 as u64;
+
+            match op {
+                CmpOp::EQ => value1 == value2,
+                CmpOp::NE => value1 != value2,
+                CmpOp::GT => value1 > value2,
+                CmpOp::LT => value1 < value2,
+                _ => unreachable!(),
+            }
+        } else {
+            let value1 = operand1 as i64;
+            let value2 = imm6 as i64;
+
+            match op {
+                CmpOp::EQ => value1 == value2,
+                CmpOp::NE => value1 != value2,
+                CmpOp::GT => value1 > value2,
+                CmpOp::LT => value1 < value2,
+                _ => unreachable!(),
+            }
+        };
+
+        if cond {
+            self.branch_to::<64>(((self.pc as i64) + offset) as u64, BranchType::DIR, true);
+        } else {
+            self.branch_not_taken(BranchType::DIR, true);
+        }
+    }
+
+    /// **CB&lt;cc&gt; (register)**: Compare registers and branch
+    ///
+    /// This instruction compares the values in two registers, and conditionally branches to a label at a PC-relative offset if the
+    /// condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not affect
+    /// the condition flags.
+    pub fn cb_cc_reg(&mut self, sf: bool, cc: u8, m: usize, imm9: u16, t: usize) {
+        let offset = shared::sint::<11>((imm9 << 2) as u64);
+
+        let (op, unsigned) = match cc {
+            0b000 => (CmpOp::GT, false),
+            0b001 => (CmpOp::GE, false),
+            0b010 => (CmpOp::GT, true),
+            0b011 => (CmpOp::GE, true),
+            0b110 => (CmpOp::EQ, true),
+            0b111 => (CmpOp::NE, true),
+            _ => unreachable!(),
+        };
+
+        let operand1 = self._get_op(t, sf);
+        let operand2 = self._get_op(m, sf);
+
+        let cond = if unsigned {
+            let value1 = operand1;
+            let value2 = operand2;
+
+            match op {
+                CmpOp::EQ => value1 == value2,
+                CmpOp::NE => value1 != value2,
+                CmpOp::GT => value1 > value2,
+                CmpOp::LT => value1 < value2,
+                _ => unreachable!(),
+            }
+        } else {
+            let value1 = operand1 as i64;
+            let value2 = operand2 as i64;
+
+            match op {
+                CmpOp::EQ => value1 == value2,
+                CmpOp::NE => value1 != value2,
+                CmpOp::GT => value1 > value2,
+                CmpOp::LT => value1 < value2,
+                _ => unreachable!(),
+            }
+        };
+
+        if cond {
+            self.branch_to::<64>(((self.pc as i64) + offset) as u64, BranchType::DIR, true);
+        } else {
+            self.branch_not_taken(BranchType::DIR, true);
+        }
+    }
 }

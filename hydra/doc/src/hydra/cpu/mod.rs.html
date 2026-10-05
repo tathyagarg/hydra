@@ -1789,4 +1789,107 @@
 <a href=#1789 id=1789 data-nosnippet>1789</a>    </span><span class="kw">pub fn </span>cbb_lt(<span class="kw-2">&amp;mut </span><span class="self">self</span>, m: usize, H: bool, imm9: u16, t: usize) {
 <a href=#1790 id=1790 data-nosnippet>1790</a>        <span class="self">self</span>.cbb_cc(<span class="number">0b000</span>, m, H, imm9, t)
 <a href=#1791 id=1791 data-nosnippet>1791</a>    }
-<a href=#1792 id=1792 data-nosnippet>1792</a>}</code></pre></div></section></main></body></html>
+<a href=#1792 id=1792 data-nosnippet>1792</a>
+<a href=#1793 id=1793 data-nosnippet>1793</a>    <span class="doccomment">/// **CB&amp;lt;cc&amp;gt; (immediate)**: Compare register with immediate and branch
+<a href=#1794 id=1794 data-nosnippet>1794</a>    ///
+<a href=#1795 id=1795 data-nosnippet>1795</a>    /// This instruction compares the value in a register with an immediate, and conditionally branches to a label at a PC-relative
+<a href=#1796 id=1796 data-nosnippet>1796</a>    /// offset if the comparison is true. This instruction provides a hint that this is not a subroutine call or return. This instruction
+<a href=#1797 id=1797 data-nosnippet>1797</a>    /// does not affect the condition flags.
+<a href=#1798 id=1798 data-nosnippet>1798</a>    </span><span class="kw">pub fn </span>cb_cc_imm(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, cc: u8, imm6: u8, imm9: u16, t: usize) {
+<a href=#1799 id=1799 data-nosnippet>1799</a>        <span class="kw">let </span>offset = shared::sint::&lt;<span class="number">11</span>&gt;((imm9 &lt;&lt; <span class="number">2</span>) <span class="kw">as </span>u64);
+<a href=#1800 id=1800 data-nosnippet>1800</a>
+<a href=#1801 id=1801 data-nosnippet>1801</a>        <span class="kw">let </span>(op, unsigned) = <span class="kw">match </span>cc {
+<a href=#1802 id=1802 data-nosnippet>1802</a>            <span class="number">0b000 </span>=&gt; (CmpOp::GT, <span class="bool-val">false</span>),
+<a href=#1803 id=1803 data-nosnippet>1803</a>            <span class="number">0b001 </span>=&gt; (CmpOp::LT, <span class="bool-val">false</span>),
+<a href=#1804 id=1804 data-nosnippet>1804</a>            <span class="number">0b010 </span>=&gt; (CmpOp::GT, <span class="bool-val">true</span>),
+<a href=#1805 id=1805 data-nosnippet>1805</a>            <span class="number">0b011 </span>=&gt; (CmpOp::LT, <span class="bool-val">true</span>),
+<a href=#1806 id=1806 data-nosnippet>1806</a>            <span class="number">0b110 </span>=&gt; (CmpOp::EQ, <span class="bool-val">true</span>),
+<a href=#1807 id=1807 data-nosnippet>1807</a>            <span class="number">0b111 </span>=&gt; (CmpOp::NE, <span class="bool-val">true</span>),
+<a href=#1808 id=1808 data-nosnippet>1808</a>            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+<a href=#1809 id=1809 data-nosnippet>1809</a>        };
+<a href=#1810 id=1810 data-nosnippet>1810</a>
+<a href=#1811 id=1811 data-nosnippet>1811</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._get_op(t, sf);
+<a href=#1812 id=1812 data-nosnippet>1812</a>
+<a href=#1813 id=1813 data-nosnippet>1813</a>        <span class="kw">let </span>cond = <span class="kw">if </span>unsigned {
+<a href=#1814 id=1814 data-nosnippet>1814</a>            <span class="kw">let </span>value1 = operand1;
+<a href=#1815 id=1815 data-nosnippet>1815</a>            <span class="kw">let </span>value2 = imm6 <span class="kw">as </span>u64;
+<a href=#1816 id=1816 data-nosnippet>1816</a>
+<a href=#1817 id=1817 data-nosnippet>1817</a>            <span class="kw">match </span>op {
+<a href=#1818 id=1818 data-nosnippet>1818</a>                CmpOp::EQ =&gt; value1 == value2,
+<a href=#1819 id=1819 data-nosnippet>1819</a>                CmpOp::NE =&gt; value1 != value2,
+<a href=#1820 id=1820 data-nosnippet>1820</a>                CmpOp::GT =&gt; value1 &gt; value2,
+<a href=#1821 id=1821 data-nosnippet>1821</a>                CmpOp::LT =&gt; value1 &lt; value2,
+<a href=#1822 id=1822 data-nosnippet>1822</a>                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+<a href=#1823 id=1823 data-nosnippet>1823</a>            }
+<a href=#1824 id=1824 data-nosnippet>1824</a>        } <span class="kw">else </span>{
+<a href=#1825 id=1825 data-nosnippet>1825</a>            <span class="kw">let </span>value1 = operand1 <span class="kw">as </span>i64;
+<a href=#1826 id=1826 data-nosnippet>1826</a>            <span class="kw">let </span>value2 = imm6 <span class="kw">as </span>i64;
+<a href=#1827 id=1827 data-nosnippet>1827</a>
+<a href=#1828 id=1828 data-nosnippet>1828</a>            <span class="kw">match </span>op {
+<a href=#1829 id=1829 data-nosnippet>1829</a>                CmpOp::EQ =&gt; value1 == value2,
+<a href=#1830 id=1830 data-nosnippet>1830</a>                CmpOp::NE =&gt; value1 != value2,
+<a href=#1831 id=1831 data-nosnippet>1831</a>                CmpOp::GT =&gt; value1 &gt; value2,
+<a href=#1832 id=1832 data-nosnippet>1832</a>                CmpOp::LT =&gt; value1 &lt; value2,
+<a href=#1833 id=1833 data-nosnippet>1833</a>                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+<a href=#1834 id=1834 data-nosnippet>1834</a>            }
+<a href=#1835 id=1835 data-nosnippet>1835</a>        };
+<a href=#1836 id=1836 data-nosnippet>1836</a>
+<a href=#1837 id=1837 data-nosnippet>1837</a>        <span class="kw">if </span>cond {
+<a href=#1838 id=1838 data-nosnippet>1838</a>            <span class="self">self</span>.branch_to::&lt;<span class="number">64</span>&gt;(((<span class="self">self</span>.pc <span class="kw">as </span>i64) + offset) <span class="kw">as </span>u64, BranchType::DIR, <span class="bool-val">true</span>);
+<a href=#1839 id=1839 data-nosnippet>1839</a>        } <span class="kw">else </span>{
+<a href=#1840 id=1840 data-nosnippet>1840</a>            <span class="self">self</span>.branch_not_taken(BranchType::DIR, <span class="bool-val">true</span>);
+<a href=#1841 id=1841 data-nosnippet>1841</a>        }
+<a href=#1842 id=1842 data-nosnippet>1842</a>    }
+<a href=#1843 id=1843 data-nosnippet>1843</a>
+<a href=#1844 id=1844 data-nosnippet>1844</a>    <span class="doccomment">/// **CB&amp;lt;cc&amp;gt; (register)**: Compare registers and branch
+<a href=#1845 id=1845 data-nosnippet>1845</a>    ///
+<a href=#1846 id=1846 data-nosnippet>1846</a>    /// This instruction compares the values in two registers, and conditionally branches to a label at a PC-relative offset if the
+<a href=#1847 id=1847 data-nosnippet>1847</a>    /// condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not affect
+<a href=#1848 id=1848 data-nosnippet>1848</a>    /// the condition flags.
+<a href=#1849 id=1849 data-nosnippet>1849</a>    </span><span class="kw">pub fn </span>cb_cc_reg(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: bool, cc: u8, m: usize, imm9: u16, t: usize) {
+<a href=#1850 id=1850 data-nosnippet>1850</a>        <span class="kw">let </span>offset = shared::sint::&lt;<span class="number">11</span>&gt;((imm9 &lt;&lt; <span class="number">2</span>) <span class="kw">as </span>u64);
+<a href=#1851 id=1851 data-nosnippet>1851</a>
+<a href=#1852 id=1852 data-nosnippet>1852</a>        <span class="kw">let </span>(op, unsigned) = <span class="kw">match </span>cc {
+<a href=#1853 id=1853 data-nosnippet>1853</a>            <span class="number">0b000 </span>=&gt; (CmpOp::GT, <span class="bool-val">false</span>),
+<a href=#1854 id=1854 data-nosnippet>1854</a>            <span class="number">0b001 </span>=&gt; (CmpOp::GE, <span class="bool-val">false</span>),
+<a href=#1855 id=1855 data-nosnippet>1855</a>            <span class="number">0b010 </span>=&gt; (CmpOp::GT, <span class="bool-val">true</span>),
+<a href=#1856 id=1856 data-nosnippet>1856</a>            <span class="number">0b011 </span>=&gt; (CmpOp::GE, <span class="bool-val">true</span>),
+<a href=#1857 id=1857 data-nosnippet>1857</a>            <span class="number">0b110 </span>=&gt; (CmpOp::EQ, <span class="bool-val">true</span>),
+<a href=#1858 id=1858 data-nosnippet>1858</a>            <span class="number">0b111 </span>=&gt; (CmpOp::NE, <span class="bool-val">true</span>),
+<a href=#1859 id=1859 data-nosnippet>1859</a>            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+<a href=#1860 id=1860 data-nosnippet>1860</a>        };
+<a href=#1861 id=1861 data-nosnippet>1861</a>
+<a href=#1862 id=1862 data-nosnippet>1862</a>        <span class="kw">let </span>operand1 = <span class="self">self</span>._get_op(t, sf);
+<a href=#1863 id=1863 data-nosnippet>1863</a>        <span class="kw">let </span>operand2 = <span class="self">self</span>._get_op(m, sf);
+<a href=#1864 id=1864 data-nosnippet>1864</a>
+<a href=#1865 id=1865 data-nosnippet>1865</a>        <span class="kw">let </span>cond = <span class="kw">if </span>unsigned {
+<a href=#1866 id=1866 data-nosnippet>1866</a>            <span class="kw">let </span>value1 = operand1;
+<a href=#1867 id=1867 data-nosnippet>1867</a>            <span class="kw">let </span>value2 = operand2;
+<a href=#1868 id=1868 data-nosnippet>1868</a>
+<a href=#1869 id=1869 data-nosnippet>1869</a>            <span class="kw">match </span>op {
+<a href=#1870 id=1870 data-nosnippet>1870</a>                CmpOp::EQ =&gt; value1 == value2,
+<a href=#1871 id=1871 data-nosnippet>1871</a>                CmpOp::NE =&gt; value1 != value2,
+<a href=#1872 id=1872 data-nosnippet>1872</a>                CmpOp::GT =&gt; value1 &gt; value2,
+<a href=#1873 id=1873 data-nosnippet>1873</a>                CmpOp::LT =&gt; value1 &lt; value2,
+<a href=#1874 id=1874 data-nosnippet>1874</a>                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+<a href=#1875 id=1875 data-nosnippet>1875</a>            }
+<a href=#1876 id=1876 data-nosnippet>1876</a>        } <span class="kw">else </span>{
+<a href=#1877 id=1877 data-nosnippet>1877</a>            <span class="kw">let </span>value1 = operand1 <span class="kw">as </span>i64;
+<a href=#1878 id=1878 data-nosnippet>1878</a>            <span class="kw">let </span>value2 = operand2 <span class="kw">as </span>i64;
+<a href=#1879 id=1879 data-nosnippet>1879</a>
+<a href=#1880 id=1880 data-nosnippet>1880</a>            <span class="kw">match </span>op {
+<a href=#1881 id=1881 data-nosnippet>1881</a>                CmpOp::EQ =&gt; value1 == value2,
+<a href=#1882 id=1882 data-nosnippet>1882</a>                CmpOp::NE =&gt; value1 != value2,
+<a href=#1883 id=1883 data-nosnippet>1883</a>                CmpOp::GT =&gt; value1 &gt; value2,
+<a href=#1884 id=1884 data-nosnippet>1884</a>                CmpOp::LT =&gt; value1 &lt; value2,
+<a href=#1885 id=1885 data-nosnippet>1885</a>                <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+<a href=#1886 id=1886 data-nosnippet>1886</a>            }
+<a href=#1887 id=1887 data-nosnippet>1887</a>        };
+<a href=#1888 id=1888 data-nosnippet>1888</a>
+<a href=#1889 id=1889 data-nosnippet>1889</a>        <span class="kw">if </span>cond {
+<a href=#1890 id=1890 data-nosnippet>1890</a>            <span class="self">self</span>.branch_to::&lt;<span class="number">64</span>&gt;(((<span class="self">self</span>.pc <span class="kw">as </span>i64) + offset) <span class="kw">as </span>u64, BranchType::DIR, <span class="bool-val">true</span>);
+<a href=#1891 id=1891 data-nosnippet>1891</a>        } <span class="kw">else </span>{
+<a href=#1892 id=1892 data-nosnippet>1892</a>            <span class="self">self</span>.branch_not_taken(BranchType::DIR, <span class="bool-val">true</span>);
+<a href=#1893 id=1893 data-nosnippet>1893</a>        }
+<a href=#1894 id=1894 data-nosnippet>1894</a>    }
+<a href=#1895 id=1895 data-nosnippet>1895</a>}</code></pre></div></section></main></body></html>
