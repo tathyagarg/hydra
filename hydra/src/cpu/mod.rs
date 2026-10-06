@@ -8,6 +8,7 @@ use crate::cpu::{
 
 mod brbe;
 pub mod common;
+mod exeception;
 mod instructions;
 mod pmu;
 mod pstate;
@@ -95,6 +96,18 @@ pub enum BranchType {
     EXCEPTION,
     RESET,
     UNKNOWN,
+}
+
+pub enum DecodeType {
+    NOP,
+    UNDEF,
+    OK,
+}
+
+#[derive(Debug)]
+pub enum EndOfInstructionReason {
+    Retired,
+    Exception,
 }
 
 fn to_uint<const N: usize>(v: u64) -> u64 {
@@ -339,6 +352,7 @@ pub struct Cpu {
 
     scr: u32,
     scr_el3: u64,
+    edscr: u32,
 
     hcr_el2: u64,
 
@@ -371,6 +385,7 @@ impl Default for Cpu {
             tcr_el3: 0,
             scr: 0,
             scr_el3: 0,
+            edscr: 0,
             hcr_el2: 0,
             brbfcr_el0: 0,
             brbfcr_el1: 0,
@@ -404,39 +419,42 @@ impl Default for Cpu {
 
 #[derive(Hash, Eq, PartialEq)]
 pub enum Feature {
-    AA64,
-    AA64EL0,
-    AA64EL1,
-    AA64EL2,
-    AA64EL3,
-
-    PAuth,
-
     AA32,
     AA32EL0,
     AA32EL1,
     AA32EL2,
     AA32EL3,
 
-    SECURE,
-
-    SEL2,
-    VHE,
-
-    E2H0,
+    AA64,
+    AA64EL0,
+    AA64EL1,
+    AA64EL2,
+    AA64EL3,
 
     BRBE,
     BRBEv1p1,
+    BTI,
 
-    RME,
+    CMPBR,
+    CSSC,
 
+    E2H0,
+    ExS,
+
+    IESB,
+
+    PAuth,
     PMUv3,
-
     #[allow(non_camel_case_types)]
     PMUv3_ICNTR,
 
+    RME,
+
+    SECURE,
+    SEL2,
     SPE,
-    CMPBR,
+
+    VHE,
 }
 
 impl Cpu {
@@ -446,34 +464,41 @@ impl Cpu {
 
     pub const fn is_feature_implemented(feat: Feature) -> bool {
         match feat {
-            Feature::AA64 => true,
-            Feature::AA64EL0 => false,
-            Feature::AA64EL1 => false,
-            Feature::AA64EL2 => false,
-            Feature::AA64EL3 => false,
-
-            Feature::PAuth => false,
-            Feature::SECURE => false,
-
             Feature::AA32 => false,
             Feature::AA32EL0 => false,
             Feature::AA32EL1 => false,
             Feature::AA32EL2 => false,
             Feature::AA32EL3 => false,
 
-            Feature::SEL2 => false,
-            Feature::VHE => false,
-            Feature::E2H0 => false,
+            Feature::AA64 => true,
+            Feature::AA64EL0 => false,
+            Feature::AA64EL1 => false,
+            Feature::AA64EL2 => false,
+            Feature::AA64EL3 => false,
 
             Feature::BRBE => false,
             Feature::BRBEv1p1 => false,
-            Feature::RME => false,
+            Feature::BTI => false,
 
+            Feature::CMPBR => true,
+            Feature::CSSC => true,
+
+            Feature::E2H0 => false,
+            Feature::ExS => false,
+
+            Feature::IESB => false,
+
+            Feature::PAuth => false,
             Feature::PMUv3 => false,
             Feature::PMUv3_ICNTR => false,
 
+            Feature::RME => false,
+
+            Feature::SECURE => false,
+            Feature::SEL2 => false,
             Feature::SPE => false,
-            Feature::CMPBR => true,
+
+            Feature::VHE => false,
         }
     }
 

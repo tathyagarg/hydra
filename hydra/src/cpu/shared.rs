@@ -1,11 +1,12 @@
 use crate::cpu::{
-    BranchType, Cpu, ExtendType, Feature, ShiftType,
+    BranchType, Cpu, DecodeType, EndOfInstructionReason, ExtendType, Feature, ShiftType,
     brbe::{BRBSRC_EL1_Type, BRBTGT_EL1_Type},
     common::*,
+    exeception::{Exception, ExceptionRecord},
     regs::{
         brbcr_el1::BRBCR_EL1Field, brbcr_el2::BRBCR_EL2Field, brbfcr_el0::BRBFCR_EL0Field,
-        brbfcr_el1::BRBFCR_EL1Field, hcr_el2::HCR_EL2Field, mdcr_el3::MDCR_EL3Field, scr::SCRField,
-        scr_el3::SCR_EL3Field, tcr_el1::TCR_EL1Field,
+        brbfcr_el1::BRBFCR_EL1Field, edscr::EDSCRField, hcr_el2::HCR_EL2Field,
+        mdcr_el3::MDCR_EL3Field, scr::SCRField, scr_el3::SCR_EL3Field, tcr_el1::TCR_EL1Field,
     },
 };
 
@@ -188,6 +189,120 @@ pub(super) fn decode_bit_masks<const M: usize>(imm_n: bool, imms: u8, immr: u8) 
 }
 
 impl Cpu {
+    pub fn halted(&self) -> bool {
+        ![0b00000001, 0b00000010].contains(&EDSCRField::STATUS.fetch_range(self.edscr))
+    }
+
+    pub fn branch_target_check(&self) {
+        assert!(Cpu::is_feature_implemented(Feature::BTI) && !self.using_aarch32());
+
+        if self.halted() {
+            return;
+        } else if self.pstate.BTYPE() == 0 {
+            return;
+        } else {
+            unimplemented!("InGuardedPage and BTypeCompatible checks")
+        }
+    }
+
+    pub fn end_of_instruction(&self, end_reason: EndOfInstructionReason) {
+        panic!("End of Instruction: {:?}", end_reason);
+    }
+
+    pub fn execute_as_nop(&self) {
+        self.end_of_instruction(EndOfInstructionReason::Retired);
+    }
+
+    pub fn this_instr_addr<const N: usize>(&self) -> u64 {
+        assert!(N == 64 || (N == 32 && self.using_aarch32()));
+        n_bits(self.pc, N)
+    }
+
+    pub fn aarch32_general_execeptions_to_aarch64(&self) -> bool {
+        return (self.pstate.EL() == EL0 && !self.el_using_aarch32(EL1))
+            || (self.el2_enabled()
+                && !self.el_using_aarch32(EL2)
+                && HCR_EL2Field::TGE.fetch_bit(self.hcr_el2));
+    }
+
+    pub fn aarch64_take_exception(
+        &self,
+        target_el: u8,
+        exception_in: &ExceptionRecord,
+        preferred_exception_return: u64,
+        vec_offset_in: isize,
+    ) {
+        assert!(
+            self.have_el(target_el)
+                && !self.el_using_aarch32(target_el)
+                && target_el >= self.pstate.EL()
+        );
+
+        if self.halted() {
+            unimplemented!("Take Exception in debug state");
+        }
+
+        let except = exception_in;
+        let mut sync_errors = false;
+        let mut iesb_req = false;
+
+        if Cpu::is_feature_implemented(Feature::IESB) {
+            todo!("IESB feature not implemented");
+        } else {
+            sync_errors = false;
+        }
+
+        let mut brbe_source_allowed = false;
+        let mut brbe_source_address = 0u64;
+
+        if Cpu::is_feature_implemented(Feature::BRBE) {
+            brbe_source_allowed = self.branch_record_allowed(self.pstate.EL());
+            brbe_source_address = preferred_exception_return;
+        }
+
+        if !Cpu::is_feature_implemented(Feature::ExS) {}
+    }
+
+    pub fn aarch64_undefined(&self) {
+        let route_to_el2 = self.pstate.EL() == EL0
+            && self.el2_enabled()
+            && HCR_EL2Field::TGE.fetch_bit(self.hcr_el2);
+        let preferred_exception_return = self.this_instr_addr::<64>();
+        let vect_offset = 0x0isize;
+
+        let except = ExceptionRecord::syndrome(Exception::Uncategorized);
+
+        if self.pstate.EL() > EL1 {}
+    }
+
+    pub fn aarch32_undefined(&self) {
+        if self.aarch32_general_execeptions_to_aarch64() {
+            self.aarch64_undefined();
+        }
+
+        unimplemented!("AArch32_TakeUndefInstrException");
+    }
+
+    pub fn undefined(&self) {
+        if self.using_aarch32() {
+            self.aarch32_undefined();
+        } else {
+            self.aarch64_undefined();
+        }
+    }
+
+    pub fn end_of_decode(&self, reason: DecodeType) {
+        if Cpu::is_feature_implemented(Feature::BTI) && !self.using_aarch32() {
+            self.branch_target_check();
+        }
+
+        match reason {
+            DecodeType::NOP => self.execute_as_nop(),
+            DecodeType::UNDEF => self.undefined(),
+            DecodeType::OK => {}
+        }
+    }
+
     pub fn imp_def_int(&self, name: &str) -> u64 {
         match name {
             "Number of BRBE Branch records" => 32,
@@ -231,7 +346,7 @@ impl Cpu {
         if N == 32 {
             self.pc = target;
         } else {
-            let target_vaddress = self.aarch64_branchaddr(target, self.pstate.EL);
+            let target_vaddress = self.aarch64_branchaddr(target, self.pstate.EL());
             if Cpu::is_feature_implemented(Feature::BRBE)
                 && matches!(
                     branch_type,
@@ -309,7 +424,7 @@ impl Cpu {
     }
 
     pub fn current_security_state(&self) -> SecurityState {
-        self.security_state_at_el(self.pstate.EL)
+        self.security_state_at_el(self.pstate.EL())
     }
 
     pub fn branch_record_allowed(&self, el: u8) -> bool {
@@ -515,7 +630,8 @@ impl Cpu {
     }
 
     pub fn brbe_branch(&mut self, br_type: BranchType, cond: bool, target_address: u64) {
-        if self.branch_record_allowed(self.pstate.EL) && self.filter_branch_record(&br_type, cond) {
+        if self.branch_record_allowed(self.pstate.EL()) && self.filter_branch_record(&br_type, cond)
+        {
             let branch_type: u8 = match br_type {
                 BranchType::DIR => {
                     if cond {
@@ -532,7 +648,7 @@ impl Cpu {
             };
 
             let (ccu, cc) = self.branch_enc_cycle_count();
-            let el = self.pstate.EL;
+            let el = self.pstate.EL();
 
             let mispredict = self.brbe_mispredict_allowed() && self.branch_mispredict();
 
@@ -744,7 +860,7 @@ impl Cpu {
             return (true, false);
         }
 
-        if self.pstate.EL == EL0 {
+        if self.pstate.EL() == EL0 {
             return (true, self.pstate.nRW);
         } else {
             return (false, false);

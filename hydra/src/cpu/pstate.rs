@@ -17,7 +17,7 @@ pub struct PState {
     pub(super) DIT: bool,    // Data Independent Timing [v8.4]
     pub(super) TCO: bool,    // Tag Check Override [v8.5, AArch64 only]
     pub(super) PM: bool,     // PMU exception Mask
-    pub(super) BTYPE: u8,    // Branch Type [v8.5]
+    _BTYPE: u8,              // Branch Type [v8.5]
     pub(super) PACM: bool,   // PAC instruction modifier
     pub(super) ZA: bool,     // Accumulation array enabled [SME]
     pub(super) SM: bool,     // Streaming SVE mode enabled [SME]
@@ -25,7 +25,7 @@ pub struct PState {
     pub(super) UINJ: bool,   // Undefined Exception Injection
     pub(super) SS: bool,     // Software step bit
     pub(super) IL: bool,     // Illegal Execution state bit
-    pub(super) EL: u8,       // Exception level
+    _EL: u8,                 // Exception level
     pub(super) nRW: bool,    // Execution state: 0=AArch64, 1=AArch32
     pub(super) SP: bool,     // Stack pointer select: 0=SP0, 1=SPx [AArch64 only]
     pub(super) SSBS: bool,   // Speculative Store Bypass Safe
@@ -48,7 +48,7 @@ impl Default for PState {
             DIT: false,
             TCO: false,
             PM: false,
-            BTYPE: 0,
+            _BTYPE: 0,
             PACM: false,
             ZA: false,
             SM: false,
@@ -56,7 +56,7 @@ impl Default for PState {
             UINJ: false,
             SS: false,
             IL: false,
-            EL: 0,
+            _EL: 0,
             nRW: false,
             SP: true,
             SSBS: false,
@@ -94,5 +94,13 @@ impl PState {
 
     pub fn V(&self) -> bool {
         self._V
+    }
+
+    pub fn BTYPE(&self) -> u8 {
+        self._BTYPE
+    }
+
+    pub fn EL(&self) -> u8 {
+        self._EL
     }
 }
