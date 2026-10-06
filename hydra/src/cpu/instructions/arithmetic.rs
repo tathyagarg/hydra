@@ -1,4 +1,6 @@
-use crate::cpu::{Cpu, ExtendType, Feature, Register, ShiftType, common::n_bits, shared};
+use crate::cpu::{
+    Cpu, DecodeType, ExtendType, Feature, Register, ShiftType, common::n_bits, shared,
+};
 
 impl Cpu {
     /// **ABS**: Absolute value
@@ -23,7 +25,9 @@ impl Cpu {
     /// assert_eq!(cpu.__dbg_get_x(1), 1);
     /// ```
     pub fn abs(&mut self, sf: bool, n: Register, d: Register) {
-        if !Cpu::is_feature_implemented(Feature::CSSC) {}
+        if !Cpu::is_feature_implemented(Feature::CSSC) {
+            self.end_of_decode(DecodeType::UNDEF);
+        }
 
         let operand1 = self._get_op(n, sf) as i64;
 
