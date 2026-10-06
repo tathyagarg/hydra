@@ -224,4 +224,13 @@ impl Cpu {
             self.branch_not_taken(BranchType::DIR, true);
         }
     }
+
+    /// **CBH&lt;cc&gt;**: Compare halfwords and branch
+    /// This instruction compares the halfword values in two registers, and conditionally branches to a label at a PC-relative offset
+    /// if the condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not
+    /// affect the condition flags.
+    #[allow(unused_variables)]
+    pub fn cbh_cc(&mut self, cc: u8, m: Register, imm9: u16, t: Register) {
+        todo!()
+    }
 }
