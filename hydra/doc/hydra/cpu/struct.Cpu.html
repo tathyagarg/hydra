@@ -219,42 +219,49 @@ subroutine call or return.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.b" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#21-24">Source</a><h4 class="code-header">pub fn <a href="#method.b" class="fn">b</a>(&amp;mut self, imm26: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u32.html">u32</a>)</h4></section></summary><div class="docblock"><p><strong>B</strong>: Branch</p>
 <p>This instruction branches unconditionally to a label at a PC-relative offset. This instruction provides a hint that this is not a
 subroutine call or return.</p>
-</div></details><section id="method.bc_cond" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#27-29">Source</a><h4 class="code-header">pub fn <a href="#method.bc_cond" class="fn">bc_cond</a>(&amp;mut self, imm19: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u32.html">u32</a>, cond: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>)</h4></section><details class="toggle method-toggle" open><summary><section id="method.cbb_cc" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#36-86">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_cc" class="fn">cbb_cc</a>(&amp;mut self, cc: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>CBB&lt;cc&gt;</strong>: Compare bytes and branch</p>
+</div></details><section id="method.bc_cond" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#27-29">Source</a><h4 class="code-header">pub fn <a href="#method.bc_cond" class="fn">bc_cond</a>(&amp;mut self, imm19: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u32.html">u32</a>, cond: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>)</h4></section><details class="toggle method-toggle" open><summary><section id="method.cbb_cc" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#36-86">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_cc" class="fn">cbb_cc</a>(&amp;mut self, cc: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>)</h4></section></summary><div class="docblock"><p><strong>CBB&lt;cc&gt;</strong>: Compare bytes and branch</p>
 <p>This instruction compares the byte values in two registers, and conditionally branches to a label at a PC-relative offset if the
 condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not affect
 the condition flags.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.cbb_le" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#93-95">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_le" class="fn">cbb_le</a>(&amp;mut self, m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>CBBLE</strong>: Compare signed less than or equal to bytes and branch</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.cbb_le" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#93-95">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_le" class="fn">cbb_le</a>(&amp;mut self, m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>)</h4></section></summary><div class="docblock"><p><strong>CBBLE</strong>: Compare signed less than or equal to bytes and branch</p>
 <p>This instruction compares the signed byte values in two registers, and conditionally branches to a label at a PC-relative
 offset if the second value is less than or equal to the first. This instruction provides a hint that this is not a subroutine call or
 return. This instruction does not affect the condition flags.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.cbb_lo" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#103-105">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_lo" class="fn">cbb_lo</a>(&amp;mut self, m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>CBBLO</strong>: Compare unsigned lower than bytes and branch</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.cbb_lo" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#103-105">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_lo" class="fn">cbb_lo</a>(&amp;mut self, m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>)</h4></section></summary><div class="docblock"><p><strong>CBBLO</strong>: Compare unsigned lower than bytes and branch</p>
 <p>This instruction compares the unsigned byte values in two registers, and conditionally branches to a label at a PC-relative
 offset if the second value is lower than the first. This instruction provides a hint that this is not a subroutine call or return.</p>
 <p>This instruction does not affect the condition flags.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.cbb_ls" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#112-114">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_ls" class="fn">cbb_ls</a>(&amp;mut self, m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>CBBLS</strong>: Compare unsigned lower than or same as bytes and branch</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.cbb_ls" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#112-114">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_ls" class="fn">cbb_ls</a>(&amp;mut self, m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>)</h4></section></summary><div class="docblock"><p><strong>CBBLS</strong>: Compare unsigned lower than or same as bytes and branch</p>
 <p>This instruction compares the unsigned byte values in two registers, and conditionally branches to a label at a PC-relative
 offset if the second value is lower than or the same as the first. This instruction provides a hint that this is not a subroutine
 call or return. This instruction does not affect the condition flags.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.cbb_lt" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#121-123">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_lt" class="fn">cbb_lt</a>(&amp;mut self, m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>CBBLT</strong>: Compare signed less than bytes and branch</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.cbb_lt" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#121-123">Source</a><h4 class="code-header">pub fn <a href="#method.cbb_lt" class="fn">cbb_lt</a>(&amp;mut self, m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>, H: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>)</h4></section></summary><div class="docblock"><p><strong>CBBLT</strong>: Compare signed less than bytes and branch</p>
 <p>This instruction compares the signed byte values in two registers, and conditionally branches to a label at a PC-relative
 offset if the second value is less than the first. This instruction provides a hint that this is not a subroutine call or return. This
 instruction does not affect the condition flags.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.cb_cc_imm" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#130-174">Source</a><h4 class="code-header">pub fn <a href="#method.cb_cc_imm" class="fn">cb_cc_imm</a>(&amp;mut self, sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, cc: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, imm6: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>CB&lt;cc&gt; (immediate)</strong>: Compare register with immediate and branch</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.cb_cc_imm" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#130-174">Source</a><h4 class="code-header">pub fn <a href="#method.cb_cc_imm" class="fn">cb_cc_imm</a>(&amp;mut self, sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, cc: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, imm6: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>)</h4></section></summary><div class="docblock"><p><strong>CB&lt;cc&gt; (immediate)</strong>: Compare register with immediate and branch</p>
 <p>This instruction compares the value in a register with an immediate, and conditionally branches to a label at a PC-relative
 offset if the comparison is true. This instruction provides a hint that this is not a subroutine call or return. This instruction
 does not affect the condition flags.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.cb_cc_reg" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#181-226">Source</a><h4 class="code-header">pub fn <a href="#method.cb_cc_reg" class="fn">cb_cc_reg</a>(&amp;mut self, sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, cc: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>, imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>, t: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>CB&lt;cc&gt; (register)</strong>: Compare registers and branch</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.cb_cc_reg" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/control.rs.html#181-226">Source</a><h4 class="code-header">pub fn <a href="#method.cb_cc_reg" class="fn">cb_cc_reg</a>(
+    &amp;mut self,
+    sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
+    cc: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
+    m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    imm9: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u16.html">u16</a>,
+    t: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+)</h4></section></summary><div class="docblock"><p><strong>CB&lt;cc&gt; (register)</strong>: Compare registers and branch</p>
 <p>This instruction compares the values in two registers, and conditionally branches to a label at a PC-relative offset if the
 condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not affect
 the condition flags.</p>
-</div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Cpu-2" class="impl"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#6-203">Source</a><a href="#impl-Cpu-2" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.Cpu.html" title="struct hydra::cpu::Cpu">Cpu</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method._and_imm" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#40-54">Source</a><h4 class="code-header">pub fn <a href="#method._and_imm" class="fn">_and_imm</a>(
+</div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Cpu-2" class="impl"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#6-235">Source</a><a href="#impl-Cpu-2" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.Cpu.html" title="struct hydra::cpu::Cpu">Cpu</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method._and_imm" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#40-62">Source</a><h4 class="code-header">pub fn <a href="#method._and_imm" class="fn">_and_imm</a>(
     &amp;mut self,
     sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     imm_n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     immr: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
     imms: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
-    d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    n: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
 )</h4></section></summary><div class="docblock"><p><strong>AND (immediate)</strong>: Bitwise AND (immediate)</p>
 <p>This instruction performs a bitwise AND between a register value and an immediate value, and writes the result to the
 destination register.</p>
@@ -274,14 +281,14 @@ destination register.</p>
 </span>cpu._and_imm(<span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="number">0b001101</span>, <span class="number">0b101011</span>, <span class="number">0</span>, <span class="number">1</span>);
 <span class="macro">assert_eq!</span>(cpu.__dbg_get_x(<span class="number">1</span>), <span class="number">2752</span>);</code></pre></div>
 <p>Special thanks to <a href="https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a">https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a</a></p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method._and_sr" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#78-87">Source</a><h4 class="code-header">pub fn <a href="#method._and_sr" class="fn">_and_sr</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method._and_sr" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#86-103">Source</a><h4 class="code-header">pub fn <a href="#method._and_sr" class="fn">_and_sr</a>(
     &amp;mut self,
     sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     shift: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
     imm6: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
-    d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    n: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
 )</h4></section></summary><div class="docblock"><p><strong>AND (Shifted Register)</strong>: Bitwise AND (shifted register)</p>
 <p>This instruction performs a bitwise AND between a register value and an optionally-shifted register value, and writes the
 result to the destination register.</p>
@@ -295,71 +302,87 @@ cpu._and_sr(<span class="bool-val">true</span>, <span class="number">0b00</span>
 cpu.__dbg_set_x(<span class="number">1</span>, <span class="number">5</span>);
 cpu._and_sr(<span class="bool-val">true</span>, <span class="number">0b00</span>, <span class="number">1</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">2</span>);
 <span class="macro">assert_eq!</span>(cpu.__dbg_get_x(<span class="number">2</span>), <span class="number">80</span>);</code></pre></div>
-</div></details><details class="toggle method-toggle" open><summary><section id="method._ands_imm" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#93-113">Source</a><h4 class="code-header">pub fn <a href="#method._ands_imm" class="fn">_ands_imm</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method._ands_imm" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#109-137">Source</a><h4 class="code-header">pub fn <a href="#method._ands_imm" class="fn">_ands_imm</a>(
     &amp;mut self,
     sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     imm_n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     immr: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
     imms: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
-    d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    n: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
 )</h4></section></summary><div class="docblock"><p><strong>ANDS (Immediate)</strong>: Bitwise AND (immediate), setting flags</p>
 <p>This instruction performs a bitwise AND between a register value and an immediate value, and writes the result to the
 destination register. It updates the condition flags based on the result.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method._ands_sr" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#119-135">Source</a><h4 class="code-header">pub fn <a href="#method._ands_sr" class="fn">_ands_sr</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method._ands_sr" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#143-167">Source</a><h4 class="code-header">pub fn <a href="#method._ands_sr" class="fn">_ands_sr</a>(
     &amp;mut self,
     sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     shift: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
     imm6: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
-    d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    n: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
 )</h4></section></summary><div class="docblock"><p><strong>ANDS: (shifted register)</strong>: Bitwise AND (shifted register), setting flags</p>
 <p>This instruction performs a bitwise AND between a register value and an optionally-shifted register value, and writes the
 result to the destination register. It updates the condition flags based on the result.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.bfc" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#141-143">Source</a><h4 class="code-header">pub fn <a href="#method.bfc" class="fn">bfc</a>(&amp;mut self, sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, N: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, immr: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, imms: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>BFC</strong>: Bitfield clear</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.bfc" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#173-175">Source</a><h4 class="code-header">pub fn <a href="#method.bfc" class="fn">bfc</a>(&amp;mut self, sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, N: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, immr: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, imms: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>)</h4></section></summary><div class="docblock"><p><strong>BFC</strong>: Bitfield clear</p>
 <p>This instruction sets a bitfield of &lt;width&gt; bits at bit position &lt;lsb&gt; of the destination register to zero, leaving the other
 destination bits unchanged.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.bfi" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#149-151">Source</a><h4 class="code-header">pub fn <a href="#method.bfi" class="fn">bfi</a>(&amp;mut self, sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, N: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, immr: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, imms: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>, d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>BFI</strong>: Bitfield insert</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.bfi" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#181-183">Source</a><h4 class="code-header">pub fn <a href="#method.bfi" class="fn">bfi</a>(
+    &amp;mut self,
+    sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
+    N: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
+    immr: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
+    imms: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
+    n: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+)</h4></section></summary><div class="docblock"><p><strong>BFI</strong>: Bitfield insert</p>
 <p>This instruction copies a bitfield of &lt;width&gt; bits from the least significant bits of the source register to bit position &lt;lsb&gt;
 of the destination register, leaving the other destination bits unchanged.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.bfm" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#164-176">Source</a><h4 class="code-header">pub fn <a href="#method.bfm" class="fn">bfm</a>(&amp;mut self, sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, N: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>, immr: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, imms: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>, n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>, d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>)</h4></section></summary><div class="docblock"><p><strong>BFM</strong>: Bitfield move</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.bfm" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#196-208">Source</a><h4 class="code-header">pub fn <a href="#method.bfm" class="fn">bfm</a>(
+    &amp;mut self,
+    sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
+    N: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
+    immr: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
+    imms: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
+    n: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+)</h4></section></summary><div class="docblock"><p><strong>BFM</strong>: Bitfield move</p>
 <p>This instruction is usually accessed using one of its aliases, which are always preferred for disassembly.</p>
 <p>If &lt;imms&gt; is greater than or equal to &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;-&lt;immr&gt;+1) bits starting from bit position
 &lt;immr&gt; in the source register to the least significant bits of the destination register.</p>
 <p>If &lt;imms&gt; is less than &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;+1) bits from the least significant bits of the source register
 to bit position (regsize-&lt;immr&gt;) of the destination register, where regsize is the destination register size of 32 or 64 bits.</p>
 <p>In both cases, the other bits of the destination register remain unchanged.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.bfxil" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#182-184">Source</a><h4 class="code-header">pub fn <a href="#method.bfxil" class="fn">bfxil</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.bfxil" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#214-216">Source</a><h4 class="code-header">pub fn <a href="#method.bfxil" class="fn">bfxil</a>(
     &amp;mut self,
     sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     N: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     immr: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
     imms: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
-    d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    n: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
 )</h4></section></summary><div class="docblock"><p><strong>BFXIL</strong>: Bitfield extract and insert at low end</p>
 <p>This instruction copies a bitfield of &lt;width&gt; bits starting from bit position &lt;lsb&gt; in the source register to the least
 significant bits of the destination register, leaving the other destination bits unchanged.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.bic" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#191-193">Source</a><h4 class="code-header">pub fn <a href="#method.bic" class="fn">bic</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.bic" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#223-225">Source</a><h4 class="code-header">pub fn <a href="#method.bic" class="fn">bic</a>(
     &amp;mut self,
     sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     shift: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
     imm6: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
-    d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    n: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
 )</h4></section></summary><div class="docblock"><p><strong>BIC (shifted register)</strong>: Bitwise bit clear (shifted register)</p>
 <p>This instruction performs a bitwise AND between a register value and the complement of an optionally-shifted register
 value, and writes the result to the destination register.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.bics" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#200-202">Source</a><h4 class="code-header">pub fn <a href="#method.bics" class="fn">bics</a>(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.bics" class="method"><a class="src rightside" href="../../src/hydra/cpu/instructions/logic.rs.html#232-234">Source</a><h4 class="code-header">pub fn <a href="#method.bics" class="fn">bics</a>(
     &amp;mut self,
     sf: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.bool.html">bool</a>,
     shift: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    m: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    m: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
     imm6: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.u8.html">u8</a>,
-    n: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
-    d: <a class="primitive" href="https://doc.rust-lang.org/1.88.0/std/primitive.usize.html">usize</a>,
+    n: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
+    d: <a class="type" href="type.Register.html" title="type hydra::cpu::Register">Register</a>,
 )</h4></section></summary><div class="docblock"><p><strong>BICS (shifted register)</strong>: Bitwise bit clear (shifted register), setting flags</p>
 <p>This instruction performs a bitwise AND between a register value and the complement of an optionally-shifted register
 value, and writes the result to the destination register. It updates the condition flags based on the result.</p>

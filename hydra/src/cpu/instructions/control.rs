@@ -1,4 +1,4 @@
-use crate::cpu::{BranchType, CmpOp, Cpu, Feature, common::n_bits, shared};
+use crate::cpu::{BranchType, CmpOp, Cpu, Feature, Register, common::n_bits, shared};
 
 impl Cpu {
     /// **B.cond**: Branch conditionally
@@ -33,7 +33,7 @@ impl Cpu {
     /// This instruction compares the byte values in two registers, and conditionally branches to a label at a PC-relative offset if the
     /// condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not affect
     /// the condition flags.
-    pub fn cbb_cc(&mut self, cc: u8, m: usize, H: bool, imm9: u16, t: usize) {
+    pub fn cbb_cc(&mut self, cc: u8, m: Register, H: bool, imm9: u16, t: Register) {
         if !Cpu::is_feature_implemented(Feature::CMPBR) {
             panic!("??");
         }
@@ -90,7 +90,7 @@ impl Cpu {
     /// This instruction compares the signed byte values in two registers, and conditionally branches to a label at a PC-relative
     /// offset if the second value is less than or equal to the first. This instruction provides a hint that this is not a subroutine call or
     /// return. This instruction does not affect the condition flags.
-    pub fn cbb_le(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
+    pub fn cbb_le(&mut self, m: Register, H: bool, imm9: u16, t: Register) {
         self.cbb_cc(0b001, m, H, imm9, t)
     }
 
@@ -100,7 +100,7 @@ impl Cpu {
     /// offset if the second value is lower than the first. This instruction provides a hint that this is not a subroutine call or return.
     ///
     /// This instruction does not affect the condition flags.
-    pub fn cbb_lo(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
+    pub fn cbb_lo(&mut self, m: Register, H: bool, imm9: u16, t: Register) {
         self.cbb_cc(0b010, m, H, imm9, t)
     }
 
@@ -109,7 +109,7 @@ impl Cpu {
     /// This instruction compares the unsigned byte values in two registers, and conditionally branches to a label at a PC-relative
     /// offset if the second value is lower than or the same as the first. This instruction provides a hint that this is not a subroutine
     /// call or return. This instruction does not affect the condition flags.
-    pub fn cbb_ls(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
+    pub fn cbb_ls(&mut self, m: Register, H: bool, imm9: u16, t: Register) {
         self.cbb_cc(0b011, m, H, imm9, t)
     }
 
@@ -118,7 +118,7 @@ impl Cpu {
     /// This instruction compares the signed byte values in two registers, and conditionally branches to a label at a PC-relative
     /// offset if the second value is less than the first. This instruction provides a hint that this is not a subroutine call or return. This
     /// instruction does not affect the condition flags.
-    pub fn cbb_lt(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
+    pub fn cbb_lt(&mut self, m: Register, H: bool, imm9: u16, t: Register) {
         self.cbb_cc(0b000, m, H, imm9, t)
     }
 
@@ -127,7 +127,7 @@ impl Cpu {
     /// This instruction compares the value in a register with an immediate, and conditionally branches to a label at a PC-relative
     /// offset if the comparison is true. This instruction provides a hint that this is not a subroutine call or return. This instruction
     /// does not affect the condition flags.
-    pub fn cb_cc_imm(&mut self, sf: bool, cc: u8, imm6: u8, imm9: u16, t: usize) {
+    pub fn cb_cc_imm(&mut self, sf: bool, cc: u8, imm6: u8, imm9: u16, t: Register) {
         let offset = shared::sint::<11>((imm9 << 2) as u64);
 
         let (op, unsigned) = match cc {
@@ -178,7 +178,7 @@ impl Cpu {
     /// This instruction compares the values in two registers, and conditionally branches to a label at a PC-relative offset if the
     /// condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not affect
     /// the condition flags.
-    pub fn cb_cc_reg(&mut self, sf: bool, cc: u8, m: usize, imm9: u16, t: usize) {
+    pub fn cb_cc_reg(&mut self, sf: bool, cc: u8, m: Register, imm9: u16, t: Register) {
         let offset = shared::sint::<11>((imm9 << 2) as u64);
 
         let (op, unsigned) = match cc {

@@ -1,5 +1,5 @@
 use crate::cpu::{
-    Cpu, ShiftType,
+    Cpu, Register, ShiftType,
     shared::{self, NZCV},
 };
 
@@ -37,7 +37,15 @@ impl Cpu {
     /// ```
     ///
     /// Special thanks to <https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a>
-    pub fn _and_imm(&mut self, sf: bool, imm_n: bool, immr: u8, imms: u8, n: usize, d: usize) {
+    pub fn _and_imm(
+        &mut self,
+        sf: bool,
+        imm_n: bool,
+        immr: u8,
+        imms: u8,
+        n: Register,
+        d: Register,
+    ) {
         let (imm, _) = if sf {
             shared::decode_bit_masks::<64>(imm_n, imms, immr)
         } else {
@@ -75,7 +83,15 @@ impl Cpu {
     /// cpu._and_sr(true, 0b00, 1, 4, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), 80);
     /// ```
-    pub fn _and_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+    pub fn _and_sr(
+        &mut self,
+        sf: bool,
+        shift: u8,
+        m: Register,
+        imm6: u8,
+        n: Register,
+        d: Register,
+    ) {
         let operand1 = self._get_op(n, sf);
         let operand2 = shared::shift_reg(
             self._get_op(m, sf),
@@ -90,7 +106,15 @@ impl Cpu {
     ///
     /// This instruction performs a bitwise AND between a register value and an immediate value, and writes the result to the
     /// destination register. It updates the condition flags based on the result.
-    pub fn _ands_imm(&mut self, sf: bool, imm_n: bool, immr: u8, imms: u8, n: usize, d: usize) {
+    pub fn _ands_imm(
+        &mut self,
+        sf: bool,
+        imm_n: bool,
+        immr: u8,
+        imms: u8,
+        n: Register,
+        d: Register,
+    ) {
         let (imm, _) = if sf {
             shared::decode_bit_masks::<64>(imm_n, imms, immr)
         } else {
@@ -116,7 +140,15 @@ impl Cpu {
     ///
     /// This instruction performs a bitwise AND between a register value and an optionally-shifted register value, and writes the
     /// result to the destination register. It updates the condition flags based on the result.
-    pub fn _ands_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+    pub fn _ands_sr(
+        &mut self,
+        sf: bool,
+        shift: u8,
+        m: Register,
+        imm6: u8,
+        n: Register,
+        d: Register,
+    ) {
         let operand1 = self._get_op(n, sf);
         let operand2 = shared::shift_reg(
             self._get_op(m, sf),
@@ -138,7 +170,7 @@ impl Cpu {
     ///
     /// This instruction sets a bitfield of &lt;width&gt; bits at bit position &lt;lsb&gt; of the destination register to zero, leaving the other
     /// destination bits unchanged.
-    pub fn bfc(&mut self, sf: bool, N: bool, immr: u8, imms: u8, d: usize) {
+    pub fn bfc(&mut self, sf: bool, N: bool, immr: u8, imms: u8, d: Register) {
         self.bfm(sf, N, immr, imms, 31, d)
     }
 
@@ -146,7 +178,7 @@ impl Cpu {
     ///
     /// This instruction copies a bitfield of &lt;width&gt; bits from the least significant bits of the source register to bit position &lt;lsb&gt;
     /// of the destination register, leaving the other destination bits unchanged.
-    pub fn bfi(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
+    pub fn bfi(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: Register, d: Register) {
         self.bfm(sf, N, immr, imms, n, d)
     }
 
@@ -161,7 +193,7 @@ impl Cpu {
     /// to bit position (regsize-&lt;immr&gt;) of the destination register, where regsize is the destination register size of 32 or 64 bits.
     ///
     /// In both cases, the other bits of the destination register remain unchanged.
-    pub fn bfm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
+    pub fn bfm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: Register, d: Register) {
         let (wmask, tmask) = if sf {
             shared::decode_bit_masks::<64>(N, imms, immr)
         } else {
@@ -179,7 +211,7 @@ impl Cpu {
     ///
     /// This instruction copies a bitfield of &lt;width&gt; bits starting from bit position &lt;lsb&gt; in the source register to the least
     /// significant bits of the destination register, leaving the other destination bits unchanged.
-    pub fn bfxil(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
+    pub fn bfxil(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: Register, d: Register) {
         self.bfm(sf, N, immr, imms, n, d)
     }
 
@@ -188,7 +220,7 @@ impl Cpu {
     /// This instruction performs a bitwise AND between a register value and the complement of an optionally-shifted register
     /// value, and writes the result to the destination register.
     #[allow(unused_variables)]
-    pub fn bic(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+    pub fn bic(&mut self, sf: bool, shift: u8, m: Register, imm6: u8, n: Register, d: Register) {
         todo!()
     }
 
@@ -197,7 +229,7 @@ impl Cpu {
     /// This instruction performs a bitwise AND between a register value and the complement of an optionally-shifted register
     /// value, and writes the result to the destination register. It updates the condition flags based on the result.
     #[allow(unused_variables)]
-    pub fn bics(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
+    pub fn bics(&mut self, sf: bool, shift: u8, m: Register, imm6: u8, n: Register, d: Register) {
         todo!()
     }
 }
