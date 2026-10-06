@@ -1,5 +1,7 @@
 #![allow(dead_code, non_snake_case)]
 
+use crate::cpu::shared::NZCV;
+
 pub struct PState {
     pub(super) N: bool,      // Negative condition flag
     pub(super) Z: bool,      // Zero condition flag
@@ -69,5 +71,12 @@ impl PState {
 
     pub fn __dbg_get_C(&self) -> bool {
         self.C
+    }
+
+    pub fn set_nzcv(&mut self, nzcv: &NZCV) {
+        self.N = nzcv.N();
+        self.Z = nzcv.Z();
+        self.C = nzcv.C();
+        self.V = nzcv.V();
     }
 }

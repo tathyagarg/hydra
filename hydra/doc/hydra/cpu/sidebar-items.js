@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["BranchType","CmpOp","ExtendType","RegisterSP","ShiftType"],"mod":["common"],"struct":["Cpu"]};
+window.SIDEBAR_ITEMS = {"enum":["BranchType","CmpOp","ExtendType","Feature","ShiftType"],"mod":["common"],"struct":["Cpu"],"type":["Register"]};

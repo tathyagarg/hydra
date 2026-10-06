@@ -1,5 +1,5 @@
 use crate::cpu::{
-    BranchType, Cpu, ExtendType, ShiftType,
+    BranchType, Cpu, ExtendType, Feature, ShiftType,
     brbe::{BRBSRC_EL1_Type, BRBTGT_EL1_Type},
     common::*,
     pstate::PState,
@@ -26,7 +26,23 @@ pub enum SecurityState {
 pub struct NZCV(bool, bool, bool, bool);
 
 impl NZCV {
-    pub(super) fn set(&self, pstate: &mut PState) {
+    pub(super) fn N(&self) -> bool {
+        self.0
+    }
+
+    pub(super) fn Z(&self) -> bool {
+        self.1
+    }
+
+    pub(super) fn C(&self) -> bool {
+        self.2
+    }
+
+    pub(super) fn V(&self) -> bool {
+        self.3
+    }
+
+    fn set(&self, pstate: &mut PState) {
         pstate.N = self.0;
         pstate.Z = self.1;
         pstate.C = self.2;
@@ -205,7 +221,7 @@ impl Cpu {
 
     #[allow(unused_variables)]
     pub fn branch_not_taken(&self, branch_type: BranchType, branch_conditional: bool) {
-        if Cpu::FEAT_SPE {
+        if Cpu::is_feature_implemented(Feature::SPE) {
             todo!()
         }
     }
@@ -220,7 +236,7 @@ impl Cpu {
             self.pc = target;
         } else {
             let target_vaddress = self.aarch64_branchaddr(target, self.pstate.EL);
-            if Cpu::FEAT_BRBE
+            if Cpu::is_feature_implemented(Feature::BRBE)
                 && matches!(
                     branch_type,
                     BranchType::DIR
@@ -235,7 +251,7 @@ impl Cpu {
 
             // let branch_taken = true;
 
-            if Cpu::FEAT_SPE {
+            if Cpu::is_feature_implemented(Feature::SPE) {
                 todo!()
             }
 
@@ -244,7 +260,7 @@ impl Cpu {
     }
 
     pub fn security_state_at_el(&self, el: u8) -> SecurityState {
-        if Cpu::FEAT_RME {
+        if Cpu::is_feature_implemented(Feature::RME) {
             if el == EL3 {
                 return SecurityState::Root;
             }
@@ -255,7 +271,7 @@ impl Cpu {
 
             match effective_nse_ns {
                 0b00 => {
-                    if !Cpu::FEAT_SEL2 {
+                    if !Cpu::is_feature_implemented(Feature::SEL2) {
                         return SecurityState::Secure;
                     } else {
                         unreachable!()
@@ -309,7 +325,7 @@ impl Cpu {
             return false;
         }
 
-        if el == EL3 && Cpu::FEAT_BRBEv1p1 {
+        if el == EL3 && Cpu::is_feature_implemented(Feature::BRBEv1p1) {
             return MDCR_EL3Field::E3BREC.fetch_bit(self.mdcr_el3)
                 != MDCR_EL3Field::E3BREW.fetch_bit(self.mdcr_el3);
         }
@@ -475,14 +491,17 @@ impl Cpu {
             }
         }
 
-        if self.have_aarch64() && Cpu::FEAT_PMUv3_ICNTR && pmuevent == Cpu::PMU_EVENT_INST_RETIRED {
+        if self.have_aarch64()
+            && Cpu::is_feature_implemented(Feature::PMUv3_ICNTR)
+            && pmuevent == Cpu::PMU_EVENT_INST_RETIRED
+        {
             todo!()
         }
     }
 
     #[allow(unused_variables)]
     pub fn pmu_event3(&self, pmuevent: u16, increment: usize, idx: usize) {
-        if !Cpu::FEAT_PMUv3 {
+        if !Cpu::is_feature_implemented(Feature::PMUv3) {
             return;
         }
 
@@ -549,29 +568,38 @@ impl Cpu {
 
     pub fn have_aarch32_el(&self, el: u8) -> bool {
         match el {
-            EL0 => Cpu::FEAT_AA32EL0,
-            EL1 => Cpu::FEAT_AA32EL1,
-            EL2 => Cpu::FEAT_AA32EL2,
-            EL3 => Cpu::FEAT_AA32EL3,
+            EL0 => Cpu::is_feature_implemented(Feature::AA32EL0),
+            EL1 => Cpu::is_feature_implemented(Feature::AA32EL1),
+            EL2 => Cpu::is_feature_implemented(Feature::AA32EL2),
+            EL3 => Cpu::is_feature_implemented(Feature::AA32EL3),
             _ => unreachable!(),
         }
     }
 
     pub fn have_aarch64(&self) -> bool {
-        Cpu::FEAT_AA64EL0 || Cpu::FEAT_AA64EL1 || Cpu::FEAT_AA64EL2 || Cpu::FEAT_AA64EL3
+        Cpu::is_feature_implemented(Feature::AA64EL0)
+            || Cpu::is_feature_implemented(Feature::AA64EL1)
+            || Cpu::is_feature_implemented(Feature::AA64EL2)
+            || Cpu::is_feature_implemented(Feature::AA64EL3)
     }
 
     pub fn have_el(&self, el: u8) -> bool {
         match el {
             EL0 | EL1 => true,
-            EL2 => Cpu::FEAT_AA64EL2 || Cpu::FEAT_AA32EL2,
-            EL3 => Cpu::FEAT_AA64EL3 || Cpu::FEAT_AA32EL3,
+            EL2 => {
+                Cpu::is_feature_implemented(Feature::AA64EL2)
+                    || Cpu::is_feature_implemented(Feature::AA32EL2)
+            }
+            EL3 => {
+                Cpu::is_feature_implemented(Feature::AA64EL3)
+                    || Cpu::is_feature_implemented(Feature::AA32EL3)
+            }
             _ => unreachable!(),
         }
     }
 
     pub fn have_secure_state(&self) -> bool {
-        Cpu::FEAT_SECURE
+        Cpu::is_feature_implemented(Feature::SECURE)
     }
 
     pub fn effective_scr_el3_ns(&self) -> bool {
@@ -587,7 +615,7 @@ impl Cpu {
     }
 
     pub fn effective_scr_el3_nse(&self) -> bool {
-        if !Cpu::FEAT_RME {
+        if !Cpu::is_feature_implemented(Feature::RME) {
             return false;
         }
 
@@ -608,7 +636,7 @@ impl Cpu {
                 return true;
             }
 
-            if Cpu::FEAT_SEL2
+            if Cpu::is_feature_implemented(Feature::SEL2)
                 && SCR_EL3Field::EEL2.fetch_bit(self.scr_el3)
                 && !self.effective_scr_el3_ns()
             {
@@ -620,11 +648,11 @@ impl Cpu {
     }
 
     pub fn secure_only_implementation(&self) -> bool {
-        return Cpu::FEAT_SECURE && !self.have_el(EL3);
+        return Cpu::is_feature_implemented(Feature::SECURE) && !self.have_el(EL3);
     }
 
     pub fn is_secure_el2_enabled(&self) -> bool {
-        if self.have_el(EL2) && Cpu::FEAT_SEL2 {
+        if self.have_el(EL2) && Cpu::is_feature_implemented(Feature::SEL2) {
             if self.have_el(EL3) {
                 return !self.have_aarch32_el(EL3) && SCR_EL3Field::EEL2.fetch_bit(self.scr_el3);
             } else {
@@ -651,11 +679,11 @@ impl Cpu {
     }
 
     pub fn effective_hcr_el2_e2h(&self) -> bool {
-        if !Cpu::FEAT_VHE {
+        if !Cpu::is_feature_implemented(Feature::VHE) {
             return false;
         }
 
-        if !Cpu::FEAT_E2H0 {
+        if !Cpu::is_feature_implemented(Feature::E2H0) {
             return true;
         }
 
@@ -663,7 +691,7 @@ impl Cpu {
     }
 
     pub fn el_is_in_host(&self, el: u8) -> bool {
-        if !Cpu::FEAT_VHE || self.el_using_aarch32(EL2) {
+        if !Cpu::is_feature_implemented(Feature::VHE) || self.el_using_aarch32(EL2) {
             return false;
         }
 
@@ -695,7 +723,9 @@ impl Cpu {
 
         if self.have_el(EL3)
             && !self.effective_scr_el3_rw()
-            && (!secure || !Cpu::FEAT_SEL2 || !SCR_EL3Field::EEL2.fetch_bit(self.scr_el3))
+            && (!secure
+                || !Cpu::is_feature_implemented(Feature::SEL2)
+                || !SCR_EL3Field::EEL2.fetch_bit(self.scr_el3))
         {
             return (true, true);
         }
@@ -707,7 +737,9 @@ impl Cpu {
         if self.have_el(EL2)
             && self.el_is_in_host(EL0)
             && !HCR_EL2Field::RW.fetch_bit(self.hcr_el2)
-            && (!secure || (Cpu::FEAT_SEL2) && SCR_EL3Field::EEL2.fetch_bit(self.scr_el3))
+            && (!secure
+                || (Cpu::is_feature_implemented(Feature::SEL2))
+                    && SCR_EL3Field::EEL2.fetch_bit(self.scr_el3))
         {
             return (true, true);
         }
@@ -736,7 +768,9 @@ impl Cpu {
             } else {
                 return !SCR_EL3Field::NS.fetch_bit(self.scr_el3);
             }
-        } else if self.have_el(EL2) && (!Cpu::FEAT_SEL2 || !self.have_aarch64()) {
+        } else if self.have_el(EL2)
+            && (!Cpu::is_feature_implemented(Feature::SEL2) || !self.have_aarch64())
+        {
             return false;
         } else {
             return self.secure_only_implementation();
@@ -772,7 +806,7 @@ impl Cpu {
                     TCR_EL1Field::TBI0.fetch_bit(self.tcr_el1)
                 };
 
-                let tbid = if Cpu::FEAT_PAuth {
+                let tbid = if Cpu::is_feature_implemented(Feature::PAuth) {
                     Some(if nth_bit(address, 55) {
                         TCR_EL1Field::TBID1.fetch_bit(self.tcr_el1)
                     } else {
@@ -787,7 +821,7 @@ impl Cpu {
             _ => todo!("Exception Level {} not yet implemented", regime),
         };
 
-        tbi && (!Cpu::FEAT_PAuth || tbid == Some(false) || !isinstr)
+        tbi && (!Cpu::is_feature_implemented(Feature::PAuth) || tbid == Some(false) || !isinstr)
     }
 
     pub fn s1translationregime(&self, el: u8) -> u8 {

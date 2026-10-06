@@ -2,24 +2,21 @@
 
 use crate::cpu::{
     brbe::{BRBINF_EL1_Type, BRBSRC_EL1_Type, BRBTGT_EL1_Type, Brbe},
-    common::n_bits,
     pmu::Pmu,
-    shared::decode_bit_masks,
 };
 
 mod brbe;
 pub mod common;
+mod instructions;
 mod pmu;
 mod pstate;
 mod regs;
 mod shared;
 
 const LOWER_32: u64 = 0xFFFF_FFFF_0000_0000;
+const REG_SP: usize = 0b11111;
 
-pub enum RegisterSP {
-    Register(usize),
-    StackPointer,
-}
+pub type Register = usize;
 
 pub enum CmpOp {
     EQ,
@@ -404,47 +401,82 @@ impl Default for Cpu {
     }
 }
 
+#[derive(Hash, Eq, PartialEq)]
+pub enum Feature {
+    AA64,
+    AA64EL0,
+    AA64EL1,
+    AA64EL2,
+    AA64EL3,
+
+    PAuth,
+
+    AA32,
+    AA32EL0,
+    AA32EL1,
+    AA32EL2,
+    AA32EL3,
+
+    SECURE,
+
+    SEL2,
+    VHE,
+
+    E2H0,
+
+    BRBE,
+    BRBEv1p1,
+
+    RME,
+
+    PMUv3,
+
+    #[allow(non_camel_case_types)]
+    PMUv3_ICNTR,
+
+    SPE,
+    CMPBR,
+}
+
 impl Cpu {
-    pub const FEAT_AA64: bool = true;
-    pub const FEAT_AA64EL0: bool = true;
-    pub const FEAT_AA64EL1: bool = true;
-    pub const FEAT_AA64EL2: bool = true;
-    pub const FEAT_AA64EL3: bool = true;
-
-    #[allow(non_upper_case_globals)]
-    pub const FEAT_PAuth: bool = false;
-
-    pub const FEAT_AA32EL0: bool = false;
-    pub const FEAT_AA32EL1: bool = false;
-    pub const FEAT_AA32EL2: bool = false;
-    pub const FEAT_AA32EL3: bool = false;
-
-    pub const FEAT_SECURE: bool = false;
-
-    pub const FEAT_SEL2: bool = false;
-    pub const FEAT_VHE: bool = false;
-
-    pub const FEAT_E2H0: bool = false;
-
-    pub const FEAT_BRBE: bool = false;
-    #[allow(non_upper_case_globals)]
-    pub const FEAT_BRBEv1p1: bool = false;
-
-    pub const FEAT_RME: bool = false;
-
-    #[allow(non_upper_case_globals)]
-    pub const FEAT_PMUv3: bool = false;
-    #[allow(non_upper_case_globals)]
-    pub const FEAT_PMUv3_ICNTR: bool = false;
     pub const NUM_PMU_COUNTERS: usize = 0;
     pub const PMU_EVENT_INST_RETIRED: u16 = 0x08;
-    const PMU_EVENT_BRB_FILTRATE: u16 = 0x811F;
+    pub const PMU_EVENT_BRB_FILTRATE: u16 = 0x811F;
 
-    pub const FEAT_SPE: bool = false;
+    pub const fn is_feature_implemented(feat: Feature) -> bool {
+        match feat {
+            Feature::AA64 => true,
+            Feature::AA64EL0 => false,
+            Feature::AA64EL1 => false,
+            Feature::AA64EL2 => false,
+            Feature::AA64EL3 => false,
 
-    pub const FEAT_CMPBR: bool = true;
+            Feature::PAuth => false,
+            Feature::SECURE => false,
 
-    fn _get_op(&self, n: usize, cond: bool) -> u64 {
+            Feature::AA32 => false,
+            Feature::AA32EL0 => false,
+            Feature::AA32EL1 => false,
+            Feature::AA32EL2 => false,
+            Feature::AA32EL3 => false,
+
+            Feature::SEL2 => false,
+            Feature::VHE => false,
+            Feature::E2H0 => false,
+
+            Feature::BRBE => false,
+            Feature::BRBEv1p1 => false,
+            Feature::RME => false,
+
+            Feature::PMUv3 => false,
+            Feature::PMUv3_ICNTR => false,
+
+            Feature::SPE => false,
+            Feature::CMPBR => true,
+        }
+    }
+
+    pub fn _get_op(&self, n: usize, cond: bool) -> u64 {
         if cond {
             self.x[n]
         } else {
@@ -452,11 +484,27 @@ impl Cpu {
         }
     }
 
-    fn _set_op(&mut self, n: usize, v: u64, cond: bool) {
+    pub fn _set_op(&mut self, n: usize, v: u64, cond: bool) {
         if cond {
             self.x[n] = v;
         } else {
             self.x[n] = to_uint::<32>(v);
+        }
+    }
+
+    pub fn _get_reg_or_sp(&self, n: usize, cond: bool) -> u64 {
+        if n == REG_SP {
+            self.sp
+        } else {
+            self._get_op(n, cond)
+        }
+    }
+
+    pub fn _set_reg_or_sp(&mut self, n: usize, value: u64, cond: bool) {
+        if n == REG_SP {
+            self.sp = value;
+        } else {
+            self._set_op(n, value, cond);
         }
     }
 
@@ -476,449 +524,6 @@ impl Cpu {
     /// to the CPU's PSTATE
     pub fn __dbg_get_pstate(&mut self) -> &mut pstate::PState {
         &mut self.pstate
-    }
-
-    /// **ABS**: Absolute value
-    ///
-    /// This instruction calculates the absolute value of the signed integer value in the source register, and writes the result to the
-    /// destination register. If the value in the source register is the most negative value, the result is the same as the value in the
-    /// source register.
-    ///
-    /// ```
-    /// # use hydra::cpu::Cpu;
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, -5i64 as u64);
-    /// cpu.abs(true, 0, 1);  // `ABS X1, X0`
-    /// assert_eq!(cpu.__dbg_get_x(1), 5);
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::Cpu;
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 9223372032559808513u64);
-    /// cpu.abs(false, 0, 1);  // `ABS W1, W0`
-    /// assert_eq!(cpu.__dbg_get_x(1), 1);
-    /// ```
-    pub fn abs(&mut self, sf: bool, n: usize, d: usize) {
-        let operand1 = self._get_op(n, sf) as i64;
-
-        let result = operand1.abs() as u64;
-        self._set_op(d, result, sf);
-    }
-
-    /// **ADC**: Add with carry
-    ///
-    /// This instruction adds two register values and the Carry flag value, and writes the result to the destination register.
-    ///
-    /// ```
-    /// # use hydra::cpu::Cpu;
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// cpu.__dbg_set_x(1, 2);
-    /// cpu.adc(true, 1, 0, 2);  // `ADC X2, X0, X1`
-    /// assert_eq!(cpu.__dbg_get_x(2), 3);
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::Cpu;
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// cpu.__dbg_set_x(1, 2);
-    /// cpu.__dbg_get_pstate().__dbg_set_C(true);  // Set PSTATE.C = 1
-    /// cpu.adc(true, 1, 0, 2);  // `ADC X2, X0, X1`
-    /// assert_eq!(cpu.__dbg_get_x(2), 4);
-    /// ```
-    pub fn adc(&mut self, sf: bool, m: usize, n: usize, d: usize) {
-        let operand1 = self._get_op(n, sf);
-        let operand2 = self._get_op(m, sf);
-
-        let (result, _) = if sf {
-            shared::add_with_carry::<64>(operand1, operand2, self.pstate.C)
-        } else {
-            shared::add_with_carry::<32>(operand1, operand2, self.pstate.C)
-        };
-
-        self._set_op(d, result, sf);
-    }
-
-    /// **ADCS**: Add with carry, setting flags
-    ///
-    /// This instruction adds two register values and the Carry flag value, and writes the result to the destination register. It updates
-    /// the condition flags based on the result.
-    ///
-    /// ```
-    /// # use hydra::cpu::Cpu;
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// cpu.__dbg_set_x(1, 2);
-    /// cpu.adcs(true, 1, 0, 2);  // `ADCS X2, X0, X1`
-    /// assert_eq!(cpu.__dbg_get_x(2), 3);
-    /// assert!(!cpu.__dbg_get_pstate().__dbg_get_C());
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::Cpu;
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, u64::MAX);
-    /// cpu.__dbg_set_x(1, 1);
-    /// cpu.adcs(true, 1, 0, 2);  // `ADCS X2, X0, X1`
-    /// assert_eq!(cpu.__dbg_get_x(2), 0);
-    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
-    /// ```
-    pub fn adcs(&mut self, sf: bool, m: usize, n: usize, d: usize) {
-        let operand1 = self._get_op(n, sf);
-        let operand2 = self._get_op(m, sf);
-
-        let (result, nzcv) = if sf {
-            shared::add_with_carry::<64>(operand1, operand2, self.pstate.C)
-        } else {
-            shared::add_with_carry::<32>(operand1, operand2, self.pstate.C)
-        };
-
-        self._set_op(d, result, sf);
-        nzcv.set(&mut self.pstate);
-    }
-
-    /// **ADD (extended register)**: Add extended and scaled register
-    ///
-    /// This instruction adds a register value and a sign-extended or zero-extended register value, followed by an optional left shift
-    /// amount, and writes the result to the destination register. The argument that is extended from the &lt;Rm&gt; register can be a byte,
-    /// halfword, word, or doubleword.
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// cpu.__dbg_set_x(1, 2);
-    /// // `ADD X2, X0, X1, UXTB #3`
-    /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
-    /// assert_eq!(cpu.__dbg_get_x(2), 17);
-    /// ```
-    ///
-    /// We get 17 because 17 = 1 + (2 << 3)
-    /// The ExtendType is not very consequential because we are dealing with such small values.
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// cpu.__dbg_set_x(1, 500);
-    /// // `ADD X2, X0, X1, UXTB #3`
-    /// cpu._add_er(true, 1, 0b000, 3, RegisterSP::Register(0), RegisterSP::Register(2));
-    /// assert_eq!(cpu.__dbg_get_x(2), 1953);
-    /// ```
-    ///
-    /// We get 1953 because 1953 = 1 + (244 << 3), where 244 = 500 & 0xFF (due to UXTB extending)
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// cpu.__dbg_set_x(1, 500);
-    /// // `ADD X2, X0, X1, UXTD #3`
-    /// cpu._add_er(true, 1, 0b011, 3, RegisterSP::Register(0), RegisterSP::Register(2));
-    /// assert_eq!(cpu.__dbg_get_x(2), 4001);
-    /// ```
-    ///
-    /// Without the masking to byte-width, we get 4001 instead.
-    pub fn _add_er(
-        &mut self,
-        sf: bool,
-        m: usize,
-        option: u8,
-        imm3: u8,
-        n: RegisterSP,
-        d: RegisterSP,
-    ) {
-        let operand1 = if let RegisterSP::Register(rn) = n {
-            self._get_op(rn, sf)
-        } else {
-            self.sp
-        };
-
-        let mval = self._get_op(m, option & 0b11 == 0b11);
-        let extend_type = ExtendType::decode(option).unwrap();
-
-        let (result, _) = if sf {
-            let operand2 = shared::extend_reg::<64>(mval, extend_type, imm3);
-            shared::add_with_carry::<64>(operand1, operand2, false)
-        } else {
-            let operand2 = shared::extend_reg::<32>(mval, extend_type, imm3);
-            shared::add_with_carry::<32>(operand1, operand2, false)
-        };
-
-        if let RegisterSP::Register(rd) = d {
-            self._set_op(rd, result, sf);
-        } else {
-            self.sp = result;
-        }
-    }
-
-    /// **ADD (Immediate)**: Add immediate value
-    ///
-    /// This instruction adds a register value and an optionally-shifted immediate value, and writes the result to the destination
-    /// register.
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// // `ADD X1, X0, #10 LSL #0`
-    /// cpu._add_imm(true, false, 10, RegisterSP::Register(0), RegisterSP::Register(1));
-    /// assert_eq!(cpu.__dbg_get_x(1), 11);
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// // `ADD X1, X0, #10 LSL #12`
-    /// cpu._add_imm(true, true, 10, RegisterSP::Register(0), RegisterSP::Register(1));
-    /// assert_eq!(cpu.__dbg_get_x(1), 40961);
-    /// ```
-    pub fn _add_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: RegisterSP, d: RegisterSP) {
-        let imm12 = imm12 & 0b1111_1111_1111;
-        let imm = if sh {
-            (imm12 as u32) << 12
-        } else {
-            imm12 as u32
-        };
-
-        let operand1 = if let RegisterSP::Register(rn) = n {
-            self._get_op(rn, sf)
-        } else {
-            self.sp
-        };
-
-        let (result, _) = if sf {
-            shared::add_with_carry::<64>(operand1, imm as u64, false)
-        } else {
-            shared::add_with_carry::<32>(operand1, imm as u64, false)
-        };
-
-        if let RegisterSP::Register(rd) = d {
-            self._set_op(rd, result, sf);
-        } else {
-            self.sp = result;
-        }
-    }
-
-    /// **ADD (Shifted Register)**: Add optionally-shifted register
-    ///
-    /// This instruction adds a register value and an optionally-shifted register value, and writes the result to the destination register.
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// cpu.__dbg_set_x(1, 2);
-    /// // `ADD X2, X0, X1, LSL #3`
-    /// cpu._add_sr(true, 0b00, 1, 3, 0, 2);
-    /// assert_eq!(cpu.__dbg_get_x(2), 17);
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// cpu.__dbg_set_x(1, 36);
-    /// // `ADD X2, X0, X1, LSR #3`
-    /// cpu._add_sr(true, 0b01, 1, 3, 0, 2);
-    /// assert_eq!(cpu.__dbg_get_x(2), 5);
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 1);
-    /// cpu.__dbg_set_x(1, -44i64 as u64);
-    /// // `ADD X2, X0, X1, ASR #2`
-    /// cpu._add_sr(true, 0b10, 1, 2, 0, 2);
-    /// assert_eq!(cpu.__dbg_get_x(2), -10i64 as u64);
-    /// ```
-    pub fn _add_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
-        let operand1 = self._get_op(n, sf);
-        let mval = self._get_op(m, sf);
-
-        let shift_type = ShiftType::decode(shift).unwrap();
-
-        let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
-
-        let (result, _) = if sf {
-            shared::add_with_carry::<64>(operand1, operand2, false)
-        } else {
-            shared::add_with_carry::<32>(operand1, operand2, false)
-        };
-
-        self._set_op(d, result, sf);
-    }
-
-    fn addg(&mut self) {
-        todo!()
-    }
-
-    fn addpt(&mut self) {
-        todo!()
-    }
-
-    /// **ADDS (extended register)**: Add extended and scaled register, setting flags
-    ///
-    /// This instruction adds a register value and a sign-extended or zero-extended register value, followed by an optional left shift
-    /// amount, and writes the result to the destination register. The argument that is extended from the &lt;Rm&gt; register can be a byte,
-    /// halfword, word, or doubleword. It updates the condition flags based on the result.
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 5);
-    /// cpu.__dbg_set_x(1, u64::MAX >> 2);
-    /// // `ADDS X2, X0, X1, UXTB #3`
-    /// cpu._adds_er(true, 1, 0b011, 0b010, RegisterSP::Register(0), RegisterSP::Register(2));
-    /// assert_eq!(cpu.__dbg_get_x(2), 1);
-    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
-    /// ```
-    pub fn _adds_er(
-        &mut self,
-        sf: bool,
-        m: usize,
-        option: u8,
-        imm3: u8,
-        n: RegisterSP,
-        d: RegisterSP,
-    ) {
-        let operand1 = if let RegisterSP::Register(rn) = n {
-            self._get_op(rn, sf)
-        } else {
-            self.sp
-        };
-
-        let mval = self._get_op(m, option & 0b11 == 0b11);
-        let extend_type = ExtendType::decode(option).unwrap();
-
-        let (result, nzcv) = if sf {
-            let operand2 = shared::extend_reg::<64>(mval, extend_type, imm3);
-            shared::add_with_carry::<64>(operand1, operand2, false)
-        } else {
-            let operand2 = shared::extend_reg::<32>(mval, extend_type, imm3);
-            shared::add_with_carry::<32>(operand1, operand2, false)
-        };
-
-        nzcv.set(&mut self.pstate);
-        if let RegisterSP::Register(rd) = d {
-            self._set_op(rd, result, sf);
-        } else {
-            self.sp = result;
-        }
-    }
-
-    /// **ADDS (Immediate)**: Add immediate value, setting flags
-    ///
-    /// This instruction adds a register value and an optionally-shifted immediate value, and writes the result to the destination
-    /// register. It updates the condition flags based on the result.
-    ///
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, u64::MAX);
-    /// // `ADDS X1, X0, #10 LSL #0`
-    /// cpu._adds_imm(true, false, 10, RegisterSP::Register(0), RegisterSP::Register(1));
-    /// assert_eq!(cpu.__dbg_get_x(1), 9);
-    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, u64::MAX);
-    /// // `ADDS X1, X0, #10 LSL #12`
-    /// cpu._adds_imm(true, true, 10, RegisterSP::Register(0), RegisterSP::Register(1));
-    /// assert_eq!(cpu.__dbg_get_x(1), 40959);
-    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
-    /// ```
-    pub fn _adds_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: RegisterSP, d: RegisterSP) {
-        let imm12 = imm12 & 0b1111_1111_1111;
-        let imm = if sh {
-            (imm12 as u32) << 12
-        } else {
-            imm12 as u32
-        };
-
-        let operand1 = if let RegisterSP::Register(rn) = n {
-            self._get_op(rn, sf)
-        } else {
-            self.sp
-        };
-
-        let (result, nzcv) = if sf {
-            shared::add_with_carry::<64>(operand1, imm as u64, false)
-        } else {
-            shared::add_with_carry::<32>(operand1, imm as u64, false)
-        };
-
-        nzcv.set(&mut self.pstate);
-        if let RegisterSP::Register(rd) = d {
-            self._set_op(rd, result, sf);
-        } else {
-            self.sp = result;
-        }
-    }
-
-    /// **ADDS (Shifted Register)**: Add optionally-shifted register, setting flags
-    ///
-    /// This instruction adds a register value and an optionally-shifted register value, and writes the result to the destination register.
-    /// It updates the condition flags based on the result.
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 8);
-    /// cpu.__dbg_set_x(1, u64::MAX >> 3);
-    /// // `ADDS X2, X0, X1, LSL #3`
-    /// cpu._adds_sr(true, 0b00, 1, 3, 0, 2);
-    /// assert_eq!(cpu.__dbg_get_x(2), 0);
-    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, u64::MAX);
-    /// cpu.__dbg_set_x(1, 36);
-    /// // `ADDS X2, X0, X1, LSR #3`
-    /// cpu._adds_sr(true, 0b01, 1, 3, 0, 2);
-    /// assert_eq!(cpu.__dbg_get_x(2), 3);
-    /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, u64::MIN);
-    /// cpu.__dbg_set_x(1, -44i64 as u64);
-    /// // `ADDS X2, X0, X1, ASR #2`
-    /// cpu._adds_sr(true, 0b10, 1, 2, 0, 2);
-    /// assert_eq!(cpu.__dbg_get_x(2), -11i64 as u64);
-    /// assert!(!cpu.__dbg_get_pstate().__dbg_get_C());
-    /// ```
-    ///
-    /// This does NOT overflow
-    pub fn _adds_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
-        let operand1 = self._get_op(n, sf);
-        let mval = self._get_op(m, sf);
-
-        let shift_type = ShiftType::decode(shift).unwrap();
-
-        let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
-
-        let (res, nzcv) = if sf {
-            shared::add_with_carry::<64>(operand1, operand2, false)
-        } else {
-            shared::add_with_carry::<32>(operand1, operand2, false)
-        };
-
-        self._set_op(d, res, sf);
-        nzcv.set(&mut self.pstate);
     }
 
     /// **ADR**: Form PC-relative address
@@ -945,186 +550,6 @@ impl Cpu {
         let base = self.pc & (!0u64 << 12);
 
         self.x[d] = base + imm;
-    }
-
-    /// **AND (immediate)**: Bitwise AND (immediate)
-    ///
-    /// This instruction performs a bitwise AND between a register value and an immediate value, and writes the result to the
-    /// destination register.
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 0x1234_5678_9ABC_DEF0);
-    /// // `AND X1, X0, #0xFF`
-    /// cpu._and_imm(true, true, 0b000000, 0b000111, 0, RegisterSP::Register(1));
-    /// assert_eq!(cpu.__dbg_get_x(1), 0xF0);
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 0xFFFF_FFFF_FFFF_FFFF);
-    /// // `AND X1, X0, #0x00`
-    /// cpu._and_imm(true, false, 0b000000, 0b110100, 0, RegisterSP::Register(1));
-    /// assert_eq!(cpu.__dbg_get_x(1), 0x1F1F_1F1F_1F1F_1F1F);
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 232131);
-    /// // `AND X1, X0, #0x00`
-    /// cpu._and_imm(true, false, 0b001101, 0b101011, 0, RegisterSP::Register(1));
-    /// assert_eq!(cpu.__dbg_get_x(1), 2752);
-    /// ```
-    ///
-    /// Special thanks to <https://gist.github.com/dinfuehr/51a01ac58c0b23e4de9aac313ed6a06a>
-    pub fn _and_imm(&mut self, sf: bool, imm_n: bool, immr: u8, imms: u8, n: usize, d: RegisterSP) {
-        let (imm, _) = if sf {
-            decode_bit_masks::<64>(imm_n, imms, immr)
-        } else {
-            decode_bit_masks::<32>(imm_n, imms, immr)
-        };
-
-        let operand1 = self._get_op(n, sf);
-        let operand2 = imm;
-
-        println!("{} {}", operand1, operand2);
-        let result = operand1 & operand2;
-
-        if let RegisterSP::Register(rd) = d {
-            self._set_op(rd, result, sf);
-        } else {
-            self.sp = result;
-        }
-    }
-
-    /// **AND (Shifted Register)**: Bitwise AND (shifted register)
-    ///
-    /// This instruction performs a bitwise AND between a register value and an optionally-shifted register value, and writes the
-    /// result to the destination register.
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 213);
-    /// cpu.__dbg_set_x(1, 82);
-    /// cpu._and_sr(true, 0b00, 1, 0, 0, 2);
-    /// assert_eq!(cpu.__dbg_get_x(2), 80);
-    /// ```
-    ///
-    /// ```
-    /// # use hydra::cpu::{Cpu, RegisterSP, ExtendType};
-    /// # let mut cpu = Cpu::default();
-    /// cpu.__dbg_set_x(0, 213);
-    /// cpu.__dbg_set_x(1, 5);
-    /// cpu._and_sr(true, 0b00, 1, 4, 0, 2);
-    /// assert_eq!(cpu.__dbg_get_x(2), 80);
-    /// ```
-    pub fn _and_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
-        let operand1 = self._get_op(n, sf);
-        let operand2 = shared::shift_reg(
-            self._get_op(m, sf),
-            ShiftType::decode(shift).unwrap(),
-            imm6 as usize,
-        );
-
-        self._set_op(d, operand1 & operand2, sf);
-    }
-
-    /// **ANDS (Immediate)**: Bitwise AND (immediate), setting flags
-    ///
-    /// This instruction performs a bitwise AND between a register value and an immediate value, and writes the result to the
-    /// destination register. It updates the condition flags based on the result.
-    pub fn _ands_imm(
-        &mut self,
-        sf: bool,
-        imm_n: bool,
-        immr: u8,
-        imms: u8,
-        n: usize,
-        d: RegisterSP,
-    ) {
-        let (imm, _) = if sf {
-            decode_bit_masks::<64>(imm_n, imms, immr)
-        } else {
-            decode_bit_masks::<32>(imm_n, imms, immr)
-        };
-
-        let operand1 = self._get_op(n, sf);
-        let operand2 = imm;
-
-        println!("{} {}", operand1, operand2);
-        let result = operand1 & operand2;
-
-        if let RegisterSP::Register(rd) = d {
-            self._set_op(rd, result, sf);
-        } else {
-            self.sp = result;
-        }
-
-        self.pstate.N = (result >> ((32 << sf as u64) - 1)) == 1;
-        self.pstate.Z = result == 0;
-        self.pstate.C = false;
-        self.pstate.V = false;
-    }
-
-    /// **ANDS: (shifted register)**: Bitwise AND (shifted register), setting flags
-    ///
-    /// This instruction performs a bitwise AND between a register value and an optionally-shifted register value, and writes the
-    /// result to the destination register. It updates the condition flags based on the result.
-    pub fn _ands_sr(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
-        let operand1 = self._get_op(n, sf);
-        let operand2 = shared::shift_reg(
-            self._get_op(m, sf),
-            ShiftType::decode(shift).unwrap(),
-            imm6 as usize,
-        );
-
-        let result = operand1 & operand2;
-        self._set_op(d, result, sf);
-
-        self.pstate.N = (result >> ((32 << sf as u64) - 1)) == 1;
-        self.pstate.Z = result == 0;
-        self.pstate.C = false;
-        self.pstate.V = false;
-    }
-
-    /// **ASR (register)**: Arithmetic shift right (register)
-    ///
-    /// This instruction shifts a register value right by a variable number of bits, shifting in copies of its sign bit, and writes the
-    /// result to the destination register. The value of the second source register modulo the register size in bits gives the number of
-    /// bits by which the first source register is right-shifted.
-    pub fn _asr_reg(&mut self, sf: bool, m: usize, n: usize, d: usize) {
-        self.asrv(sf, m, n, d);
-    }
-
-    /// **ASR (immediate)**: Arithmetic shift right (immediate)
-    ///
-    /// This instruction shifts a register value right by an immediate number of bits, shifting in copies of the sign bit in the upper
-    /// bits and zeros in the lower bits, and writes the result to the destination register.
-    #[allow(unused_variables)]
-    pub fn _asr_imm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
-        todo!("ASR (immediate) is an alias of SBFM which is yet to be implemented")
-    }
-
-    /// **ASRV**: Arithmetic shift right variable
-    ///
-    /// This instruction shifts a register value right by a variable number of bits, shifting in copies of its sign bit, and writes the
-    /// result to the destination register. The value of the second source register modulo the register size in bits gives the number of
-    /// bits by which the first source register is right-shifted.
-    pub fn asrv(&mut self, sf: bool, m: usize, n: usize, d: usize) {
-        let operand2 = self._get_op(m, sf);
-        let rn = self._get_op(n, sf);
-
-        let datasize = 32u64 << sf as u64;
-
-        self._set_op(
-            d,
-            shared::shift_reg(rn, ShiftType::ASR, (operand2 % datasize) as usize),
-            sf,
-        );
     }
 
     /// **AT**: Address translate
@@ -1329,100 +754,6 @@ impl Cpu {
         self.pstate.Z = z;
         self.pstate.C = c;
         self.pstate.V = false;
-    }
-
-    /// **B.cond**: Branch conditionally
-    ///
-    /// This instruction branches conditionally to a label at a PC-relative offset. This instruction provides a hint that this is not a
-    /// subroutine call or return.
-    pub fn b_cond(&mut self, imm19: u32, cond: u8) {
-        let offset = shared::sint::<21>((imm19 << 2) as u64) as u64;
-        if self.condition_holds(cond) {
-            self.branch_to::<64>(self.pc + offset, BranchType::DIR, true);
-        } else {
-            self.branch_not_taken(BranchType::DIR, true);
-        }
-    }
-
-    /// **B**: Branch
-    ///
-    /// This instruction branches unconditionally to a label at a PC-relative offset. This instruction provides a hint that this is not a
-    /// subroutine call or return.
-    pub fn b(&mut self, imm26: u32) {
-        let offset = shared::sint::<28>((imm26 << 2) as u64) as u64;
-        self.branch_to::<64>(self.pc + offset, BranchType::DIR, false);
-    }
-
-    #[allow(unused_variables)]
-    pub fn bc_cond(&mut self, imm19: u32, cond: u8) {
-        todo!()
-    }
-
-    /// **BFC**: Bitfield clear
-    ///
-    /// This instruction sets a bitfield of &lt;width&gt; bits at bit position &lt;lsb&gt; of the destination register to zero, leaving the other
-    /// destination bits unchanged.
-    pub fn bfc(&mut self, sf: bool, N: bool, immr: u8, imms: u8, d: usize) {
-        self.bfm(sf, N, immr, imms, 31, d)
-    }
-
-    /// **BFI**: Bitfield insert
-    ///
-    /// This instruction copies a bitfield of &lt;width&gt; bits from the least significant bits of the source register to bit position &lt;lsb&gt;
-    /// of the destination register, leaving the other destination bits unchanged.
-    pub fn bfi(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
-        self.bfm(sf, N, immr, imms, n, d)
-    }
-
-    /// **BFM**: Bitfield move
-    ///
-    /// This instruction is usually accessed using one of its aliases, which are always preferred for disassembly.
-    ///
-    /// If &lt;imms&gt; is greater than or equal to &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;-&lt;immr&gt;+1) bits starting from bit position
-    /// &lt;immr&gt; in the source register to the least significant bits of the destination register.
-    ///
-    /// If &lt;imms&gt; is less than &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;+1) bits from the least significant bits of the source register
-    /// to bit position (regsize-&lt;immr&gt;) of the destination register, where regsize is the destination register size of 32 or 64 bits.
-    ///
-    /// In both cases, the other bits of the destination register remain unchanged.
-    pub fn bfm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
-        let (wmask, tmask) = if sf {
-            decode_bit_masks::<64>(N, imms, immr)
-        } else {
-            decode_bit_masks::<32>(N, imms, immr)
-        };
-
-        let src = if n == 31 { self._get_op(n, sf) } else { 0 };
-        let dst = self._get_op(d, sf);
-
-        let bot = (dst & !wmask) | (shared::ror(src, immr as u32, 32u32 << (sf as u32)) & wmask);
-        self._set_op(d, (dst & !tmask) | (bot & tmask), sf);
-    }
-
-    /// **BFXIL**: Bitfield extract and insert at low end
-    ///
-    /// This instruction copies a bitfield of &lt;width&gt; bits starting from bit position &lt;lsb&gt; in the source register to the least
-    /// significant bits of the destination register, leaving the other destination bits unchanged.
-    pub fn bfxil(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: usize, d: usize) {
-        self.bfm(sf, N, immr, imms, n, d)
-    }
-
-    /// **BIC (shifted register)**: Bitwise bit clear (shifted register)
-    ///
-    /// This instruction performs a bitwise AND between a register value and the complement of an optionally-shifted register
-    /// value, and writes the result to the destination register.
-    #[allow(unused_variables)]
-    pub fn bic(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
-        todo!()
-    }
-
-    /// **BICS (shifted register)**: Bitwise bit clear (shifted register), setting flags
-    ///
-    /// This instruction performs a bitwise AND between a register value and the complement of an optionally-shifted register
-    /// value, and writes the result to the destination register. It updates the condition flags based on the result.
-    #[allow(unused_variables)]
-    pub fn bics(&mut self, sf: bool, shift: u8, m: usize, imm6: u8, n: usize, d: usize) {
-        todo!()
     }
 
     /// **BL**: Branch with link
@@ -1695,201 +1026,4 @@ impl Cpu {
     // TODO: CASP, CASPA, CASPAL, CASPL
     // TODO: CASPT, CASPAT, CASPALT, CASPLT
     // TODO: CAST, CASAT, CASALT, CASLT
-
-    /// **CBB&lt;cc&gt;**: Compare bytes and branch
-    ///
-    /// This instruction compares the byte values in two registers, and conditionally branches to a label at a PC-relative offset if the
-    /// condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not affect
-    /// the condition flags.
-    pub fn cbb_cc(&mut self, cc: u8, m: usize, H: bool, imm9: u16, t: usize) {
-        if !Cpu::FEAT_CMPBR {
-            panic!("??");
-        }
-
-        let (op, unsigned) = match cc {
-            0b000 => (CmpOp::GT, false),
-            0b001 => (CmpOp::GE, false),
-            0b010 => (CmpOp::GT, true),
-            0b011 => (CmpOp::GE, true),
-            0b110 => (CmpOp::EQ, true),
-            0b111 => (CmpOp::NE, true),
-            _ => unreachable!(),
-        };
-
-        let offset = shared::sint::<11>((imm9 as u64) << 2);
-
-        let datasize = 8usize << (H as u8);
-        let operand1 = n_bits(self.x[t], datasize);
-        let operand2 = n_bits(self.x[m], datasize);
-
-        let cond = if unsigned {
-            let value1 = operand1;
-            let value2 = operand2;
-
-            match op {
-                CmpOp::EQ => value1 == value2,
-                CmpOp::NE => value1 != value2,
-                CmpOp::GT => value1 > value2,
-                CmpOp::GE => value1 >= value2,
-                _ => unreachable!(),
-            }
-        } else {
-            let value1 = operand1 as i64;
-            let value2 = operand2 as i64;
-
-            match op {
-                CmpOp::EQ => value1 == value2,
-                CmpOp::NE => value1 != value2,
-                CmpOp::GT => value1 > value2,
-                CmpOp::GE => value1 >= value2,
-                _ => unreachable!(),
-            }
-        };
-
-        if cond {
-            self.branch_to::<64>(((self.pc as i64) + offset) as u64, BranchType::DIR, true);
-        } else {
-            self.branch_not_taken(BranchType::DIR, true);
-        }
-    }
-
-    /// **CBBLE**: Compare signed less than or equal to bytes and branch
-    ///
-    /// This instruction compares the signed byte values in two registers, and conditionally branches to a label at a PC-relative
-    /// offset if the second value is less than or equal to the first. This instruction provides a hint that this is not a subroutine call or
-    /// return. This instruction does not affect the condition flags.
-    pub fn cbb_le(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
-        self.cbb_cc(0b001, m, H, imm9, t)
-    }
-
-    /// **CBBLO**: Compare unsigned lower than bytes and branch
-    ///
-    /// This instruction compares the unsigned byte values in two registers, and conditionally branches to a label at a PC-relative
-    /// offset if the second value is lower than the first. This instruction provides a hint that this is not a subroutine call or return.
-    ///
-    /// This instruction does not affect the condition flags.
-    pub fn cbb_lo(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
-        self.cbb_cc(0b010, m, H, imm9, t)
-    }
-
-    /// **CBBLS**: Compare unsigned lower than or same as bytes and branch
-    ///
-    /// This instruction compares the unsigned byte values in two registers, and conditionally branches to a label at a PC-relative
-    /// offset if the second value is lower than or the same as the first. This instruction provides a hint that this is not a subroutine
-    /// call or return. This instruction does not affect the condition flags.
-    pub fn cbb_ls(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
-        self.cbb_cc(0b011, m, H, imm9, t)
-    }
-
-    /// **CBBLT**: Compare signed less than bytes and branch
-    ///
-    /// This instruction compares the signed byte values in two registers, and conditionally branches to a label at a PC-relative
-    /// offset if the second value is less than the first. This instruction provides a hint that this is not a subroutine call or return. This
-    /// instruction does not affect the condition flags.
-    pub fn cbb_lt(&mut self, m: usize, H: bool, imm9: u16, t: usize) {
-        self.cbb_cc(0b000, m, H, imm9, t)
-    }
-
-    /// **CB&lt;cc&gt; (immediate)**: Compare register with immediate and branch
-    ///
-    /// This instruction compares the value in a register with an immediate, and conditionally branches to a label at a PC-relative
-    /// offset if the comparison is true. This instruction provides a hint that this is not a subroutine call or return. This instruction
-    /// does not affect the condition flags.
-    pub fn cb_cc_imm(&mut self, sf: bool, cc: u8, imm6: u8, imm9: u16, t: usize) {
-        let offset = shared::sint::<11>((imm9 << 2) as u64);
-
-        let (op, unsigned) = match cc {
-            0b000 => (CmpOp::GT, false),
-            0b001 => (CmpOp::LT, false),
-            0b010 => (CmpOp::GT, true),
-            0b011 => (CmpOp::LT, true),
-            0b110 => (CmpOp::EQ, true),
-            0b111 => (CmpOp::NE, true),
-            _ => unreachable!(),
-        };
-
-        let operand1 = self._get_op(t, sf);
-
-        let cond = if unsigned {
-            let value1 = operand1;
-            let value2 = imm6 as u64;
-
-            match op {
-                CmpOp::EQ => value1 == value2,
-                CmpOp::NE => value1 != value2,
-                CmpOp::GT => value1 > value2,
-                CmpOp::LT => value1 < value2,
-                _ => unreachable!(),
-            }
-        } else {
-            let value1 = operand1 as i64;
-            let value2 = imm6 as i64;
-
-            match op {
-                CmpOp::EQ => value1 == value2,
-                CmpOp::NE => value1 != value2,
-                CmpOp::GT => value1 > value2,
-                CmpOp::LT => value1 < value2,
-                _ => unreachable!(),
-            }
-        };
-
-        if cond {
-            self.branch_to::<64>(((self.pc as i64) + offset) as u64, BranchType::DIR, true);
-        } else {
-            self.branch_not_taken(BranchType::DIR, true);
-        }
-    }
-
-    /// **CB&lt;cc&gt; (register)**: Compare registers and branch
-    ///
-    /// This instruction compares the values in two registers, and conditionally branches to a label at a PC-relative offset if the
-    /// condition is true. This instruction provides a hint that this is not a subroutine call or return. This instruction does not affect
-    /// the condition flags.
-    pub fn cb_cc_reg(&mut self, sf: bool, cc: u8, m: usize, imm9: u16, t: usize) {
-        let offset = shared::sint::<11>((imm9 << 2) as u64);
-
-        let (op, unsigned) = match cc {
-            0b000 => (CmpOp::GT, false),
-            0b001 => (CmpOp::GE, false),
-            0b010 => (CmpOp::GT, true),
-            0b011 => (CmpOp::GE, true),
-            0b110 => (CmpOp::EQ, true),
-            0b111 => (CmpOp::NE, true),
-            _ => unreachable!(),
-        };
-
-        let operand1 = self._get_op(t, sf);
-        let operand2 = self._get_op(m, sf);
-
-        let cond = if unsigned {
-            let value1 = operand1;
-            let value2 = operand2;
-
-            match op {
-                CmpOp::EQ => value1 == value2,
-                CmpOp::NE => value1 != value2,
-                CmpOp::GT => value1 > value2,
-                CmpOp::LT => value1 < value2,
-                _ => unreachable!(),
-            }
-        } else {
-            let value1 = operand1 as i64;
-            let value2 = operand2 as i64;
-
-            match op {
-                CmpOp::EQ => value1 == value2,
-                CmpOp::NE => value1 != value2,
-                CmpOp::GT => value1 > value2,
-                CmpOp::LT => value1 < value2,
-                _ => unreachable!(),
-            }
-        };
-
-        if cond {
-            self.branch_to::<64>(((self.pc as i64) + offset) as u64, BranchType::DIR, true);
-        } else {
-            self.branch_not_taken(BranchType::DIR, true);
-        }
-    }
 }
