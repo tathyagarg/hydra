@@ -327,4 +327,204 @@ impl Cpu {
 
         self._set_op(d, result as u64, sf);
     }
+
+    /// **CNT**: Count bits
+    ///
+    /// This instruction determines the number of binary one bits in the value of the source register, and writes the result to the
+    /// destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0);
+    /// cpu.cnt(true, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 0);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0x1234_5678_9ABC_DEF0);
+    /// cpu.cnt(true, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 32);
+    /// ```
+    pub fn cnt(&mut self, sf: bool, n: Register, d: Register) {
+        if !Cpu::is_feature_implemented(Feature::CSSC) {
+            self.end_of_decode(DecodeType::UNDEF);
+        }
+
+        let operand1 = self._get_op(n, sf);
+        let result = operand1.count_ones();
+
+        self._set_op(d, result as u64, sf);
+    }
+
+    /// **CSEL**: Conditional select
+    ///
+    /// This instruction writes the value of the first source register to the destination register if the condition is TRUE. If the
+    /// condition is FALSE, it writes the value of the second source register to the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.__dbg_set_x(1, 7);
+    /// cpu.__dbg_get_pstate().__dbg_set_Z(true);
+    /// cpu.csel(true, 0, 0b0000, 1, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 7);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.__dbg_set_x(1, 7);
+    /// cpu.__dbg_get_pstate().__dbg_set_Z(false);
+    /// cpu.csel(true, 0, 0b0000, 1, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 5);
+    /// ```
+    pub fn csel(&mut self, sf: bool, m: Register, cond: u8, n: Register, d: Register) {
+        let result = if self.condition_holds(cond) {
+            self._get_op(n, sf)
+        } else {
+            self._get_op(m, sf)
+        };
+
+        self._set_op(d, result, sf);
+    }
+
+    /// **CSINC**: Conditional select increment
+    ///
+    /// This instruction returns, in the destination register, the value of the first source register if the condition is TRUE, and
+    /// otherwise returns the value of the second source register incremented by 1.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.__dbg_set_x(1, 7);
+    /// cpu.__dbg_get_pstate().__dbg_set_Z(true);
+    /// cpu.csinc(true, 0, 0b0000, 1, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 7);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.__dbg_set_x(1, 7);
+    /// cpu.__dbg_get_pstate().__dbg_set_Z(false);
+    /// cpu.csinc(true, 0, 0b0000, 1, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 6);
+    /// ```
+    pub fn csinc(&mut self, sf: bool, m: Register, cond: u8, n: Register, d: Register) {
+        let result = if self.condition_holds(cond) {
+            self._get_op(n, sf)
+        } else {
+            self._get_op(m, sf) + 1
+        };
+
+        self._set_op(d, result, sf);
+    }
+
+    /// **CSINV**: Conditional select invert
+    ///
+    /// This instruction returns, in the destination register, the value of the first source register if the condition is TRUE, and
+    /// otherwise returns the bitwise inversion value of the second source register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.__dbg_set_x(1, 7);
+    /// cpu.__dbg_get_pstate().__dbg_set_Z(true);
+    /// cpu.csinv(true, 0, 0b0000, 1, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 7);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.__dbg_set_x(1, 7);
+    /// cpu.__dbg_get_pstate().__dbg_set_Z(false);
+    /// cpu.csinv(true, 0, 0b0000, 1, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 0xFFFF_FFFF_FFFF_FFFA);
+    /// ```
+    pub fn csinv(&mut self, sf: bool, m: Register, cond: u8, n: Register, d: Register) {
+        let result = if self.condition_holds(cond) {
+            self._get_op(n, sf)
+        } else {
+            !self._get_op(m, sf)
+        };
+
+        self._set_op(d, result, sf);
+    }
+
+    /// **CSNEG**: Conditional select negation
+    ///
+    /// This instruction returns, in the destination register, the value of the first source register if the condition is TRUE, and
+    /// otherwise returns the negated value of the second source register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.__dbg_set_x(1, 7);
+    /// cpu.__dbg_get_pstate().__dbg_set_Z(true);
+    /// cpu.csneg(true, 0, 0b0000, 1, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 7);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.__dbg_set_x(1, 7);
+    /// cpu.__dbg_get_pstate().__dbg_set_Z(false);
+    /// cpu.csneg(true, 0, 0b0000, 1, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 0xFFFF_FFFF_FFFF_FFFB);
+    /// ```
+    pub fn csneg(&mut self, sf: bool, m: Register, cond: u8, n: Register, d: Register) {
+        let result = if self.condition_holds(cond) {
+            self._get_op(n, sf)
+        } else {
+            !self._get_op(m, sf) + 1
+        };
+
+        self._set_op(d, result, sf);
+    }
+
+    /// **CTZ**: Count trailing zeros
+    ///
+    /// This instruction determines the number of consecutive binary zero bits, starting from the least significant bit in the source
+    /// register, and places the result in the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 5);
+    /// cpu.ctz(false, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 0);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0xFFFF_0000_0000_0000);
+    /// cpu.ctz(true, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 48);
+    /// ```
+    pub fn ctz(&mut self, sf: bool, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let result = if sf {
+            count_leading_zero_bits::<64>(operand1.reverse_bits())
+        } else if operand1 == 0 {
+            32
+        } else {
+            count_leading_zero_bits::<32>((operand1 as u32).reverse_bits() as u64)
+        };
+
+        self._set_op(d, result as u64, sf);
+    }
 }
