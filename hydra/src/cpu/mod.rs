@@ -449,6 +449,7 @@ pub enum Feature {
     E2H0,
     ExS,
 
+    FlagM,
     FlagM2,
 
     HBC,
@@ -498,6 +499,7 @@ impl Cpu {
             Feature::E2H0 => false,
             Feature::ExS => false,
 
+            Feature::FlagM => false,
             Feature::FlagM2 => false,
 
             Feature::HBC => true,

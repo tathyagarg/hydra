@@ -115,4 +115,8 @@ impl PState {
     pub fn EL(&self) -> u8 {
         self._EL
     }
+
+    pub fn invert_C(&mut self) {
+        self._C = !self._C;
+    }
 }

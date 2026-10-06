@@ -286,7 +286,6 @@ impl Cpu {
                 shared::add_with_carry::<32>(operand1, operand2, false)
             };
 
-            println!("Flags: {:?}", rflags);
             flags = rflags;
         }
 
@@ -308,6 +307,52 @@ impl Cpu {
                 shared::add_with_carry::<64>(operand1, operand2, false)
             } else {
                 shared::add_with_carry::<32>(operand1, operand2, false)
+            };
+
+            flags = rflags;
+        }
+
+        self.pstate.set_nzcv(&flags);
+    }
+
+    /// **CCMP (immediate)**: Conditional compare (immediate)
+    ///
+    /// This instruction sets the value of the condition flags to the result of the comparison of a register value and an immediate
+    /// value if the condition is TRUE, and an immediate value otherwise.
+    pub fn ccmp_imm(&mut self, sf: bool, imm5: u8, cond: u8, n: Register, nzcv: u8) {
+        let mut flags = NZCV::from(nzcv);
+
+        if self.condition_holds(cond) {
+            let operand1 = self._get_op(n, sf);
+            let operand2 = imm5 as u64;
+
+            let (_, rflags) = if sf {
+                shared::add_with_carry::<64>(operand1, !operand2, false)
+            } else {
+                shared::add_with_carry::<32>(operand1, !operand2, false)
+            };
+
+            flags = rflags;
+        }
+
+        self.pstate.set_nzcv(&flags);
+    }
+
+    /// **CCMP (register)**: Conditional compare (register)
+    ///
+    /// This instruction sets the value of the condition flags to the result of the comparison of two registers if the condition is TRUE,
+    /// and an immediate value otherwise.
+    pub fn ccmp_reg(&mut self, sf: bool, m: Register, cond: u8, n: Register, nzcv: NZCV) {
+        let mut flags = nzcv;
+
+        if self.condition_holds(cond) {
+            let operand1 = self._get_op(n, sf);
+            let operand2 = self._get_op(m, sf);
+
+            let (_, rflags) = if sf {
+                shared::add_with_carry::<64>(operand1, !operand2, false)
+            } else {
+                shared::add_with_carry::<32>(operand1, !operand2, false)
             };
 
             flags = rflags;

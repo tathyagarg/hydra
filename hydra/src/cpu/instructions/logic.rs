@@ -1,5 +1,5 @@
 use crate::cpu::{
-    Cpu, DecodeType, Register, ShiftType,
+    Cpu, DecodeType, Feature, Register, ShiftType,
     common::{NZCV, nth_bit},
     shared,
 };
@@ -239,6 +239,25 @@ impl Cpu {
     /// value, and writes the result to the destination register. It updates the condition flags based on the result.
     #[allow(unused_variables)]
     pub fn bics(&mut self, sf: bool, shift: u8, m: Register, imm6: u8, n: Register, d: Register) {
+        todo!()
+    }
+
+    /// **CFINV**: Invert carry flag
+    ///
+    /// This instruction inverts the value of the PSTATE.C flag.
+    pub fn cfinv(&mut self) {
+        if !Cpu::is_feature_implemented(Feature::FlagM) {
+            self.end_of_decode(DecodeType::UNDEF);
+        }
+
+        self.pstate.invert_C();
+    }
+
+    /// **CHKFEAT**: Check feature status
+    ///
+    /// This instruction indicates the status of features. For more information, see Check Feature.
+    /// If FEAT_CHK is not implemented, this instruction executes as a NOP.
+    pub fn chkfeat(&mut self) {
         todo!()
     }
 }
