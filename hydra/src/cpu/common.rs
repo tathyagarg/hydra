@@ -49,3 +49,13 @@ pub fn ones(w: u32) -> u64 {
 pub fn n_bits<T: Into<u64>>(v: T, n: usize) -> u64 {
     v.into() & ones(n as u32)
 }
+
+pub fn count_leading_sign_bits<const N: usize>(value: u64) -> u32 {
+    let differing = (value ^ (value >> 1)) & (ones(N as u32) >> 1);
+
+    differing.leading_zeros() as u32 - (64 - (N - 1) as u32)
+}
+
+pub fn count_leading_zero_bits<const N: usize>(value: u64) -> u32 {
+    value.leading_zeros() as u32 - (64 - N as u32)
+}

@@ -1,8 +1,4 @@
-use crate::cpu::{
-    Cpu, DecodeType, Feature, Register, ShiftType,
-    common::{NZCV, nth_bit},
-    shared,
-};
+use crate::cpu::{Cpu, DecodeType, Feature, Register, ShiftType, common::*, shared};
 
 impl Cpu {
     /// **AND (immediate)**: Bitwise AND (immediate)
@@ -259,5 +255,76 @@ impl Cpu {
     /// If FEAT_CHK is not implemented, this instruction executes as a NOP.
     pub fn chkfeat(&mut self) {
         todo!()
+    }
+
+    /// **CLS**: Count leading sign bits
+    ///
+    /// This instruction determines the number of leading bits of the source register that have the same value as the most significant
+    /// bit of the register, and writes the result to the destination register. The result does not include the most significant bit of the
+    /// source register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0xFF00_0000_0000_0000);
+    /// cpu.cls(true, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 7);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0xFF00_0000);
+    /// cpu.cls(false, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 7);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0x0000_FFFF_FFFF_FFFF);
+    /// cpu.cls(true, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 15);
+    /// ```
+    pub fn cls(&mut self, sf: bool, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let result = if sf {
+            count_leading_sign_bits::<64>(operand1)
+        } else {
+            count_leading_sign_bits::<32>(operand1)
+        };
+
+        self._set_op(d, result as u64, sf);
+    }
+
+    /// **CLZ**: Count leading zeros
+    ///
+    /// This instruction determines the number of consecutive binary zero bits, starting from the most significant bit in the source
+    /// register, and places the result in the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0xFF00_0000_0000_0000);
+    /// cpu.clz(true, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 0);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 0x0000_FFFF_FFFF_FFFF);
+    /// cpu.clz(true, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 16);
+    /// ```
+    pub fn clz(&mut self, sf: bool, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let result = if sf {
+            count_leading_zero_bits::<64>(operand1)
+        } else {
+            count_leading_zero_bits::<32>(operand1)
+        };
+
+        self._set_op(d, result as u64, sf);
     }
 }
