@@ -1,3 +1,5 @@
+use crate::cpu::shared::EL;
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct BRBSRC_EL1_Type(pub u64);
@@ -12,7 +14,7 @@ pub struct BRBINF_EL1_Type {
     pub ccu: bool,
     pub cc: u16,
     pub type_: u8,
-    pub el: u8,
+    pub el: EL,
     pub mpred: bool,
     pub valid: u8,
 }

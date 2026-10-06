@@ -6,6 +6,7 @@ use crate::cpu::{
     shared::NZCV,
 };
 
+mod accessors;
 mod brbe;
 pub mod common;
 mod exeception;
@@ -352,6 +353,10 @@ pub struct Cpu {
 
     scr: u32,
     scr_el3: u64,
+    sctlr_el1: u64,
+    sctlr_el2: u64,
+    sctlr_el3: u64,
+
     edscr: u32,
 
     hcr_el2: u64,
@@ -385,6 +390,9 @@ impl Default for Cpu {
             tcr_el3: 0,
             scr: 0,
             scr_el3: 0,
+            sctlr_el1: 0,
+            sctlr_el2: 0,
+            sctlr_el3: 0,
             edscr: 0,
             hcr_el2: 0,
             brbfcr_el0: 0,

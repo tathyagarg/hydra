@@ -1,3 +1,4 @@
+#[derive(PartialEq)]
 pub enum Exception {
     Uncategorized,
     WFxTrap,
@@ -67,7 +68,7 @@ pub struct FullAddress {
 }
 
 pub struct ExceptionRecord {
-    exceptype: Exception,
+    pub exceptype: Exception,
     syndrome: IssType,
     paddress: FullAddress,
     vaddress: u64,
@@ -76,7 +77,7 @@ pub struct ExceptionRecord {
     NS: bool,
     /// bits(NUM_PABITS) = u64
     ipaddress: u64,
-    trapped_syscall_inst: bool,
+    pub trapped_syscall_inst: bool,
 }
 
 impl ExceptionRecord {

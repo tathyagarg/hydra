@@ -1,6 +1,6 @@
 #![allow(dead_code, non_snake_case)]
 
-use crate::cpu::shared::NZCV;
+use crate::cpu::shared::{EL, NZCV};
 
 pub struct PState {
     _N: bool,                // Negative condition flag
@@ -25,7 +25,7 @@ pub struct PState {
     pub(super) UINJ: bool,   // Undefined Exception Injection
     pub(super) SS: bool,     // Software step bit
     pub(super) IL: bool,     // Illegal Execution state bit
-    _EL: u8,                 // Exception level
+    _EL: EL,                 // Exception level
     pub(super) nRW: bool,    // Execution state: 0=AArch64, 1=AArch32
     pub(super) SP: bool,     // Stack pointer select: 0=SP0, 1=SPx [AArch64 only]
     pub(super) SSBS: bool,   // Speculative Store Bypass Safe

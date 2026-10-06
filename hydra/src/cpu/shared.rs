@@ -4,16 +4,19 @@ use crate::cpu::{
     common::*,
     exeception::{Exception, ExceptionRecord},
     regs::{
-        brbcr_el1::BRBCR_EL1Field, brbcr_el2::BRBCR_EL2Field, brbfcr_el0::BRBFCR_EL0Field,
-        brbfcr_el1::BRBFCR_EL1Field, edscr::EDSCRField, hcr_el2::HCR_EL2Field,
-        mdcr_el3::MDCR_EL3Field, scr::SCRField, scr_el3::SCR_EL3Field, tcr_el1::TCR_EL1Field,
+        SCTLRField, brbcr_el1::BRBCR_EL1Field, brbcr_el2::BRBCR_EL2Field,
+        brbfcr_el0::BRBFCR_EL0Field, brbfcr_el1::BRBFCR_EL1Field, edscr::EDSCRField,
+        hcr_el2::HCR_EL2Field, mdcr_el3::MDCR_EL3Field, scr::SCRField, scr_el3::SCR_EL3Field,
+        tcr_el1::TCR_EL1Field,
     },
 };
 
-pub const EL0: u8 = 0b00;
-pub const EL1: u8 = 0b01;
-pub const EL2: u8 = 0b10;
-pub const EL3: u8 = 0b11;
+pub type EL = u8;
+
+pub const EL0: EL = 0b00;
+pub const EL1: EL = 0b01;
+pub const EL2: EL = 0b10;
+pub const EL3: EL = 0b11;
 
 #[derive(PartialEq)]
 pub enum SecurityState {
@@ -225,9 +228,10 @@ impl Cpu {
                 && HCR_EL2Field::TGE.fetch_bit(self.hcr_el2));
     }
 
+    #[allow(warnings)]
     pub fn aarch64_take_exception(
         &self,
-        target_el: u8,
+        target_el: EL,
         exception_in: &ExceptionRecord,
         preferred_exception_return: u64,
         vec_offset_in: isize,
@@ -260,7 +264,25 @@ impl Cpu {
             brbe_source_address = preferred_exception_return;
         }
 
-        if !Cpu::is_feature_implemented(Feature::ExS) {}
+        if !Cpu::is_feature_implemented(Feature::ExS)
+            || SCTLRField::EIS.fetch_bit(self.get_SCTLR_EL(target_el))
+        {
+            // does nothing?
+            todo!("Synchronize Contexts");
+        } else if !(except.exceptype == Exception::SoftwareBreakpoint
+            || ([
+                Exception::SupervisorCall,
+                Exception::HypervisorCall,
+                Exception::MonitorCall,
+            ]
+            .contains(&except.exceptype)
+                && !except.trapped_syscall_inst))
+        {
+            // does nothing?
+            todo!("Instruction Fetch Barrier");
+        }
+
+        todo!("More bs")
     }
 
     pub fn aarch64_undefined(&self) {
@@ -272,7 +294,18 @@ impl Cpu {
 
         let except = ExceptionRecord::syndrome(Exception::Uncategorized);
 
-        if self.pstate.EL() > EL1 {}
+        if self.pstate.EL() > EL1 {
+            self.aarch64_take_exception(
+                self.pstate.EL(),
+                &except,
+                preferred_exception_return,
+                vect_offset,
+            );
+        } else if route_to_el2 {
+            self.aarch64_take_exception(EL2, &except, preferred_exception_return, vect_offset);
+        } else {
+            self.aarch64_take_exception(EL1, &except, preferred_exception_return, vect_offset);
+        }
     }
 
     pub fn aarch32_undefined(&self) {
@@ -370,7 +403,7 @@ impl Cpu {
         }
     }
 
-    pub fn security_state_at_el(&self, el: u8) -> SecurityState {
+    pub fn security_state_at_el(&self, el: EL) -> SecurityState {
         if Cpu::is_feature_implemented(Feature::RME) {
             if el == EL3 {
                 return SecurityState::Root;
@@ -427,7 +460,7 @@ impl Cpu {
         self.security_state_at_el(self.pstate.EL())
     }
 
-    pub fn branch_record_allowed(&self, el: u8) -> bool {
+    pub fn branch_record_allowed(&self, el: EL) -> bool {
         if self.el_using_aarch32(el) {
             return false;
         }
@@ -565,7 +598,7 @@ impl Cpu {
         ccu: bool,
         cc: u16,
         branch_type: u8,
-        el: u8,
+        el: EL,
         mispredict: bool,
         valid: u8,
         source_address: u64,
@@ -667,7 +700,7 @@ impl Cpu {
         }
     }
 
-    pub fn aarch64_branchaddr(&self, vaddress: u64, el: u8) -> u64 {
+    pub fn aarch64_branchaddr(&self, vaddress: u64, el: EL) -> u64 {
         let msbit = self.addrtop(vaddress, true, el);
         if msbit == 63 {
             return vaddress;
@@ -678,7 +711,7 @@ impl Cpu {
         }
     }
 
-    pub fn have_aarch32_el(&self, el: u8) -> bool {
+    pub fn have_aarch32_el(&self, el: EL) -> bool {
         match el {
             EL0 => Cpu::is_feature_implemented(Feature::AA32EL0),
             EL1 => Cpu::is_feature_implemented(Feature::AA32EL1),
@@ -695,7 +728,7 @@ impl Cpu {
             || Cpu::is_feature_implemented(Feature::AA64EL3)
     }
 
-    pub fn have_el(&self, el: u8) -> bool {
+    pub fn have_el(&self, el: EL) -> bool {
         match el {
             EL0 | EL1 => true,
             EL2 => {
@@ -802,7 +835,7 @@ impl Cpu {
         HCR_EL2Field::E2H.fetch_bit(self.hcr_el2)
     }
 
-    pub fn el_is_in_host(&self, el: u8) -> bool {
+    pub fn el_is_in_host(&self, el: EL) -> bool {
         if !Cpu::is_feature_implemented(Feature::VHE) || self.el_using_aarch32(EL2) {
             return false;
         }
@@ -820,7 +853,7 @@ impl Cpu {
         }
     }
 
-    pub fn el_state_using_aarch32k(&self, el: u8, secure: bool) -> (bool, bool) {
+    pub fn el_state_using_aarch32k(&self, el: EL, secure: bool) -> (bool, bool) {
         if !self.have_aarch32_el(el) {
             return (true, false);
         } else if secure && el == EL2 {
@@ -867,7 +900,7 @@ impl Cpu {
         }
     }
 
-    pub fn el_state_using_aarch32(&self, el: u8, secure: bool) -> bool {
+    pub fn el_state_using_aarch32(&self, el: EL, secure: bool) -> bool {
         let (_, aarch32) = self.el_state_using_aarch32k(el, secure);
 
         aarch32
@@ -889,11 +922,11 @@ impl Cpu {
         }
     }
 
-    pub fn el_using_aarch32(&self, el: u8) -> bool {
+    pub fn el_using_aarch32(&self, el: EL) -> bool {
         self.el_state_using_aarch32(el, self.is_secure_below_el3())
     }
 
-    pub fn addrtop(&self, address: u64, isinstr: bool, el: u8) -> usize {
+    pub fn addrtop(&self, address: u64, isinstr: bool, el: EL) -> usize {
         let regime = self.s1translationregime(el);
 
         if self.el_using_aarch32(regime) {
@@ -907,7 +940,7 @@ impl Cpu {
         }
     }
 
-    pub fn effective_tbi(&self, address: u64, isinstr: bool, el: u8) -> bool {
+    pub fn effective_tbi(&self, address: u64, isinstr: bool, el: EL) -> bool {
         let regime = self.s1translationregime(el);
 
         let (tbi, tbid): (bool, Option<bool>) = match regime {
@@ -936,7 +969,7 @@ impl Cpu {
         tbi && (!Cpu::is_feature_implemented(Feature::PAuth) || tbid == Some(false) || !isinstr)
     }
 
-    pub fn s1translationregime(&self, el: u8) -> u8 {
+    pub fn s1translationregime(&self, el: EL) -> u8 {
         if el != EL0 {
             return el;
         }
