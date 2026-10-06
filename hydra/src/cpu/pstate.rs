@@ -3,10 +3,10 @@
 use crate::cpu::shared::NZCV;
 
 pub struct PState {
-    pub(super) N: bool,      // Negative condition flag
-    pub(super) Z: bool,      // Zero condition flag
-    pub(super) C: bool,      // Carry condition flag
-    pub(super) V: bool,      // Overflow condition flag
+    _N: bool,                // Negative condition flag
+    _Z: bool,                // Zero condition flag
+    _C: bool,                // Carry condition flag
+    _V: bool,                // Overflow condition flag
     pub(super) D: bool,      // Debug mask bit [AArch64 only]
     pub(super) A: bool,      // SError interrupt mask bit
     pub(super) I: bool,      // IRQ mask bit
@@ -34,10 +34,10 @@ pub struct PState {
 impl Default for PState {
     fn default() -> Self {
         Self {
-            N: false,
-            Z: false,
-            C: false,
-            V: false,
+            _N: false,
+            _Z: false,
+            _C: false,
+            _V: false,
             D: true,
             A: true,
             I: true,
@@ -66,17 +66,33 @@ impl Default for PState {
 
 impl PState {
     pub fn __dbg_set_C(&mut self, v: bool) {
-        self.C = v;
+        self._C = v;
     }
 
     pub fn __dbg_get_C(&self) -> bool {
-        self.C
+        self._C
     }
 
     pub fn set_nzcv(&mut self, nzcv: &NZCV) {
-        self.N = nzcv.N();
-        self.Z = nzcv.Z();
-        self.C = nzcv.C();
-        self.V = nzcv.V();
+        self._N = nzcv.N();
+        self._Z = nzcv.Z();
+        self._C = nzcv.C();
+        self._V = nzcv.V();
+    }
+
+    pub fn N(&self) -> bool {
+        self._N
+    }
+
+    pub fn Z(&self) -> bool {
+        self._Z
+    }
+
+    pub fn C(&self) -> bool {
+        self._C
+    }
+
+    pub fn V(&self) -> bool {
+        self._V
     }
 }

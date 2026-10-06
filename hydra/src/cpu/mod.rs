@@ -3,6 +3,7 @@
 use crate::cpu::{
     brbe::{BRBINF_EL1_Type, BRBSRC_EL1_Type, BRBTGT_EL1_Type, Brbe},
     pmu::Pmu,
+    shared::NZCV,
 };
 
 mod brbe;
@@ -747,13 +748,10 @@ impl Cpu {
     /// This instruction converts the state of the PSTATE.{N,Z,C,V} flags from a form representing the result of an Arm
     /// floating-point scalar compare instruction to an alternative representation required by some software.
     pub fn axflag(&mut self) {
-        let z = self.pstate.Z || self.pstate.V;
-        let c = self.pstate.C && !self.pstate.V;
+        let z = self.pstate.Z() || self.pstate.V();
+        let c = self.pstate.C() && !self.pstate.V();
 
-        self.pstate.N = false;
-        self.pstate.Z = z;
-        self.pstate.C = c;
-        self.pstate.V = false;
+        self.pstate.set_nzcv(&NZCV::init(false, z, c, false));
     }
 
     /// **BL**: Branch with link

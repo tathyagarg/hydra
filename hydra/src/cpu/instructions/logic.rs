@@ -1,4 +1,7 @@
-use crate::cpu::{Cpu, ShiftType, shared};
+use crate::cpu::{
+    Cpu, ShiftType,
+    shared::{self, NZCV},
+};
 
 impl Cpu {
     /// **AND (immediate)**: Bitwise AND (immediate)
@@ -101,11 +104,12 @@ impl Cpu {
         let result = operand1 & operand2;
 
         self._set_reg_or_sp(d, result, sf);
-
-        self.pstate.N = (result >> ((32 << sf as u64) - 1)) == 1;
-        self.pstate.Z = result == 0;
-        self.pstate.C = false;
-        self.pstate.V = false;
+        self.pstate.set_nzcv(&NZCV::init(
+            (result >> ((32 << sf as u64) - 1)) == 1,
+            result == 0,
+            false,
+            false,
+        ));
     }
 
     /// **ANDS: (shifted register)**: Bitwise AND (shifted register), setting flags
@@ -122,11 +126,12 @@ impl Cpu {
 
         let result = operand1 & operand2;
         self._set_op(d, result, sf);
-
-        self.pstate.N = (result >> ((32 << sf as u64) - 1)) == 1;
-        self.pstate.Z = result == 0;
-        self.pstate.C = false;
-        self.pstate.V = false;
+        self.pstate.set_nzcv(&NZCV::init(
+            (result >> ((32 << sf as u64) - 1)) == 1,
+            result == 0,
+            false,
+            false,
+        ));
     }
 
     /// **BFC**: Bitfield clear

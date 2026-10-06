@@ -56,9 +56,9 @@
 <a href=#56 id=56 data-nosnippet>56</a>        <span class="kw">let </span>operand2 = <span class="self">self</span>._get_op(m, sf);
 <a href=#57 id=57 data-nosnippet>57</a>
 <a href=#58 id=58 data-nosnippet>58</a>        <span class="kw">let </span>(result, <span class="kw">_</span>) = <span class="kw">if </span>sf {
-<a href=#59 id=59 data-nosnippet>59</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
+<a href=#59 id=59 data-nosnippet>59</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C())
 <a href=#60 id=60 data-nosnippet>60</a>        } <span class="kw">else </span>{
-<a href=#61 id=61 data-nosnippet>61</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
+<a href=#61 id=61 data-nosnippet>61</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C())
 <a href=#62 id=62 data-nosnippet>62</a>        };
 <a href=#63 id=63 data-nosnippet>63</a>
 <a href=#64 id=64 data-nosnippet>64</a>        <span class="self">self</span>._set_op(d, result, sf);
@@ -93,9 +93,9 @@
 <a href=#93 id=93 data-nosnippet>93</a>        <span class="kw">let </span>operand2 = <span class="self">self</span>._get_op(m, sf);
 <a href=#94 id=94 data-nosnippet>94</a>
 <a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>(result, nzcv) = <span class="kw">if </span>sf {
-<a href=#96 id=96 data-nosnippet>96</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
+<a href=#96 id=96 data-nosnippet>96</a>            shared::add_with_carry::&lt;<span class="number">64</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C())
 <a href=#97 id=97 data-nosnippet>97</a>        } <span class="kw">else </span>{
-<a href=#98 id=98 data-nosnippet>98</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C)
+<a href=#98 id=98 data-nosnippet>98</a>            shared::add_with_carry::&lt;<span class="number">32</span>&gt;(operand1, operand2, <span class="self">self</span>.pstate.C())
 <a href=#99 id=99 data-nosnippet>99</a>        };
 <a href=#100 id=100 data-nosnippet>100</a>
 <a href=#101 id=101 data-nosnippet>101</a>        <span class="self">self</span>._set_op(d, result, sf);

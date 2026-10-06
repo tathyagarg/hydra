@@ -56,9 +56,9 @@ impl Cpu {
         let operand2 = self._get_op(m, sf);
 
         let (result, _) = if sf {
-            shared::add_with_carry::<64>(operand1, operand2, self.pstate.C)
+            shared::add_with_carry::<64>(operand1, operand2, self.pstate.C())
         } else {
-            shared::add_with_carry::<32>(operand1, operand2, self.pstate.C)
+            shared::add_with_carry::<32>(operand1, operand2, self.pstate.C())
         };
 
         self._set_op(d, result, sf);
@@ -93,9 +93,9 @@ impl Cpu {
         let operand2 = self._get_op(m, sf);
 
         let (result, nzcv) = if sf {
-            shared::add_with_carry::<64>(operand1, operand2, self.pstate.C)
+            shared::add_with_carry::<64>(operand1, operand2, self.pstate.C())
         } else {
-            shared::add_with_carry::<32>(operand1, operand2, self.pstate.C)
+            shared::add_with_carry::<32>(operand1, operand2, self.pstate.C())
         };
 
         self._set_op(d, result, sf);

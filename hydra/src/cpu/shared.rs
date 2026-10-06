@@ -2,7 +2,6 @@ use crate::cpu::{
     BranchType, Cpu, ExtendType, Feature, ShiftType,
     brbe::{BRBSRC_EL1_Type, BRBTGT_EL1_Type},
     common::*,
-    pstate::PState,
     regs::{
         brbcr_el1::BRBCR_EL1Field, brbcr_el2::BRBCR_EL2Field, brbfcr_el0::BRBFCR_EL0Field,
         brbfcr_el1::BRBFCR_EL1Field, hcr_el2::HCR_EL2Field, mdcr_el3::MDCR_EL3Field, scr::SCRField,
@@ -42,11 +41,8 @@ impl NZCV {
         self.3
     }
 
-    fn set(&self, pstate: &mut PState) {
-        pstate.N = self.0;
-        pstate.Z = self.1;
-        pstate.C = self.2;
-        pstate.V = self.3;
+    pub fn init(n: bool, z: bool, c: bool, v: bool) -> Self {
+        Self(n, z, c, v)
     }
 }
 
@@ -201,13 +197,13 @@ impl Cpu {
 
     pub fn condition_holds(&self, cond: u8) -> bool {
         let result = match cond >> 1 {
-            0b000 => self.pstate.Z,
-            0b001 => self.pstate.C,
-            0b010 => self.pstate.N,
-            0b011 => self.pstate.V,
-            0b100 => self.pstate.C && !self.pstate.Z,
-            0b101 => self.pstate.N == self.pstate.V,
-            0b110 => self.pstate.N == self.pstate.V && !self.pstate.Z,
+            0b000 => self.pstate.Z(),
+            0b001 => self.pstate.C(),
+            0b010 => self.pstate.N(),
+            0b011 => self.pstate.V(),
+            0b100 => self.pstate.C() && !self.pstate.Z(),
+            0b101 => self.pstate.N() == self.pstate.V(),
+            0b110 => self.pstate.N() == self.pstate.V() && !self.pstate.Z(),
             0b111 => true,
             _ => unreachable!(),
         };
