@@ -2,8 +2,8 @@
 
 use crate::cpu::{
     brbe::{BRBINF_EL1_Type, BRBSRC_EL1_Type, BRBTGT_EL1_Type, Brbe},
+    common::NZCV,
     pmu::Pmu,
-    shared::NZCV,
 };
 
 mod accessors;
@@ -130,7 +130,7 @@ pub struct Cpu {
     /// A 64-bit Program Counter holding the address of the current instruction.
     /// Software cannot write directly to the PC. It can be updated only on a branch, exception entry or exception
     /// return.
-    pc: u64,
+    _pc: u64,
 
     /// 32 SIMD&FP registers, V0 to V31. Each can be accessed as:
     /// - A 128-bit register named Q0 to Q31.
@@ -381,7 +381,7 @@ impl Default for Cpu {
         Self {
             x: [0; 31],
             sp: 0,
-            pc: 0,
+            _pc: 0,
             v: [0; 32],
             fcpr: 0,
             fpsr: 0,
@@ -449,6 +449,10 @@ pub enum Feature {
     E2H0,
     ExS,
 
+    FlagM2,
+
+    HBC,
+
     IESB,
 
     PAuth,
@@ -493,6 +497,10 @@ impl Cpu {
 
             Feature::E2H0 => false,
             Feature::ExS => false,
+
+            Feature::FlagM2 => false,
+
+            Feature::HBC => true,
 
             Feature::IESB => false,
 
@@ -569,7 +577,7 @@ impl Cpu {
         let immhi = to_uint::<19>(immhi as u64);
 
         let imm = (immhi << 2) | immlo;
-        self.x[d] = self.pc + imm;
+        self.x[d] = self.get_PC64() + imm;
     }
 
     /// **ADRP**: Form PC-relative address to 4KB page
@@ -581,7 +589,7 @@ impl Cpu {
         let immhi = to_uint::<19>(immhi as u64);
 
         let imm = ((immhi << 2) | immlo) << 12;
-        let base = self.pc & (!0u64 << 12);
+        let base = self.get_PC64() & (!0u64 << 12);
 
         self.x[d] = base + imm;
     }

@@ -26,30 +26,6 @@ pub enum SecurityState {
     Secure,
 }
 
-pub struct NZCV(bool, bool, bool, bool);
-
-impl NZCV {
-    pub(super) fn N(&self) -> bool {
-        self.0
-    }
-
-    pub(super) fn Z(&self) -> bool {
-        self.1
-    }
-
-    pub(super) fn C(&self) -> bool {
-        self.2
-    }
-
-    pub(super) fn V(&self) -> bool {
-        self.3
-    }
-
-    pub fn init(n: bool, z: bool, c: bool, v: bool) -> Self {
-        Self(n, z, c, v)
-    }
-}
-
 fn replicate(val: u64, elem_bits: u32, total_bits: u32) -> u64 {
     println!("repl: {} {} {}", val, elem_bits, total_bits);
     let elem = val & ones(elem_bits);
@@ -79,8 +55,11 @@ pub fn ror(val: u64, amount: u32, width: u32) -> u64 {
 }
 
 /// Signed Integer function: Converts unsigned int to signed int
-pub(super) fn sint<const N: usize>(n: u64) -> i64 {
+/// Also called SignExtend function
+/// The `N` is the number of used bits in the input `n`
+pub(super) fn sint<const N: usize, T: Into<u64>>(n: T) -> i64 {
     let mask = if N == 64 { u64::MAX } else { (1u64 << N) - 1 };
+    let n = n.into();
     let sign_bit = 1u64 << (N - 1);
     (if n & sign_bit != 0 {
         n | !mask
@@ -93,12 +72,27 @@ pub(super) fn add_with_carry<const N: usize>(x: u64, y: u64, carry_in: bool) -> 
     let mask = if N == 64 { u64::MAX } else { (1u64 << N) - 1 };
 
     let (unsigned_sum, carry) = {
-        let (temp, c1) = x.overflowing_add(y);
-        println!("temp: {}, c1: {}", temp, c1);
-        let (temp2, c2) = temp.overflowing_add(carry_in as u64);
+        let (temp, c1) = if N == 64 {
+            x.overflowing_add(y)
+        } else {
+            let (res, c) = (x as u32).overflowing_add(y as u32);
+            (res as u64, c)
+        };
+
+        let (temp2, c2) = if N == 64 {
+            temp.overflowing_add(carry_in as u64)
+        } else {
+            let (res, c) = (temp as u32).overflowing_add(carry_in as u32);
+            (res as u64, c)
+        };
         (temp2, c1 || c2)
     };
-    let signed_sum = sint::<N>(x) + sint::<N>(y) + carry_in as i64;
+
+    let signed_sum = if N == 64 {
+        sint::<N, u64>(x) + sint::<N, u64>(y) + carry_in as i64
+    } else {
+        (sint::<N, u32>(x as u32) as i32 + sint::<N, u32>(y as u32) as i32 + carry_in as i32) as i64
+    };
 
     let result = unsigned_sum & mask;
 
@@ -107,10 +101,7 @@ pub(super) fn add_with_carry<const N: usize>(x: u64, y: u64, carry_in: bool) -> 
     let c = carry;
     let v = result as i64 != signed_sum;
 
-    println!("nzcv: {} {} {} {}", n, z, c, v);
-    println!("unsigned_sum: {}, signed_sum: {}", unsigned_sum, signed_sum);
-
-    (result, NZCV(n, z, c, v))
+    (result, NZCV::init(n, z, c, v))
 }
 
 fn extend(val: u64, nbits: usize, unsigned: bool) -> u64 {
@@ -218,7 +209,7 @@ impl Cpu {
 
     pub fn this_instr_addr<const N: usize>(&self) -> u64 {
         assert!(N == 64 || (N == 32 && self.using_aarch32()));
-        n_bits(self.pc, N)
+        n_bits(self.get_PC64(), N)
     }
 
     pub fn aarch32_general_execeptions_to_aarch64(&self) -> bool {
@@ -377,7 +368,7 @@ impl Cpu {
         branch_conditional: bool,
     ) {
         if N == 32 {
-            self.pc = target;
+            self._pc = target;
         } else {
             let target_vaddress = self.aarch64_branchaddr(target, self.pstate.EL());
             if Cpu::is_feature_implemented(Feature::BRBE)
@@ -399,7 +390,7 @@ impl Cpu {
                 todo!()
             }
 
-            self.pc = target_vaddress;
+            self._pc = target_vaddress;
         }
     }
 
@@ -692,7 +683,7 @@ impl Cpu {
                 el,
                 mispredict,
                 0b11,
-                self.pc,
+                self.get_PC64(),
                 target_address,
             );
 
@@ -705,7 +696,7 @@ impl Cpu {
         if msbit == 63 {
             return vaddress;
         } else if ((el == EL0 || el == EL1) || self.el_is_in_host(el)) && nth_bit(vaddress, msbit) {
-            return sint::<64>(vaddress & ((1 << msbit) - 1)) as u64;
+            return sint::<64, u64>(vaddress & ((1 << msbit) - 1)) as u64;
         } else {
             return vaddress & ((1 << msbit) - 1);
         }

@@ -1,6 +1,7 @@
 use crate::cpu::{
-    Cpu, Register, ShiftType,
-    shared::{self, NZCV},
+    Cpu, DecodeType, Register, ShiftType,
+    common::{NZCV, nth_bit},
+    shared,
 };
 
 impl Cpu {
@@ -194,6 +195,14 @@ impl Cpu {
     ///
     /// In both cases, the other bits of the destination register remain unchanged.
     pub fn bfm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: Register, d: Register) {
+        if sf && !N {
+            self.end_of_decode(DecodeType::UNDEF);
+        }
+
+        if !sf && (N || nth_bit(immr, 5) || nth_bit(imms, 5)) {
+            self.end_of_decode(DecodeType::UNDEF);
+        }
+
         let (wmask, tmask) = if sf {
             shared::decode_bit_masks::<64>(N, imms, immr)
         } else {

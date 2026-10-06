@@ -23,4 +23,8 @@ impl Cpu {
             _ => unreachable!(),
         }
     }
+
+    pub fn get_PC64(&self) -> u64 {
+        self._pc
+    }
 }
