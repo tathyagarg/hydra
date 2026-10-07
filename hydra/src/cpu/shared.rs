@@ -6,7 +6,7 @@ use crate::cpu::{
     exeception::{Exception, ExceptionRecord},
     fault::{
         AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, FaultRecord, MPAMData, MPAMinfo,
-        PARTIDSpaceType, PARTIDType, PMGType,
+        MemOp, PARTIDSpaceType, PARTIDType, PMGType,
     },
     regs::{
         BRBCR_EL1Field, BRBCR_EL2Field, BRBFCR_EL0Field, BRBFCR_EL1Field, EDSCRField, HCR_EL2Field,
@@ -1470,6 +1470,63 @@ impl Cpu {
             toplevel: None,
             varange: None,
         }
+    }
+
+    pub fn create_accdesc_gpr_pair(
+        &self,
+        memop: MemOp,
+        nontemporal: bool,
+        privileged: bool,
+        tagchecked: bool,
+        ispair: bool,
+        Rt: Option<usize>,
+        Rt2: Option<usize>,
+    ) -> AccessDescriptor {
+        let mut accdesc = self.new_accdesc_from_acctype(AccessType::GPR);
+
+        accdesc.el = if !privileged { EL0 } else { self.pstate.EL() };
+        accdesc.nontemporal = nontemporal;
+        accdesc.read = memop == MemOp::LOAD;
+        accdesc.write = memop == MemOp::STORE;
+        accdesc.pan = true;
+        accdesc.tagchecked = tagchecked;
+        accdesc.Rt = Rt;
+        accdesc.Rt2 = Rt2;
+        accdesc.ispair = ispair;
+
+        accdesc
+    }
+
+    pub fn create_accdesc_gpr_rt(
+        &self,
+        memop: MemOp,
+        nontemporal: bool,
+        privileged: bool,
+        tagchecked: bool,
+        Rt: Option<usize>,
+    ) -> AccessDescriptor {
+        let ispair = false;
+        let Rt2 = None;
+        self.create_accdesc_gpr_pair(memop, nontemporal, privileged, tagchecked, ispair, Rt, Rt2)
+    }
+
+    pub fn create_accdesc_gpr(
+        &self,
+        memop: MemOp,
+        nontemporal: bool,
+        privileged: bool,
+        tagchecked: bool,
+    ) -> AccessDescriptor {
+        let Rt = None;
+        self.create_accdesc_gpr_rt(memop, nontemporal, privileged, tagchecked, Rt)
+    }
+
+    pub fn pointer_add_check_at_el(&self, el: EL, result: u64, base: u64) -> u64 {
+        todo!("bro")
+    }
+
+    pub fn address_add(&self, base: u64, offset: u64, accdesc: &AccessDescriptor) -> u64 {
+        self.pointer_add_check_at_el(accdesc.el, base + offset, base)
     }
 }
 

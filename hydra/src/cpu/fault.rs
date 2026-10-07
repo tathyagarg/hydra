@@ -77,6 +77,7 @@ pub enum MemAtomicOp {
     BFMINNM,
 }
 
+#[derive(PartialEq)]
 pub enum MemOp {
     LOAD,
     STORE,
@@ -227,18 +228,7 @@ pub struct AccessDescriptor {
     pub(crate) mpam: MPAMinfo,
 }
 
-impl AccessDescriptor {
-    pub fn create_accdesc_gpr(
-        memop: MemOp,
-        nontemporal: bool,
-        privileged: bool,
-        tagchecked: bool,
-        ispair: bool,
-        Rt: u64,
-        Rt2: u64,
-    ) {
-    }
-}
+impl AccessDescriptor {}
 
 impl Default for AccessDescriptor {
     fn default() -> Self {

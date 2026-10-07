@@ -1,6 +1,7 @@
 use crate::cpu::{
     Cpu, DecodeType, REG_SP, Register,
     constraint::{Constraint, Unpredictable},
+    fault::MemOp,
     shared::{self, EL0},
 };
 
@@ -15,7 +16,21 @@ impl Cpu {
         let (wback, wb_unknown) = self._ldr_imm_decode(wback, n, t);
 
         let privileged = self.pstate.EL() != EL0;
-        let accdesc = todo!();
+        let accdesc =
+            self.create_accdesc_gpr_rt(MemOp::LOAD, false, privileged, wback || n != 31, Some(t));
+
+        let mut address = if n == 31 {
+            todo!("Check spa alignment");
+            self.sp
+        } else {
+            self._get_op(n, true)
+        };
+
+        if !postindex {
+            address = self.address_add(address, offset as u64, &accdesc);
+        }
+
+        todo!("too much work")
     }
 
     fn _ldr_imm_decode(&self, mut wback: bool, n: Register, t: Register) -> (bool, bool) {
