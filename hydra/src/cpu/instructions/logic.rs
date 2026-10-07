@@ -73,11 +73,19 @@ impl Cpu {
     /// ```
     pub fn and_sr(&mut self, sf: bool, shift: u8, m: Register, imm6: u8, n: Register, d: Register) {
         let operand1 = self._get_op(n, sf);
-        let operand2 = shared::shift_reg(
-            self._get_op(m, sf),
-            ShiftType::decode(shift).unwrap(),
-            imm6 as usize,
-        );
+        let operand2 = if sf {
+            shared::shift_reg::<64>(
+                self._get_op(m, sf),
+                ShiftType::decode(shift).unwrap(),
+                imm6 as usize,
+            )
+        } else {
+            shared::shift_reg::<32>(
+                self._get_op(m, sf),
+                ShiftType::decode(shift).unwrap(),
+                imm6 as usize,
+            )
+        };
 
         self._set_op(d, operand1 & operand2, sf);
     }
@@ -129,11 +137,19 @@ impl Cpu {
         d: Register,
     ) {
         let operand1 = self._get_op(n, sf);
-        let operand2 = shared::shift_reg(
-            self._get_op(m, sf),
-            ShiftType::decode(shift).unwrap(),
-            imm6 as usize,
-        );
+        let operand2 = if sf {
+            shared::shift_reg::<64>(
+                self._get_op(m, sf),
+                ShiftType::decode(shift).unwrap(),
+                imm6 as usize,
+            )
+        } else {
+            shared::shift_reg::<32>(
+                self._get_op(m, sf),
+                ShiftType::decode(shift).unwrap(),
+                imm6 as usize,
+            )
+        };
 
         let result = operand1 & operand2;
         self._set_op(d, result, sf);
@@ -538,7 +554,11 @@ impl Cpu {
 
         let shift_type = ShiftType::decode(shift).unwrap();
 
-        let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
+        let operand2 = if sf {
+            shared::shift_reg::<64>(mval, shift_type, imm6 as usize)
+        } else {
+            shared::shift_reg::<32>(mval, shift_type, imm6 as usize)
+        };
 
         let result = if sf {
             operand1 ^ !operand2
@@ -602,7 +622,11 @@ impl Cpu {
 
         let shift_type = ShiftType::decode(shift).unwrap();
 
-        let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
+        let operand2 = if sf {
+            shared::shift_reg::<64>(mval, shift_type, imm6 as usize)
+        } else {
+            shared::shift_reg::<32>(mval, shift_type, imm6 as usize)
+        };
 
         let result = if sf {
             operand1 ^ operand2

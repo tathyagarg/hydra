@@ -39,9 +39,9 @@ pub use mpamsm_el1::MPAMSM_EL1Field;
 pub use mpamvpmv_el2::MPAMVPMV_EL2Field;
 pub use scr::SCRField;
 pub use scr_el3::SCR_EL3Field;
-pub use sctlr_el1::SCTLR_EL1Field;
-pub use sctlr_el2::SCTLR_EL2Field;
-pub use sctlr_el3::SCTLR_EL3Field;
+// pub use sctlr_el1::SCTLR_EL1Field;
+// pub use sctlr_el2::SCTLR_EL2Field;
+// pub use sctlr_el3::SCTLR_EL3Field;
 pub use tcr_el1::TCR_EL1Field;
 
 pub trait RegisterField<T> {

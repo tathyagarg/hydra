@@ -6,6 +6,7 @@ use crate::cpu::{
 };
 
 impl Cpu {
+    #[allow(unused_variables, unused_assignments)]
     pub fn ldr_imm_post(&mut self, size: u8, imm9: u16, n: Register, t: Register) {
         let wback = true;
 
@@ -21,7 +22,6 @@ impl Cpu {
 
         let mut address = if n == 31 {
             todo!("Check spa alignment");
-            self.sp
         } else {
             self._get_op(n, true)
         };

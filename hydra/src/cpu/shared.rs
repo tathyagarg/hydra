@@ -149,11 +149,17 @@ pub(super) fn extend_reg<const N: usize>(val: u64, exttype: ExtendType, shift: u
     return extval << shift;
 }
 
-pub(super) fn shift_reg(val: u64, shift_type: ShiftType, amount: usize) -> u64 {
+pub(super) fn shift_reg<const N: usize>(val: u64, shift_type: ShiftType, amount: usize) -> u64 {
     match shift_type {
         ShiftType::LSL => val << amount,
         ShiftType::LSR => val >> amount,
-        ShiftType::ASR => (val as i64 >> amount) as u64,
+        ShiftType::ASR => {
+            if N == 64 {
+                (val as i64 >> amount) as u64
+            } else {
+                (val as i32 >> amount) as u64
+            }
+        }
         ShiftType::ROR => val,
     }
 }
@@ -1521,6 +1527,7 @@ impl Cpu {
         self.create_accdesc_gpr_rt(memop, nontemporal, privileged, tagchecked, Rt)
     }
 
+    #[allow(unused_variables)]
     pub fn pointer_add_check_at_el(&self, el: EL, result: u64, base: u64) -> u64 {
         todo!("bro")
     }

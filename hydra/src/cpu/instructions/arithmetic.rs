@@ -1,5 +1,7 @@
 use crate::cpu::{
-    Cpu, DecodeType, ExtendType, Feature, Register, ShiftType, common::n_bits, shared,
+    Cpu, DecodeType, ExtendType, Feature, Register, ShiftType,
+    common::{n_bits, ones},
+    shared,
 };
 
 impl Cpu {
@@ -251,7 +253,11 @@ impl Cpu {
 
         let shift_type = ShiftType::decode(shift).unwrap();
 
-        let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
+        let operand2 = if sf {
+            shared::shift_reg::<64>(mval, shift_type, imm6 as usize)
+        } else {
+            shared::shift_reg::<32>(mval, shift_type, imm6 as usize)
+        };
 
         let (result, _) = if sf {
             shared::add_with_carry::<64>(operand1, operand2, false)
@@ -406,7 +412,11 @@ impl Cpu {
 
         let shift_type = ShiftType::decode(shift).unwrap();
 
-        let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
+        let operand2 = if sf {
+            shared::shift_reg::<64>(mval, shift_type, imm6 as usize)
+        } else {
+            shared::shift_reg::<32>(mval, shift_type, imm6 as usize)
+        };
 
         let (res, nzcv) = if sf {
             shared::add_with_carry::<64>(operand1, operand2, false)
@@ -418,29 +428,42 @@ impl Cpu {
         self.pstate.set_nzcv(&nzcv);
     }
 
-    /// **ASR (register)**: Arithmetic shift right (register)
-    ///
-    /// This instruction shifts a register value right by a variable number of bits, shifting in copies of its sign bit, and writes the
-    /// result to the destination register. The value of the second source register modulo the register size in bits gives the number of
-    /// bits by which the first source register is right-shifted.
-    pub fn asr_reg(&mut self, sf: bool, m: Register, n: Register, d: Register) {
-        self.asrv(sf, m, n, d);
-    }
-
     /// **ASRV**: Arithmetic shift right variable
     ///
     /// This instruction shifts a register value right by a variable number of bits, shifting in copies of its sign bit, and writes the
     /// result to the destination register. The value of the second source register modulo the register size in bits gives the number of
     /// bits by which the first source register is right-shifted.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 3284398546);
+    /// cpu.__dbg_set_x(1, 12);
+    /// cpu.asrv(false, 1, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 4294720575);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, -1234000707i32 as u64);
+    /// cpu.__dbg_set_x(1, 12);
+    /// cpu.asrv(false, 1, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 4294666026u64);
+    /// ```
     pub fn asrv(&mut self, sf: bool, m: Register, n: Register, d: Register) {
         let operand2 = self._get_op(m, sf);
         let rn = self._get_op(n, sf);
 
-        let datasize = 32u64 << sf as u64;
+        let datasize = 32 << sf as u32;
 
         self._set_op(
             d,
-            shared::shift_reg(rn, ShiftType::ASR, (operand2 % datasize) as usize),
+            if sf {
+                shared::shift_reg::<64>(rn, ShiftType::ASR, (operand2 & ones(datasize)) as usize)
+            } else {
+                shared::shift_reg::<32>(rn, ShiftType::ASR, (operand2 & ones(datasize)) as usize)
+            },
             sf,
         );
     }
@@ -450,15 +473,28 @@ impl Cpu {
     /// This instruction shifts a register value left by a variable number of bits, shifting in zeros, and writes the result to the
     /// destination register. The value of the second source register modulo the register size in bits gives the number of bits by
     /// which the first source register is left-shifted.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 338);
+    /// cpu.__dbg_set_x(1, 12);
+    /// cpu.lslv(false, 1, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 1384448);
+    /// ```
     pub fn lslv(&mut self, sf: bool, m: Register, n: Register, d: Register) {
         let operand2 = self._get_op(m, sf);
         let rn = self._get_op(n, sf);
 
-        let datasize = 32u64 << sf as u64;
+        let datasize = 32 << sf as u32;
 
         self._set_op(
             d,
-            shared::shift_reg(rn, ShiftType::LSL, (operand2 % datasize) as usize),
+            if sf {
+                shared::shift_reg::<64>(rn, ShiftType::LSL, (operand2 & ones(datasize)) as usize)
+            } else {
+                shared::shift_reg::<32>(rn, ShiftType::LSL, (operand2 & ones(datasize)) as usize)
+            },
             sf,
         );
     }
@@ -472,12 +508,30 @@ impl Cpu {
         let operand2 = self._get_op(m, sf);
         let rn = self._get_op(n, sf);
 
-        let datasize = 32u64 << sf as u64;
+        let datasize = 32 << sf as u32;
 
         self._set_op(
             d,
-            shared::shift_reg(rn, ShiftType::LSR, (operand2 % datasize) as usize),
+            if sf {
+                shared::shift_reg::<64>(rn, ShiftType::LSR, (operand2 & ones(datasize)) as usize)
+            } else {
+                shared::shift_reg::<32>(rn, ShiftType::LSR, (operand2 & ones(datasize)) as usize)
+            },
             sf,
         );
+    }
+
+    /// **MADD**: Multiply-add
+    ///
+    /// This instruction multiplies two register values, adds a third register value, and writes the result to the destination register.
+    pub fn madd(&mut self, sf: bool, m: Register, a: Register, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let operand2 = self._get_op(m, sf);
+        let operand3 = self._get_op(a, sf);
+
+        let result = operand3 + operand1 * operand2;
+        let datasize = 32 << sf as u32;
+
+        self._set_op(d, result & ones(datasize), sf);
     }
 }
