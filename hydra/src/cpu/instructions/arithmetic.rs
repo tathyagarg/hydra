@@ -444,4 +444,40 @@ impl Cpu {
             sf,
         );
     }
+
+    /// **LSLV**: Logical shift left variable
+    ///
+    /// This instruction shifts a register value left by a variable number of bits, shifting in zeros, and writes the result to the
+    /// destination register. The value of the second source register modulo the register size in bits gives the number of bits by
+    /// which the first source register is left-shifted.
+    pub fn lslv(&mut self, sf: bool, m: Register, n: Register, d: Register) {
+        let operand2 = self._get_op(m, sf);
+        let rn = self._get_op(n, sf);
+
+        let datasize = 32u64 << sf as u64;
+
+        self._set_op(
+            d,
+            shared::shift_reg(rn, ShiftType::LSL, (operand2 % datasize) as usize),
+            sf,
+        );
+    }
+
+    /// **LSRV**: Logical shift right variable
+    ///
+    /// This instruction shifts a register value right by a variable number of bits, shifting in zeros, and writes the result to the
+    /// destination register. The value of the second source register modulo the register size in bits gives the number of bits by
+    /// which the first source register is right-shifted.
+    pub fn lsrv(&mut self, sf: bool, m: Register, n: Register, d: Register) {
+        let operand2 = self._get_op(m, sf);
+        let rn = self._get_op(n, sf);
+
+        let datasize = 32u64 << sf as u64;
+
+        self._set_op(
+            d,
+            shared::shift_reg(rn, ShiftType::LSR, (operand2 % datasize) as usize),
+            sf,
+        );
+    }
 }
