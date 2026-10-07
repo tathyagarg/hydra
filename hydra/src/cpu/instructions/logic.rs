@@ -772,4 +772,72 @@ impl Cpu {
 
         self._set_op(d, result, sf);
     }
+
+    /// **RBIT**: Reverse bits
+    ///
+    /// This instruction reverses the bit order in a register.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 18);
+    /// cpu.rbit(true, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 5188146770730811392);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 18);
+    /// cpu.rbit(false, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 1207959552);
+    /// ```
+    pub fn rbit(&mut self, sf: bool, n: Register, d: Register) {
+        let operand = self._get_op(n, sf);
+        let result = if sf {
+            operand.reverse_bits()
+        } else {
+            (operand as u32).reverse_bits() as u64
+        };
+
+        self._set_op(d, result, sf);
+    }
+
+    /// **RMIF**: Rotate, mask insert flags
+    ///
+    /// This instruction performs a rotation right of a value held in a general-purpose register by an immediate value, and then
+    /// inserts a selection of the bottom four bits of the result of the rotation into the PSTATE flags, under the control of a second
+    /// immediate mask.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, common::NZCV};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 52);
+    /// cpu.rmif(2, 0, 0b1011);
+    /// assert_eq!(cpu.__dbg_get_pstate().nzcv(), NZCV::init(true, false, false, true));
+    /// ```
+    pub fn rmif(&mut self, imm6: u8, n: Register, mask: u8) {
+        let reg = self._get_op(n, true);
+        let flags = if imm6 <= 60 {
+            (reg >> imm6) & 0xF
+        } else {
+            ((reg >> imm6) | (reg << (64 - imm6))) & 0xF
+        };
+
+        if nth_bit(mask, 3) {
+            self.pstate.set_N(nth_bit(flags, 3));
+        }
+
+        if nth_bit(mask, 2) {
+            self.pstate.set_Z(nth_bit(flags, 2));
+        }
+
+        if nth_bit(mask, 1) {
+            self.pstate.set_C(nth_bit(flags, 1));
+        }
+
+        if nth_bit(mask, 0) {
+            self.pstate.set_V(nth_bit(flags, 0));
+        }
+    }
 }

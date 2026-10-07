@@ -403,6 +403,8 @@ pub struct Cpu {
     rtpiden: Signal,
 
     pstate: pstate::PState,
+
+    btype_next: u8,
 }
 
 impl Default for Cpu {
@@ -466,6 +468,8 @@ impl Default for Cpu {
             spniden: LOW,
             rlpiden: LOW,
             rtpiden: LOW,
+
+            btype_next: 0,
         }
     }
 }

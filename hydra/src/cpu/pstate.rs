@@ -96,16 +96,32 @@ impl PState {
         self._N
     }
 
+    pub fn set_N(&mut self, v: bool) {
+        self._N = v;
+    }
+
     pub fn Z(&self) -> bool {
         self._Z
+    }
+
+    pub fn set_Z(&mut self, v: bool) {
+        self._Z = v;
     }
 
     pub fn C(&self) -> bool {
         self._C
     }
 
+    pub fn set_C(&mut self, v: bool) {
+        self._C = v;
+    }
+
     pub fn V(&self) -> bool {
         self._V
+    }
+
+    pub fn set_V(&mut self, v: bool) {
+        self._V = v;
     }
 
     pub fn BTYPE(&self) -> u8 {

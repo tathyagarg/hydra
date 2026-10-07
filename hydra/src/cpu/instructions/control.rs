@@ -400,4 +400,15 @@ impl Cpu {
         let fault = FaultRecord::no_fault();
         self.halt(DebugHalt::HaltInstruction as u8, false, fault);
     }
+
+    /// **RET**: Return from subroutine
+    ///
+    /// This instruction branches unconditionally to an address in a register. This instruction provides a hint that this is a subroutine
+    /// return.
+    pub fn ret(&mut self, n: Register) {
+        let target = self._get_op(n, true);
+        self.btype_next = 0b00;
+
+        self.branch_to::<64>(target, BranchType::RET, false);
+    }
 }
