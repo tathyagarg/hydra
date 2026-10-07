@@ -1,4 +1,7 @@
-use crate::cpu::common::nth_bit;
+use crate::cpu::{
+    common::nth_bit,
+    regs::{RegisterField, RegisterFieldRange},
+};
 
 #[allow(non_camel_case_types)]
 pub enum SCR_EL3Field {
@@ -58,12 +61,14 @@ pub enum SCR_EL3Field {
     NS = 0,
 }
 
-impl SCR_EL3Field {
-    pub fn fetch_bit(self, scr_el3_v: u64) -> bool {
+impl RegisterField<u64> for SCR_EL3Field {
+    fn fetch_bit(self, scr_el3_v: u64) -> bool {
         nth_bit(scr_el3_v, self as usize)
     }
+}
 
-    pub fn fetch_range(self, scr_el3_v: u64) -> u8 {
+impl RegisterFieldRange<u64, u8> for SCR_EL3Field {
+    fn fetch_range(self, scr_el3_v: u64) -> u8 {
         if let Self::TWEDEL = self {
             return ((scr_el3_v >> 30) & 0b1111) as u8;
         }

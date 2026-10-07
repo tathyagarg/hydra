@@ -381,6 +381,11 @@ pub struct Cpu {
     mdcr_el3: u64,
 
     mpamidr_el1: u64,
+    mpam1_el1: u64,
+    mpam2_el2: u64,
+    mpam3_el3: u64,
+
+    mpamhcr_el2: u64,
 
     brbe: Brbe,
     pmu: Pmu,
@@ -421,6 +426,10 @@ impl Default for Cpu {
             brbcr_el2: 0,
             mdcr_el3: 0,
             mpamidr_el1: 0,
+            mpam1_el1: 0,
+            mpam2_el2: 0,
+            mpam3_el3: 0,
+            mpamhcr_el2: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
@@ -486,6 +495,7 @@ pub enum Feature {
     IESB,
 
     MPAMv0p1,
+    MPAMv1p1,
 
     PAuth,
     PMUv3,
@@ -496,6 +506,7 @@ pub enum Feature {
 
     SECURE,
     SEL2,
+    SME,
     SPE,
 
     VHE,
@@ -540,6 +551,7 @@ impl Cpu {
             Feature::IESB => false,
 
             Feature::MPAMv0p1 => false,
+            Feature::MPAMv1p1 => false,
 
             Feature::PAuth => false,
             Feature::PMUv3 => false,
@@ -549,6 +561,7 @@ impl Cpu {
 
             Feature::SECURE => false,
             Feature::SEL2 => false,
+            Feature::SME => false,
             Feature::SPE => false,
 
             Feature::VHE => false,

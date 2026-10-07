@@ -1,4 +1,7 @@
-use crate::cpu::common::*;
+use crate::cpu::{
+    common::*,
+    regs::{RegisterField, RegisterFieldRange},
+};
 
 #[allow(non_camel_case_types)]
 pub enum TCR_EL1Field {
@@ -44,12 +47,14 @@ pub enum TCR_EL1Field {
     T0SZ = -11, // 5-0
 }
 
-impl TCR_EL1Field {
-    pub fn fetch_bit(self, tcr_el1_v: u64) -> bool {
+impl RegisterField<u64> for TCR_EL1Field {
+    fn fetch_bit(self, tcr_el1_v: u64) -> bool {
         nth_bit(tcr_el1_v, self as usize)
     }
+}
 
-    pub fn fetch_range(self, tcr_el1_v: u64) -> u8 {
+impl RegisterFieldRange<u64, u8> for TCR_EL1Field {
+    fn fetch_range(self, tcr_el1_v: u64) -> u8 {
         (match self {
             Self::IPS => (tcr_el1_v >> 32) & 0b111,
             Self::TG1 => (tcr_el1_v >> 30) & 0b11,

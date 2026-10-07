@@ -1,4 +1,7 @@
-use crate::cpu::common::nth_bit;
+use crate::cpu::{
+    common::nth_bit,
+    regs::{RegisterField, RegisterFieldRange},
+};
 
 #[allow(non_camel_case_types)]
 pub enum MPAMIDR_EL1Field {
@@ -14,20 +17,28 @@ pub enum MPAMIDR_EL1Field {
     PARTID_MAX = -3, // 15-0
 }
 
-impl MPAMIDR_EL1Field {
-    pub fn fetch_bit(self, mpamidr_el1_v: u64) -> bool {
+impl RegisterField<u64> for MPAMIDR_EL1Field {
+    fn fetch_bit(self, mpamidr_el1_v: u64) -> bool {
         nth_bit(mpamidr_el1_v, self as usize)
     }
+}
 
-    pub fn fetch_range(self, mpamidr_el1_v: u64) -> u16 {
+impl RegisterFieldRange<u64, u8> for MPAMIDR_EL1Field {
+    fn fetch_range(self, mpamidr_el1_v: u64) -> u8 {
         if let Self::PMG_MAX = self {
-            return ((mpamidr_el1_v >> 32) & 0xFF) as u16;
+            return ((mpamidr_el1_v >> 32) & 0xFF) as u8;
         }
 
         if let Self::VPMR_MAX = self {
-            return ((mpamidr_el1_v >> 18) & 0b11) as u16;
+            return ((mpamidr_el1_v >> 18) & 0b11) as u8;
         }
 
+        unreachable!()
+    }
+}
+
+impl RegisterFieldRange<u64, u16> for MPAMIDR_EL1Field {
+    fn fetch_range(self, mpamidr_el1_v: u64) -> u16 {
         if let Self::PARTID_MAX = self {
             return (mpamidr_el1_v & 0xFFFF) as u16;
         }

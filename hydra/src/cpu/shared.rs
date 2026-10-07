@@ -3,12 +3,9 @@ use crate::cpu::{
     brbe::{BRBSRC_EL1_Type, BRBTGT_EL1_Type},
     common::*,
     exeception::{Exception, ExceptionRecord},
-    fault::{AccessDescriptor, AccessType, FaultRecord, MPAMinfo, PARTIDSpaceType},
+    fault::{AccessDescriptor, AccessType, FaultRecord, MPAMData, MPAMinfo, PARTIDSpaceType, PARTIDType},
     regs::{
-        SCTLRField, brbcr_el1::BRBCR_EL1Field, brbcr_el2::BRBCR_EL2Field,
-        brbfcr_el0::BRBFCR_EL0Field, brbfcr_el1::BRBFCR_EL1Field, edscr::EDSCRField,
-        hcr_el2::HCR_EL2Field, mdcr_el3::MDCR_EL3Field, mpamidr_el1::MPAMIDR_EL1Field,
-        scr::SCRField, scr_el3::SCR_EL3Field, tcr_el1::TCR_EL1Field,
+        BRBCR_EL1Field, BRBCR_EL2Field, BRBFCR_EL0Field, BRBFCR_EL1Field, EDSCRField, HCR_EL2Field, MDCR_EL3Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field, MPAMHCR_EL2Field, MPAMIDR_EL1Field, RegisterField, RegisterFieldRange, SCR_EL3Field, SCRField, SCTLRField, TCR_EL1Field
     },
 };
 
@@ -19,7 +16,7 @@ pub const EL1: EL = 0b01;
 pub const EL2: EL = 0b10;
 pub const EL3: EL = 0b11;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum SecurityState {
     NonSecure,
     Root,
@@ -386,6 +383,14 @@ impl Cpu {
     pub fn imp_def_int(&self, name: &str) -> u64 {
         match name {
             "Number of BRBE Branch records" => 32,
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn imp_def_bool(&self, name: &str) -> bool {
+        match name {
+            "Shared SMCU" => false,
+            "MPAMSM_EL1 label precedence" => false,
             _ => unimplemented!(),
         }
     }
@@ -1024,14 +1029,208 @@ impl Cpu {
         todo!("uhhh");
     }
 
+    pub fn highest_el(&self) -> EL {
+        if self.have_el(EL3) {
+            return EL3;
+        } else if self.have_el(EL2) {
+            return EL2;
+        } else {
+            return EL1;
+        }
+    }
+
+    pub fn mpam_is_enabled(&self) -> bool {
+        let el = self.highest_el();
+        match el {
+            EL3 => MPAM3_EL3Field::MPAMEN.fetch_bit(self.mpam3_el3),
+            EL2 => MPAM2_EL2Field::MPAMEN.fetch_bit(self.mpam2_el2),
+            EL1 => MPAM1_EL1Field::MPAMEN.fetch_bit(self.mpam1_el1),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn use_primary_space_el2(&self) -> bool {
+        if !MPAM3_EL3Field::ALTSP_HEN.fetch_bit(self.mpam3_el3) {
+            return !MPAM3_EL3Field::ALTSP_HFC.fetch_bit(self.mpam3_el3);
+        }
+
+        return !self.mpam_is_enabled() || !MPAM2_EL2Field::ALTSP_EL2.fetch_bit(self.mpam2_el2);
+    }
+
+    pub fn use_primary_space_el10(&self) -> bool {
+        if !MPAM3_EL3Field::ALTSP_HEN.fetch_bit(self.mpam3_el3) {
+            return !MPAM3_EL3Field::ALTSP_HFC.fetch_bit(self.mpam3_el3);
+        }
+
+        return !self.mpam_is_enabled()
+            || !self.el2_enabled()
+            || !MPAM2_EL2Field::ALTSP_EL2.fetch_bit(self.mpam2_el2);
+    }
+
+    pub fn alt_pid_secure(&self, el: EL, primary_pid_space: PARTIDSpaceType) -> PARTIDSpaceType {
+        let mut pidspace = primary_pid_space;
+        match el {
+            EL0 => {
+                if self.el2_enabled() {
+                    if self.el_is_in_host(EL0) {
+                        if !self.use_primary_space_el2() {
+                            pidspace = PARTIDSpaceType::NonSecure;
+                        }
+                    } else if self.use_primary_space_el10() {
+                        pidspace = PARTIDSpaceType::NonSecure;
+                    }
+                } else if !MPAM3_EL3Field::ALTSP_HEN.fetch_bit(self.mpam3_el3)
+                    && MPAM3_EL3Field::ALTSP_HFC.fetch_bit(self.mpam3_el3)
+                {
+                    pidspace = PARTIDSpaceType::NonSecure;
+                }
+            }
+            EL1 => {
+                if self.el2_enabled() {
+                    if !self.use_primary_space_el10() {
+                        pidspace = PARTIDSpaceType::NonSecure;
+                    }
+                } else if !MPAM3_EL3Field::ALTSP_HEN.fetch_bit(self.mpam3_el3)
+                    && MPAM3_EL3Field::ALTSP_HFC.fetch_bit(self.mpam3_el3)
+                {
+                    pidspace = PARTIDSpaceType::NonSecure;
+                }
+            }
+            EL2 => {
+                if !self.use_primary_space_el2() {
+                    pidspace = PARTIDSpaceType::NonSecure;
+                }
+            }
+            _ => unreachable!(),
+        }
+
+        pidspace
+    }
+
+    pub fn alt_partid_space(
+        &self,
+        el: EL,
+        security: SecurityState,
+        primary_pid_space: PARTIDSpaceType,
+    ) -> PARTIDSpaceType {
+        match security {
+            SecurityState::NonSecure => {
+                assert!(el != EL3);
+                return primary_pid_space;
+            }
+            SecurityState::Secure => {
+                assert!(el != EL3);
+                if primary_pid_space == PARTIDSpaceType::NonSecure {
+                    return primary_pid_space;
+                }
+
+                return self.alt_pid_secure(el, primary_pid_space);
+            }
+            SecurityState::Root => {
+                assert!(el == EL3);
+                if MPAM3_EL3Field::ALTSP_EL3.fetch_bit(self.mpam3_el3) {
+                    if MPAM3_EL3Field::RT_ALTSP_NS.fetch_bit(self.mpam3_el3) {
+                        return PARTIDSpaceType::NonSecure;
+                    } else {
+                        return PARTIDSpaceType::Secure;
+                    }
+                } else {
+                    return primary_pid_space;
+                }
+            }
+            SecurityState::Realm => {
+                assert!(el != EL3);
+                todo!("Alt pid realm");
+                // return self.alt_pid_realm(el, primary_pid_space);
+            }
+        }
+    }
+
+    pub fn get_mpam_partid(&self, mpamn: EL, mpamdata: &MPAMData) -> PARTIDType {
+        if mpamdata.sm {
+            todo!()
+        }
+
+        todo!()
+    }
+
+    pub fn gen_partid(&self, el: EL, mpamdata: &MPAMData) -> (PARTIDType, bool) {
+        let mut partidel = self.get_mpam_partid(el, mpamdata);
+
+        todo!()
+    }
+
+    pub fn gem_mpam(&self, el_in: EL, mpamdata: &MPAMData) -> MPAMinfo {
+        let mut el = el_in;
+
+        if el == EL0 && self.el2_enabled() && MPAMHCR_EL2Field::GSTAPP_PLK.fetch_bit(self.mpamhcr_el2) && !HCR_EL2Field::TGE.fetch_bit(self.hcr_el2) {
+            el = EL1;
+        }
+
+
+
+        todo!()
+    }
+
     pub fn gen_mpam_at_el(&self, acctype: &AccessType, el: EL) -> MPAMinfo {
         let mpam_el = if acctype == &AccessType::NV2 { EL2 } else { el };
         let security = self.security_state_at_el(el);
         let mut pspace = PARTIDSpaceType::from(security);
 
+        let mut mpam_data = MPAMData::gen_new_mpam_data();
         if Cpu::is_feature_implemented(Feature::MPAMv0p1)
             && MPAMIDR_EL1Field::HAS_FORCE_NS.fetch_bit(self.mpamidr_el1)
-        {}
+        {
+            if MPAM3_EL3Field::FORCE_NS.fetch_bit(self.mpam3_el3)
+                && security == SecurityState::Secure
+            {
+                pspace = PARTIDSpaceType::NonSecure;
+            }
+        }
+
+        if Cpu::is_feature_implemented(Feature::RME)
+            && MPAMIDR_EL1Field::HAS_ALTSP.fetch_bit(self.mpamidr_el1)
+        {
+            pspace = self.alt_partid_space(mpam_el, security, pspace);
+        }
+
+        if !self.mpam_is_enabled() {
+            return MPAMinfo::default(pspace);
+        }
+
+        match acctype {
+            AccessType::IFETCH | AccessType::IC => {
+                mpam_data.ind = true;
+            }
+            AccessType::SME => {
+                mpam_data.sm = self.imp_def_bool("Shared SMCU")
+                    || self.imp_def_bool("MPAMSM_EL1 label precedence")
+            }
+            AccessType::FP | AccessType::ASIMD | AccessType::SVE => {
+                mpam_data.sm = Cpu::is_feature_implemented(Feature::SME)
+                    && self.pstate.SM
+                    && (self.imp_def_bool("Shared SMCU")
+                        || self.imp_def_bool("MPAMSM_EL1 label precedence"))
+            }
+            AccessType::TRBE => {
+                todo!("assert some bs")
+            }
+            _ => {
+                mpam_data.ind = false;
+            }
+        }
+
+        if (Cpu::is_feature_implemented(Feature::MPAMv0p1)
+            || Cpu::is_feature_implemented(Feature::MPAMv1p1))
+            && MPAMIDR_EL1Field::HAS_SDEFLT.fetch_bit(self.mpamidr_el1)
+        {
+            if MPAM3_EL3Field::SDEFLT.fetch_bit(self.mpam3_el3) && security == SecurityState::Secure
+            {
+                return MPAMinfo::default(pspace);
+            }
+        }
+
+        let mut mpaminfo = self.gen_mpam
 
         todo!()
     }

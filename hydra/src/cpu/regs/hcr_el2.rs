@@ -1,4 +1,7 @@
-use crate::cpu::common::nth_bit;
+use crate::cpu::{
+    common::nth_bit,
+    regs::{RegisterField, RegisterFieldRange},
+};
 
 #[allow(non_camel_case_types)]
 pub enum HCR_EL2Field {
@@ -62,12 +65,14 @@ pub enum HCR_EL2Field {
     VM = 0,
 }
 
-impl HCR_EL2Field {
-    pub fn fetch_bit(self, hcr_el2_v: u64) -> bool {
+impl RegisterField<u64> for HCR_EL2Field {
+    fn fetch_bit(self, hcr_el2_v: u64) -> bool {
         nth_bit(hcr_el2_v, self as usize)
     }
+}
 
-    pub fn fetch_range(self, hcr_el2_v: u64) -> u8 {
+impl RegisterFieldRange<u64, u8> for HCR_EL2Field {
+    fn fetch_range(self, hcr_el2_v: u64) -> u8 {
         if let Self::TWEDEL = self {
             return ((hcr_el2_v >> 60) & 0b1111) as u8;
         }

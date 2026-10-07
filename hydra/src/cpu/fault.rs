@@ -115,6 +115,7 @@ pub enum VARange {
     UPPER,
 }
 
+#[derive(PartialEq)]
 pub enum PARTIDSpaceType {
     Secure,
     Root,
@@ -142,15 +143,28 @@ pub struct MPAMinfo {
     pmg: PMGType,
 }
 
-impl Default for MPAMinfo {
-    fn default() -> Self {
+pub const DEFAULT_PARTID: PARTIDType = 0;
+pub const DEFAULT_PMG: PMGType = 0;
+
+impl MPAMinfo {
+    pub fn default(partidspace: PARTIDSpaceType) -> Self {
         Self {
-            mpam_sp: PARTIDSpaceType::NonSecure,
-            partid: 0,
-            pmg: 0,
+            mpam_sp: partidspace,
+            partid: DEFAULT_PARTID,
+            pmg: DEFAULT_PMG,
         }
     }
 }
+
+// impl Default for MPAMinfo {
+//     fn default() -> Self {
+//         Self {
+//             mpam_sp: PARTIDSpaceType::NonSecure,
+//             partid: 0,
+//             pmg: 0,
+//         }
+//     }
+// }
 
 pub struct MPAMData {
     pub(crate) sm: bool,
@@ -278,7 +292,7 @@ impl Default for AccessDescriptor {
             highestaddressfirst: false,
             lowestaddress: true,
 
-            mpam: MPAMinfo::default(),
+            mpam: MPAMinfo::default(PARTIDSpaceType::NonSecure),
         }
     }
 }

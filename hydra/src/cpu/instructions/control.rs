@@ -1,6 +1,9 @@
 use crate::cpu::{
-    BranchType, CmpOp, Cpu, DecodeType, Feature, Register, common::*, fault::FaultRecord,
-    regs::edscr::EDSCRField, shared,
+    BranchType, CmpOp, Cpu, DecodeType, Feature, Register,
+    common::*,
+    fault::FaultRecord,
+    regs::{EDSCRField, RegisterField},
+    shared,
 };
 
 pub enum DebugHalt {

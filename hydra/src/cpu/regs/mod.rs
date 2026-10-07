@@ -1,19 +1,50 @@
 use crate::cpu::{accessors::SCTLRType, common::nth_bit};
 
-pub mod brbcr_el1;
-pub mod brbcr_el2;
-pub mod brbfcr_el0;
-pub mod brbfcr_el1;
-pub mod edscr;
-pub mod hcr_el2;
-pub mod mdcr_el3;
-pub mod mpamidr_el1;
-pub mod scr;
-pub mod scr_el3;
-pub mod sctlr_el1;
-pub mod sctlr_el2;
-pub mod sctlr_el3;
-pub mod tcr_el1;
+mod brbcr_el1;
+mod brbcr_el2;
+mod brbfcr_el0;
+mod brbfcr_el1;
+mod edscr;
+mod hcr_el2;
+mod mdcr_el3;
+mod mpam1_el1;
+mod mpam2_el2;
+mod mpam3_el3;
+mod mpamhcr_el2;
+mod mpamidr_el1;
+mod scr;
+mod scr_el3;
+mod sctlr_el1;
+mod sctlr_el2;
+mod sctlr_el3;
+mod tcr_el1;
+
+pub use brbcr_el1::BRBCR_EL1Field;
+pub use brbcr_el2::BRBCR_EL2Field;
+pub use brbfcr_el0::BRBFCR_EL0Field;
+pub use brbfcr_el1::BRBFCR_EL1Field;
+pub use edscr::EDSCRField;
+pub use hcr_el2::HCR_EL2Field;
+pub use mdcr_el3::MDCR_EL3Field;
+pub use mpam1_el1::MPAM1_EL1Field;
+pub use mpam2_el2::MPAM2_EL2Field;
+pub use mpam3_el3::MPAM3_EL3Field;
+pub use mpamhcr_el2::MPAMHCR_EL2Field;
+pub use mpamidr_el1::MPAMIDR_EL1Field;
+pub use scr::SCRField;
+pub use scr_el3::SCR_EL3Field;
+pub use sctlr_el1::SCTLR_EL1Field;
+pub use sctlr_el2::SCTLR_EL2Field;
+pub use sctlr_el3::SCTLR_EL3Field;
+pub use tcr_el1::TCR_EL1Field;
+
+pub trait RegisterField<T> {
+    fn fetch_bit(self, v: T) -> bool;
+}
+
+pub trait RegisterFieldRange<T, S> {
+    fn fetch_range(self, v: T) -> S;
+}
 
 /// Common fields in SCTLR registers
 #[allow(non_camel_case_types)]
@@ -43,12 +74,14 @@ pub enum SCTLRField {
     M = 0,
 }
 
-impl SCTLRField {
-    pub fn fetch_bit(self, sctlr_v: SCTLRType) -> bool {
+impl RegisterField<u64> for SCTLRField {
+    fn fetch_bit(self, sctlr_v: SCTLRType) -> bool {
         nth_bit(sctlr_v, self as usize)
     }
+}
 
-    pub fn fetch_range(self, sctlr_v: SCTLRType) -> u8 {
+impl RegisterFieldRange<u64, u8> for SCTLRField {
+    fn fetch_range(self, sctlr_v: SCTLRType) -> u8 {
         if let Self::TCF = self {
             return ((sctlr_v >> 40) & 0b11) as u8;
         }

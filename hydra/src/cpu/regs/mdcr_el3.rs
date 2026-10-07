@@ -1,4 +1,7 @@
-use crate::cpu::common::nth_bit;
+use crate::cpu::{
+    common::nth_bit,
+    regs::{RegisterField, RegisterFieldRange},
+};
 
 #[allow(non_camel_case_types)]
 pub enum MDCR_EL3Field {
@@ -46,12 +49,14 @@ pub enum MDCR_EL3Field {
     RLTE = 0,
 }
 
-impl MDCR_EL3Field {
-    pub fn fetch_bit(self, mdcr_el3_v: u64) -> bool {
+impl RegisterField<u64> for MDCR_EL3Field {
+    fn fetch_bit(self, mdcr_el3_v: u64) -> bool {
         nth_bit(mdcr_el3_v, self as usize)
     }
+}
 
-    pub fn fetch_range(self, mdcr_el3_v: u64) -> u8 {
+impl RegisterFieldRange<u64, u8> for MDCR_EL3Field {
+    fn fetch_range(self, mdcr_el3_v: u64) -> u8 {
         (match self {
             Self::TRBEE => (mdcr_el3_v >> 53) & 0b11,
             Self::PMSEE => (mdcr_el3_v >> 51) & 0b11,
