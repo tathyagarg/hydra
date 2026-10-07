@@ -555,9 +555,34 @@ impl Cpu {
     pub fn madd(&mut self, sf: bool, m: Register, a: Register, n: Register, d: Register) {
         let operand1 = self._get_op(n, sf);
         let operand2 = self._get_op(m, sf);
-        let operand3 = self._get_op(a, sf);
+        let operand3 = if a < 31 { self._get_op(a, sf) } else { 0 };
 
         let result = operand3 + (operand1 * operand2);
+        let datasize = 32 << sf as u32;
+
+        self._set_op(d, result & ones(datasize), sf);
+    }
+
+    /// **MSUB**: Multiply-subtract
+    ///
+    /// This instruction multiplies two register values, subtracts the product from a third register value, and writes the result to the
+    /// destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 10);
+    /// cpu.__dbg_set_x(1, 3);
+    /// cpu.__dbg_set_x(2, 5);
+    /// cpu.msub(false, 0, 1, 2, 3);
+    /// assert_eq!(cpu.__dbg_get_x(3), (-47i32) as u32 as u64);
+    /// ```
+    pub fn msub(&mut self, sf: bool, m: Register, a: Register, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let operand2 = self._get_op(m, sf);
+        let operand3 = if a < 31 { self._get_op(a, sf) } else { 0 };
+
+        let result = operand3.wrapping_sub(operand1 * operand2);
         let datasize = 32 << sf as u32;
 
         self._set_op(d, result & ones(datasize), sf);
