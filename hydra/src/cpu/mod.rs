@@ -4,6 +4,7 @@ use crate::cpu::{
     brbe::{BRBINF_EL1_Type, BRBSRC_EL1_Type, BRBTGT_EL1_Type, Brbe},
     common::NZCV,
     pmu::Pmu,
+    regs::MPAMVPMnEL2Type,
 };
 
 mod accessors;
@@ -381,11 +382,15 @@ pub struct Cpu {
     mdcr_el3: u64,
 
     mpamidr_el1: u64,
+    mpam0_el1: u64,
     mpam1_el1: u64,
     mpam2_el2: u64,
     mpam3_el3: u64,
-
+    mpamsm_el1: u64,
     mpamhcr_el2: u64,
+    mpamvpmv_el2: u64,
+
+    mpamvpmn_el2: [MPAMVPMnEL2Type; 8],
 
     brbe: Brbe,
     pmu: Pmu,
@@ -426,10 +431,14 @@ impl Default for Cpu {
             brbcr_el2: 0,
             mdcr_el3: 0,
             mpamidr_el1: 0,
+            mpam0_el1: 0,
             mpam1_el1: 0,
             mpam2_el2: 0,
             mpam3_el3: 0,
+            mpamsm_el1: 0,
             mpamhcr_el2: 0,
+            mpamvpmv_el2: 0,
+            mpamvpmn_el2: [0; 8],
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],

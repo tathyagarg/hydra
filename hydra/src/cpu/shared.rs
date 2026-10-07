@@ -2,10 +2,17 @@ use crate::cpu::{
     BranchType, Cpu, DecodeType, EndOfInstructionReason, ExtendType, Feature, HIGH, ShiftType,
     brbe::{BRBSRC_EL1_Type, BRBTGT_EL1_Type},
     common::*,
+    constraint::{Constraint, Unpredictable},
     exeception::{Exception, ExceptionRecord},
-    fault::{AccessDescriptor, AccessType, FaultRecord, MPAMData, MPAMinfo, PARTIDSpaceType, PARTIDType},
+    fault::{
+        AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, FaultRecord, MPAMData, MPAMinfo,
+        PARTIDSpaceType, PARTIDType, PMGType,
+    },
     regs::{
-        BRBCR_EL1Field, BRBCR_EL2Field, BRBFCR_EL0Field, BRBFCR_EL1Field, EDSCRField, HCR_EL2Field, MDCR_EL3Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field, MPAMHCR_EL2Field, MPAMIDR_EL1Field, RegisterField, RegisterFieldRange, SCR_EL3Field, SCRField, SCTLRField, TCR_EL1Field
+        BRBCR_EL1Field, BRBCR_EL2Field, BRBFCR_EL0Field, BRBFCR_EL1Field, EDSCRField, HCR_EL2Field,
+        MDCR_EL3Field, MPAM0_EL1Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field,
+        MPAMHCR_EL2Field, MPAMIDR_EL1Field, MPAMSM_EL1Field, MPAMVPMV_EL2Field, RegisterField,
+        RegisterFieldRange, SCR_EL3Field, SCRField, SCTLRField, TCR_EL1Field,
     },
 };
 
@@ -1146,30 +1153,202 @@ impl Cpu {
         }
     }
 
+    pub fn get_mpam_partid_max(&self) -> PARTIDType {
+        return MPAMIDR_EL1Field::PARTID_MAX.fetch_range(self.mpamidr_el1);
+    }
+
+    pub fn get_mpam_pmg_max(&self) -> PMGType {
+        return MPAMIDR_EL1Field::PMG_MAX.fetch_range(self.mpamidr_el1);
+    }
+
     pub fn get_mpam_partid(&self, mpamn: EL, mpamdata: &MPAMData) -> PARTIDType {
         if mpamdata.sm {
-            todo!()
+            return MPAMSM_EL1Field::PARTID_D.fetch_range(self.mpamsm_el1);
         }
 
-        todo!()
+        if mpamdata.ind {
+            match mpamn {
+                0b11 => MPAM3_EL3Field::PARTID_I.fetch_range(self.mpam3_el3),
+                0b10 => {
+                    if self.el2_enabled() {
+                        MPAM2_EL2Field::PARTID_I.fetch_range(self.mpam2_el2)
+                    } else {
+                        DEFAULT_PARTID
+                    }
+                }
+                0b01 => MPAM1_EL1Field::PARTID_I.fetch_range(self.mpam1_el1),
+                0b00 => MPAM0_EL1Field::PARTID_I.fetch_range(self.mpam0_el1),
+                _ => unreachable!(),
+            }
+        } else {
+            match mpamn {
+                0b11 => MPAM3_EL3Field::PARTID_D.fetch_range(self.mpam3_el3),
+                0b10 => {
+                    if self.el2_enabled() {
+                        MPAM2_EL2Field::PARTID_D.fetch_range(self.mpam2_el2)
+                    } else {
+                        DEFAULT_PARTID
+                    }
+                }
+                0b01 => MPAM1_EL1Field::PARTID_D.fetch_range(self.mpam1_el1),
+                0b00 => MPAM0_EL1Field::PARTID_D.fetch_range(self.mpam0_el1),
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    pub fn mpam_is_virtual(&self, el: EL) -> bool {
+        MPAMIDR_EL1Field::HAS_HCR.fetch_bit(self.mpamidr_el1)
+            && self.el2_enabled()
+            && (el == EL0
+                && MPAMHCR_EL2Field::EL0_VPMEN.fetch_bit(self.mpamhcr_el2)
+                && !self.el_is_in_host(EL0)
+                || (el == EL1 && MPAMHCR_EL2Field::EL1_VPMEN.fetch_bit(self.mpamhcr_el2)))
+    }
+
+    pub fn mapvpmw(&self, vpartid: PARTIDType) -> PARTIDType {
+        let wd = vpartid / 4;
+        let vpmw = if wd < 8 {
+            self.mpamvpmn_el2[wd as usize]
+        } else {
+            0
+        };
+        let vpme_lsb = (vpartid % 4) * 16;
+
+        return ((vpmw >> vpme_lsb) & 0xFFFF) as u16;
+    }
+
+    pub fn map_vpartid(&self, vpartid: PARTIDType, partid_err: bool) -> (PARTIDType, bool) {
+        let vpartid_max_raw: u8 = MPAMIDR_EL1Field::VPMR_MAX.fetch_range(self.mpamidr_el1);
+        let vpartid_max = ((vpartid_max_raw << 2) + 3) as u16;
+        let mut virt = vpartid;
+        let mut ret: u16;
+        let mut err = partid_err;
+
+        if virt > vpartid_max {
+            let (c, vid) = Unpredictable::OUT_OF_RANGE_VID.constrain_integer(0, vpartid_max);
+
+            assert!([Constraint::DEFAULT_ID, Constraint::ANY_ID].contains(&c));
+
+            match c {
+                Constraint::DEFAULT_ID => virt = DEFAULT_PARTID,
+                Constraint::ANY_ID => virt = vid,
+                _ => unreachable!(),
+            }
+        }
+
+        if nth_bit(self.mpamvpmv_el2, virt as usize) {
+            ret = self.mapvpmw(virt);
+        } else if MPAMVPMV_EL2Field::VPM_V0.fetch_bit(self.mpamvpmv_el2) {
+            ret = (self.mpamvpmv_el2 & 0xFFFF) as u16;
+        } else {
+            ret = DEFAULT_PARTID;
+            err = true;
+        }
+
+        let partid_max = self.get_mpam_partid_max();
+        if ret > partid_max {
+            ret = DEFAULT_PARTID;
+            err = true;
+        }
+
+        (ret, err)
     }
 
     pub fn gen_partid(&self, el: EL, mpamdata: &MPAMData) -> (PARTIDType, bool) {
         let mut partidel = self.get_mpam_partid(el, mpamdata);
+        let mut partid_err = false;
 
-        todo!()
+        if partidel > self.get_mpam_partid_max() {
+            let (c, partid) =
+                Unpredictable::OUT_OF_RANGE_ID.constrain_integer(0, self.get_mpam_partid_max());
+            partid_err = true;
+
+            assert!([Constraint::DEFAULT_ID, Constraint::ANY_ID].contains(&c));
+            match c {
+                Constraint::DEFAULT_ID => partidel = DEFAULT_PARTID,
+                Constraint::ANY_ID => partidel = partid,
+                _ => unreachable!(),
+            };
+        }
+
+        if self.mpam_is_virtual(el) {
+            return self.map_vpartid(partidel, partid_err);
+        } else {
+            (partidel, partid_err)
+        }
     }
 
-    pub fn gem_mpam(&self, el_in: EL, mpamdata: &MPAMData) -> MPAMinfo {
+    pub fn get_mpam_pmg(&self, mpamn: EL, mpamdata: &MPAMData) -> PMGType {
+        if mpamdata.sm {
+            return MPAMSM_EL1Field::PMG_D.fetch_range(self.mpamsm_el1);
+        }
+
+        if mpamdata.ind {
+            match mpamn {
+                0b11 => MPAM3_EL3Field::PARTID_I.fetch_range(self.mpam3_el3),
+                0b10 => {
+                    if self.el2_enabled() {
+                        MPAM2_EL2Field::PARTID_I.fetch_range(self.mpam2_el2)
+                    } else {
+                        DEFAULT_PMG
+                    }
+                }
+                0b01 => MPAM1_EL1Field::PARTID_I.fetch_range(self.mpam1_el1),
+                0b00 => MPAM0_EL1Field::PARTID_I.fetch_range(self.mpam0_el1),
+                _ => unreachable!(),
+            }
+        } else {
+            match mpamn {
+                0b11 => MPAM3_EL3Field::PARTID_D.fetch_range(self.mpam3_el3),
+                0b10 => {
+                    if self.el2_enabled() {
+                        MPAM2_EL2Field::PARTID_D.fetch_range(self.mpam2_el2)
+                    } else {
+                        DEFAULT_PMG
+                    }
+                }
+                0b01 => MPAM1_EL1Field::PARTID_D.fetch_range(self.mpam1_el1),
+                0b00 => MPAM0_EL1Field::PARTID_D.fetch_range(self.mpam0_el1),
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    pub fn gen_pmg(&self, el: EL, mpamdata: &MPAMData, partid_err: bool) -> PMGType {
+        if partid_err && Unpredictable::USE_DEFAULT_PMG.constrain_bool() {
+            return DEFAULT_PMG;
+        }
+
+        let groupel = self.get_mpam_pmg(el, mpamdata);
+        let pmg_max = self.get_mpam_pmg_max();
+
+        if groupel <= pmg_max {
+            return groupel;
+        }
+
+        return DEFAULT_PMG;
+    }
+
+    pub fn gen_mpam(&self, el_in: EL, mpamdata: &MPAMData) -> MPAMinfo {
         let mut el = el_in;
 
-        if el == EL0 && self.el2_enabled() && MPAMHCR_EL2Field::GSTAPP_PLK.fetch_bit(self.mpamhcr_el2) && !HCR_EL2Field::TGE.fetch_bit(self.hcr_el2) {
+        if el == EL0
+            && self.el2_enabled()
+            && MPAMHCR_EL2Field::GSTAPP_PLK.fetch_bit(self.mpamhcr_el2)
+            && !HCR_EL2Field::TGE.fetch_bit(self.hcr_el2)
+        {
             el = EL1;
         }
 
+        let (partidel, perr) = self.gen_partid(el, mpamdata);
+        let groupel = self.gen_pmg(el, mpamdata, perr);
 
-
-        todo!()
+        MPAMinfo {
+            mpam_sp: PARTIDSpaceType::NonSecure, // placeholder
+            partid: partidel,
+            pmg: groupel,
+        }
     }
 
     pub fn gen_mpam_at_el(&self, acctype: &AccessType, el: EL) -> MPAMinfo {
@@ -1230,9 +1409,10 @@ impl Cpu {
             }
         }
 
-        let mut mpaminfo = self.gen_mpam
+        let mut mpaminfo = self.gen_mpam(mpam_el, &mpam_data);
+        mpaminfo.mpam_sp = pspace;
 
-        todo!()
+        mpaminfo
     }
 
     pub fn gen_mpam_cur_el(&self, acctype: &AccessType) -> MPAMinfo {

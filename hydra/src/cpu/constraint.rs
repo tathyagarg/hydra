@@ -399,6 +399,23 @@ pub enum Unpredictable {
 }
 
 impl Unpredictable {
+    pub fn constrain_integer<N>(&self, low: N, high: N) -> (Constraint, N) {
+        let c = self.constrain();
+        if c == Constraint::UNKNOWN {
+            (c, low)
+        } else {
+            // (c, arbitrary)
+            (c, high)
+        }
+    }
+
+    pub fn constrain_bool(&self) -> bool {
+        let c = self.constrain();
+        assert!([Constraint::TRUE, Constraint::FALSE].contains(&c));
+
+        c == Constraint::TRUE
+    }
+
     pub const fn constrain(&self) -> Constraint {
         match self {
             Self::VMSR => Constraint::UNDEF,

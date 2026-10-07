@@ -7,11 +7,14 @@ mod brbfcr_el1;
 mod edscr;
 mod hcr_el2;
 mod mdcr_el3;
+mod mpam0_el1;
 mod mpam1_el1;
 mod mpam2_el2;
 mod mpam3_el3;
 mod mpamhcr_el2;
 mod mpamidr_el1;
+mod mpamsm_el1;
+mod mpamvpmv_el2;
 mod scr;
 mod scr_el3;
 mod sctlr_el1;
@@ -26,11 +29,14 @@ pub use brbfcr_el1::BRBFCR_EL1Field;
 pub use edscr::EDSCRField;
 pub use hcr_el2::HCR_EL2Field;
 pub use mdcr_el3::MDCR_EL3Field;
+pub use mpam0_el1::MPAM0_EL1Field;
 pub use mpam1_el1::MPAM1_EL1Field;
 pub use mpam2_el2::MPAM2_EL2Field;
 pub use mpam3_el3::MPAM3_EL3Field;
 pub use mpamhcr_el2::MPAMHCR_EL2Field;
 pub use mpamidr_el1::MPAMIDR_EL1Field;
+pub use mpamsm_el1::MPAMSM_EL1Field;
+pub use mpamvpmv_el2::MPAMVPMV_EL2Field;
 pub use scr::SCRField;
 pub use scr_el3::SCR_EL3Field;
 pub use sctlr_el1::SCTLR_EL1Field;
@@ -89,3 +95,5 @@ impl RegisterFieldRange<u64, u8> for SCTLRField {
         unreachable!("??")
     }
 }
+
+pub type MPAMVPMnEL2Type = u64;

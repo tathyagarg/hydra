@@ -138,9 +138,9 @@ pub type PARTIDType = u16;
 pub type PMGType = u8;
 
 pub struct MPAMinfo {
-    mpam_sp: PARTIDSpaceType,
-    partid: PARTIDType,
-    pmg: PMGType,
+    pub mpam_sp: PARTIDSpaceType,
+    pub partid: PARTIDType,
+    pub pmg: PMGType,
 }
 
 pub const DEFAULT_PARTID: PARTIDType = 0;
