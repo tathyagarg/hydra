@@ -1,8 +1,9 @@
 use crate::cpu::{
-    BranchType, Cpu, DecodeType, EndOfInstructionReason, ExtendType, Feature, ShiftType,
+    BranchType, Cpu, DecodeType, EndOfInstructionReason, ExtendType, Feature, HIGH, ShiftType,
     brbe::{BRBSRC_EL1_Type, BRBTGT_EL1_Type},
     common::*,
     exeception::{Exception, ExceptionRecord},
+    fault::FaultRecord,
     regs::{
         SCTLRField, brbcr_el1::BRBCR_EL1Field, brbcr_el2::BRBCR_EL2Field,
         brbfcr_el0::BRBFCR_EL0Field, brbfcr_el1::BRBFCR_EL1Field, edscr::EDSCRField,
@@ -179,8 +180,66 @@ pub(super) fn decode_bit_masks<const M: usize>(imm_n: bool, imms: u8, immr: u8) 
 }
 
 impl Cpu {
+    pub fn halt(&mut self, reason: u8, is_async: bool, fault: FaultRecord) {
+        todo!("not doing alll this")
+    }
+
     pub fn halted(&self) -> bool {
         ![0b00000001, 0b00000010].contains(&EDSCRField::STATUS.fetch_range(self.edscr))
+    }
+
+    pub fn double_lock_status(&self) -> bool {
+        if !Cpu::is_feature_implemented(Feature::DoubleLock) {
+            return false;
+        }
+
+        todo!()
+    }
+
+    pub fn external_invasive_debug_enabled(&self) -> bool {
+        self.dbgen == HIGH
+    }
+
+    pub fn external_secure_invasive_debug_enabled(&self) -> bool {
+        if !self.have_secure_state() {
+            return Cpu::is_feature_implemented(Feature::RME) && self.rtpiden == HIGH;
+        }
+
+        self.external_invasive_debug_enabled() && self.spiden == HIGH
+    }
+
+    pub fn external_root_invasive_debug_enabled(&self) -> bool {
+        if !Cpu::is_feature_implemented(Feature::RME) {
+            return false;
+        }
+
+        return self.external_invasive_debug_enabled()
+            && (!Cpu::is_feature_implemented(Feature::SEL2)
+                || self.external_secure_invasive_debug_enabled())
+            && self.external_realm_invasive_debug_enabled()
+            && self.rtpiden == HIGH;
+    }
+
+    pub fn external_realm_invasive_debug_enabled(&self) -> bool {
+        if !Cpu::is_feature_implemented(Feature::RME) {
+            return false;
+        }
+
+        self.external_invasive_debug_enabled() && self.rlpiden == HIGH
+    }
+
+    pub fn halting_allowed(&self) -> bool {
+        if self.halted() || self.double_lock_status() {
+            return false;
+        }
+
+        let ss = self.current_security_state();
+        match ss {
+            SecurityState::NonSecure => self.external_invasive_debug_enabled(),
+            SecurityState::Secure => self.external_secure_invasive_debug_enabled(),
+            SecurityState::Root => self.external_root_invasive_debug_enabled(),
+            SecurityState::Realm => self.external_realm_invasive_debug_enabled(),
+        }
     }
 
     pub fn branch_target_check(&self) {

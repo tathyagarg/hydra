@@ -1,4 +1,21 @@
-use crate::cpu::{BranchType, CmpOp, Cpu, DecodeType, Feature, Register, common::*, shared};
+use crate::cpu::{
+    BranchType, CmpOp, Cpu, DecodeType, Feature, Register, common::*, fault::FaultRecord,
+    regs::edscr::EDSCRField, shared,
+};
+
+pub enum DebugHalt {
+    Breakpoint = 0b000111,
+    EDBGRQ = 0b010011,
+    StepNormal = 0b011011,
+    StepExclusive = 0b011111,
+    OSUnlockCatch = 0b100011,
+    ResetCatch = 0b100111,
+    Watchpoint = 0b101011,
+    HaltInstruction = 0b101111,
+    SoftwareAccess = 0b110011,
+    ExceptionCatch = 0b110111,
+    StepNoSyndrome = 0b111011,
+}
 
 impl Cpu {
     /// **B.cond**: Branch conditionally
@@ -359,5 +376,25 @@ impl Cpu {
         }
 
         self.pstate.set_nzcv(&flags);
+    }
+
+    /// **HLT**: Halt instruction
+    ///
+    /// This instruction can generate a Halt Instruction debug event, which causes entry into Debug state.
+    /// Within a guarded memory region, while PSTATE.BTYPE != 0b00, an HLT instruction that would cause entry into Debug
+    /// state will not generate a Branch Target exception and will cause entry into Debug state as normal. For more information, see
+    /// PSTATE.BTYPE.
+    #[allow(unused_variables, unused_assignments)]
+    pub fn hlt(&mut self, imm16: u16) {
+        let mut btype_compatible = false;
+
+        if !EDSCRField::HDE.fetch_bit(self.edscr) || !self.halting_allowed() {
+            self.end_of_decode(DecodeType::UNDEF);
+        } else if Cpu::is_feature_implemented(Feature::BTI) {
+            btype_compatible = true;
+        }
+
+        let fault = FaultRecord::no_fault();
+        self.halt(DebugHalt::HaltInstruction as u8, false, fault);
     }
 }

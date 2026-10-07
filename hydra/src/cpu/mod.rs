@@ -10,6 +10,7 @@ mod accessors;
 mod brbe;
 pub mod common;
 mod exeception;
+mod fault;
 mod instructions;
 mod pmu;
 mod pstate;
@@ -20,6 +21,10 @@ const LOWER_32: u64 = 0xFFFF_FFFF_0000_0000;
 const REG_SP: usize = 0b11111;
 
 pub type Register = usize;
+
+pub type Signal = bool;
+pub const HIGH: Signal = true;
+pub const LOW: Signal = false;
 
 pub enum CmpOp {
     EQ,
@@ -377,6 +382,13 @@ pub struct Cpu {
     brbe: Brbe,
     pmu: Pmu,
 
+    dbgen: Signal,
+    niden: Signal,
+    spiden: Signal,
+    spniden: Signal,
+    rlpiden: Signal,
+    rtpiden: Signal,
+
     pstate: pstate::PState,
 }
 
@@ -426,6 +438,12 @@ impl Default for Cpu {
                 event_types: vec![],
             },
             pstate: pstate::PState::default(),
+            dbgen: LOW,
+            niden: LOW,
+            spiden: LOW,
+            spniden: LOW,
+            rlpiden: LOW,
+            rtpiden: LOW,
         }
     }
 }
@@ -450,6 +468,8 @@ pub enum Feature {
 
     CMPBR,
     CSSC,
+
+    DoubleLock,
 
     E2H0,
     ExS,
@@ -500,6 +520,8 @@ impl Cpu {
 
             Feature::CMPBR => true,
             Feature::CSSC => true,
+
+            Feature::DoubleLock => false,
 
             Feature::E2H0 => false,
             Feature::ExS => false,

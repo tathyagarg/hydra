@@ -62,9 +62,9 @@ pub enum PASpace {
 }
 
 pub struct FullAddress {
-    paspace: PASpace,
+    pub paspace: PASpace,
     /// bits(NUM_PABITS) = u64
-    address: u64,
+    pub address: u64,
 }
 
 pub struct ExceptionRecord {
