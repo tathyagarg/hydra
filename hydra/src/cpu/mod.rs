@@ -9,6 +9,7 @@ use crate::cpu::{
 mod accessors;
 mod brbe;
 pub mod common;
+mod constraint;
 mod exeception;
 mod fault;
 mod instructions;
@@ -379,6 +380,8 @@ pub struct Cpu {
 
     mdcr_el3: u64,
 
+    mpamidr_el1: u64,
+
     brbe: Brbe,
     pmu: Pmu,
 
@@ -417,6 +420,7 @@ impl Default for Cpu {
             brbcr_el1: 0,
             brbcr_el2: 0,
             mdcr_el3: 0,
+            mpamidr_el1: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
@@ -481,6 +485,8 @@ pub enum Feature {
 
     IESB,
 
+    MPAMv0p1,
+
     PAuth,
     PMUv3,
     #[allow(non_camel_case_types)]
@@ -532,6 +538,8 @@ impl Cpu {
             Feature::HBC => true,
 
             Feature::IESB => false,
+
+            Feature::MPAMv0p1 => false,
 
             Feature::PAuth => false,
             Feature::PMUv3 => false,

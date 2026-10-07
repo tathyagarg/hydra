@@ -7,6 +7,7 @@ pub mod brbfcr_el1;
 pub mod edscr;
 pub mod hcr_el2;
 pub mod mdcr_el3;
+pub mod mpamidr_el1;
 pub mod scr;
 pub mod scr_el3;
 pub mod sctlr_el1;
@@ -14,6 +15,7 @@ pub mod sctlr_el2;
 pub mod sctlr_el3;
 pub mod tcr_el1;
 
+/// Common fields in SCTLR registers
 #[allow(non_camel_case_types)]
 pub enum SCTLRField {
     SPINTMASK = 62,

@@ -3,12 +3,12 @@ use crate::cpu::{
     brbe::{BRBSRC_EL1_Type, BRBTGT_EL1_Type},
     common::*,
     exeception::{Exception, ExceptionRecord},
-    fault::FaultRecord,
+    fault::{AccessDescriptor, AccessType, FaultRecord, MPAMinfo, PARTIDSpaceType},
     regs::{
         SCTLRField, brbcr_el1::BRBCR_EL1Field, brbcr_el2::BRBCR_EL2Field,
         brbfcr_el0::BRBFCR_EL0Field, brbfcr_el1::BRBFCR_EL1Field, edscr::EDSCRField,
-        hcr_el2::HCR_EL2Field, mdcr_el3::MDCR_EL3Field, scr::SCRField, scr_el3::SCR_EL3Field,
-        tcr_el1::TCR_EL1Field,
+        hcr_el2::HCR_EL2Field, mdcr_el3::MDCR_EL3Field, mpamidr_el1::MPAMIDR_EL1Field,
+        scr::SCRField, scr_el3::SCR_EL3Field, tcr_el1::TCR_EL1Field,
     },
 };
 
@@ -180,6 +180,7 @@ pub(super) fn decode_bit_masks<const M: usize>(imm_n: bool, imms: u8, immr: u8) 
 }
 
 impl Cpu {
+    #[allow(unused_variables)]
     pub fn halt(&mut self, reason: u8, is_async: bool, fault: FaultRecord) {
         todo!("not doing alll this")
     }
@@ -1021,6 +1022,75 @@ impl Cpu {
         }
 
         todo!("uhhh");
+    }
+
+    pub fn gen_mpam_at_el(&self, acctype: &AccessType, el: EL) -> MPAMinfo {
+        let mpam_el = if acctype == &AccessType::NV2 { EL2 } else { el };
+        let security = self.security_state_at_el(el);
+        let mut pspace = PARTIDSpaceType::from(security);
+
+        if Cpu::is_feature_implemented(Feature::MPAMv0p1)
+            && MPAMIDR_EL1Field::HAS_FORCE_NS.fetch_bit(self.mpamidr_el1)
+        {}
+
+        todo!()
+    }
+
+    pub fn gen_mpam_cur_el(&self, acctype: &AccessType) -> MPAMinfo {
+        self.gen_mpam_at_el(acctype, self.pstate.EL())
+    }
+
+    pub fn new_accdesc_from_acctype(&self, acctype: AccessType) -> AccessDescriptor {
+        let mpam = self.gen_mpam_cur_el(&acctype);
+        self.new_accdesc(acctype, mpam)
+    }
+
+    pub fn new_accdesc(&self, acctype: AccessType, mpam: MPAMinfo) -> AccessDescriptor {
+        AccessDescriptor {
+            acctype,
+            el: self.pstate.EL(),
+            ss: self.security_state_at_el(self.pstate.EL()),
+            acqsc: false,
+            acqpc: false,
+            relsc: false,
+            limitedordered: false,
+            exclusive: false,
+            rcw: false,
+            rcws: false,
+            atomicop: false,
+            nontemporal: false,
+            read: false,
+            write: false,
+            pan: false,
+            nonfault: false,
+            firstfault: false,
+            first: false,
+            contiguous: false,
+            predicated: false,
+            streamingsve: false,
+            ls64: false,
+            withstatus: false,
+            mops: false,
+            a32lsmd: false,
+            tagchecked: false,
+            tagaccess: false,
+            stzgm: false,
+            mpam,
+            Rs: None,
+            Rs2: None,
+            Rt: None,
+            Rt2: None,
+            ispair: false,
+            highestaddressfirst: false,
+            lowestaddress: true,
+
+            cacheop: None,
+            cachetype: None,
+            modop: None,
+            opscope: None,
+            toplevel: None,
+            varange: None,
+        }
     }
 }
 

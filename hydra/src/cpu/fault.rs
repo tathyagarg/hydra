@@ -1,6 +1,7 @@
 use crate::cpu::{
+    Register,
     exeception::{FullAddress, PASpace},
-    shared::{EL, EL0, EL1, SecurityState},
+    shared::{EL, EL1, SecurityState},
 };
 
 pub enum Fault {
@@ -30,6 +31,7 @@ pub enum Fault {
     ICacheMaint,
 }
 
+#[derive(PartialEq)]
 pub enum AccessType {
     IFETCH, // Instruction FETCH
     GPR,    // Software load/store to a General Purpose Register
@@ -75,6 +77,12 @@ pub enum MemAtomicOp {
     BFMINNM,
 }
 
+pub enum MemOp {
+    LOAD,
+    STORE,
+    PREFETCH,
+}
+
 pub enum CacheOp {
     Clean,
     Invalidate,
@@ -114,6 +122,17 @@ pub enum PARTIDSpaceType {
     NonSecure,
 }
 
+impl From<SecurityState> for PARTIDSpaceType {
+    fn from(value: SecurityState) -> Self {
+        match value {
+            SecurityState::NonSecure => PARTIDSpaceType::NonSecure,
+            SecurityState::Root => PARTIDSpaceType::Root,
+            SecurityState::Realm => PARTIDSpaceType::Realm,
+            SecurityState::Secure => PARTIDSpaceType::Secure,
+        }
+    }
+}
+
 pub type PARTIDType = u16;
 pub type PMGType = u8;
 
@@ -133,51 +152,78 @@ impl Default for MPAMinfo {
     }
 }
 
+pub struct MPAMData {
+    pub(crate) sm: bool,
+    pub(crate) ind: bool,
+}
+
+impl MPAMData {
+    pub fn gen_new_mpam_data() -> Self {
+        Self {
+            ind: false,
+            sm: false,
+        }
+    }
+}
+
 pub struct AccessDescriptor {
-    acctype: AccessType,
-    el: EL,
-    ss: SecurityState,
-    acqsc: bool,
-    acqpc: bool,
-    relsc: bool,
-    limitedordered: bool,
-    exclusive: bool,
-    atomicop: bool,
-    modoop: MemAtomicOp,
-    nontemporal: bool,
-    read: bool,
-    write: bool,
-    cacheop: CacheOp,
-    opscope: CacheOpScope,
-    cachetype: CacheType,
-    pan: bool,
-    nonfault: bool,
-    firstfault: bool,
-    first: bool,
-    contiguous: bool,
-    predicated: bool,
-    streamingsve: bool,
-    ls64: bool,
-    withstatus: bool,
-    mops: bool,
-    rcw: bool,
-    rcws: bool,
-    toplevel: bool,
-    varange: VARange,
-    a32lsmd: bool,
-    tagchecked: bool,
-    tagaccess: bool,
-    stzgm: bool,
+    pub(crate) acctype: AccessType,
+    pub(crate) el: EL,
+    pub(crate) ss: SecurityState,
+    pub(crate) acqsc: bool,
+    pub(crate) acqpc: bool,
+    pub(crate) relsc: bool,
+    pub(crate) limitedordered: bool,
+    pub(crate) exclusive: bool,
+    pub(crate) atomicop: bool,
+    pub(crate) modop: Option<MemAtomicOp>,
+    pub(crate) nontemporal: bool,
+    pub(crate) read: bool,
+    pub(crate) write: bool,
+    pub(crate) cacheop: Option<CacheOp>,
+    pub(crate) opscope: Option<CacheOpScope>,
+    pub(crate) cachetype: Option<CacheType>,
+    pub(crate) pan: bool,
+    pub(crate) nonfault: bool,
+    pub(crate) firstfault: bool,
+    pub(crate) first: bool,
+    pub(crate) contiguous: bool,
+    pub(crate) predicated: bool,
+    pub(crate) streamingsve: bool,
+    pub(crate) ls64: bool,
+    pub(crate) withstatus: bool,
+    pub(crate) mops: bool,
+    pub(crate) rcw: bool,
+    pub(crate) rcws: bool,
+    pub(crate) toplevel: Option<bool>,
+    pub(crate) varange: Option<VARange>,
+    pub(crate) a32lsmd: bool,
+    pub(crate) tagchecked: bool,
+    pub(crate) tagaccess: bool,
+    pub(crate) stzgm: bool,
 
-    Rt: u64,
-    Rt2: u64,
-    Rs: u64,
-    Rs2: u64,
-    ispair: bool,
-    highestaddressfirst: bool,
-    lowestaddress: bool,
+    pub(crate) Rt: Option<Register>,
+    pub(crate) Rt2: Option<Register>,
+    pub(crate) Rs: Option<Register>,
+    pub(crate) Rs2: Option<Register>,
+    pub(crate) ispair: bool,
+    pub(crate) highestaddressfirst: bool,
+    pub(crate) lowestaddress: bool,
 
-    mpam: MPAMinfo,
+    pub(crate) mpam: MPAMinfo,
+}
+
+impl AccessDescriptor {
+    pub fn create_accdesc_gpr(
+        memop: MemOp,
+        nontemporal: bool,
+        privileged: bool,
+        tagchecked: bool,
+        ispair: bool,
+        Rt: u64,
+        Rt2: u64,
+    ) {
+    }
 }
 
 impl Default for AccessDescriptor {
@@ -193,15 +239,15 @@ impl Default for AccessDescriptor {
             limitedordered: false,
             exclusive: false,
             atomicop: false,
-            modoop: MemAtomicOp::ADD,
+            modop: None,
 
             nontemporal: false,
             read: true,
             write: false,
 
-            cacheop: CacheOp::Clean,
-            opscope: CacheOpScope::SetWay,
-            cachetype: CacheType::Data,
+            cacheop: None,
+            opscope: None,
+            cachetype: None,
 
             pan: false,
             nonfault: false,
@@ -215,18 +261,18 @@ impl Default for AccessDescriptor {
             mops: false,
             rcw: false,
             rcws: false,
-            toplevel: true,
+            toplevel: None,
 
-            varange: VARange::LOWER,
+            varange: None,
             a32lsmd: false,
             tagchecked: false,
             tagaccess: false,
             stzgm: false,
 
-            Rt: 0,
-            Rt2: 0,
-            Rs: 0,
-            Rs2: 0,
+            Rt: None,
+            Rt2: None,
+            Rs: None,
+            Rs2: None,
 
             ispair: false,
             highestaddressfirst: false,
