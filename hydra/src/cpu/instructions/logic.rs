@@ -670,4 +670,106 @@ impl Cpu {
 
         self._set_op(d, result, sf);
     }
+
+    /// **ORN (shifted register)**: Bitwise OR NOT (shifted register)
+    ///
+    /// This instruction performs a bitwise (inclusive) OR between a register value and the complement of an optionally-shifted
+    /// register value, and writes the result to the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 123);
+    /// cpu.__dbg_set_x(1, 6);
+    /// cpu.orn_sr(false, 0b00, 1, 2, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), (-1i32) as u32 as u64);
+    /// ```
+    pub fn orn_sr(&mut self, sf: bool, shift: u8, m: Register, imm6: u8, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let mval = self._get_op(m, sf);
+
+        let shift_type = ShiftType::decode(shift).unwrap();
+
+        let operand2 = if sf {
+            shared::shift_reg::<64>(mval, shift_type, imm6 as usize)
+        } else {
+            shared::shift_reg::<32>(mval, shift_type, imm6 as usize)
+        };
+
+        let result = if sf {
+            operand1 | !operand2
+        } else {
+            ((operand1 as u32) | (!operand2 as u32)) as u64
+        };
+
+        self._set_op(d, result, sf);
+    }
+
+    /// **ORR (immediate)**: Bitwise OR (immediate)
+    ///
+    /// This instruction performs a bitwise (inclusive) OR between a register value and an immediate value, and writes the result to
+    /// the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 123);
+    /// // EOR W1, W0, #0x3c
+    /// cpu.orr_imm(false, true, 0b111110, 0b000011, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 0x7f);
+    /// ```
+    pub fn orr_imm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: Register, d: Register) {
+        let (imm, _) = if sf {
+            shared::decode_bit_masks::<64>(N, imms, immr)
+        } else {
+            shared::decode_bit_masks::<32>(N, imms, immr)
+        };
+
+        let operand1 = self._get_op(n, sf);
+        let result = if sf {
+            operand1 | imm
+        } else {
+            ((operand1 as u32) | (imm as u32)) as u64
+        };
+
+        if d == REG_SP {
+            self.sp = result;
+        } else {
+            self._set_op(d, result, sf);
+        }
+    }
+
+    /// **ORR (shifted register)**: Bitwise OR (shifted register)
+    ///
+    /// This instruction performs a bitwise (inclusive) OR between a register value and an optionally-shifted register value, and
+    /// writes the result to the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 18);
+    /// cpu.__dbg_set_x(1, 6);
+    /// cpu.orr_sr(false, 0b00, 1, 2, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 26);
+    /// ```
+    pub fn orr_sr(&mut self, sf: bool, shift: u8, m: Register, imm6: u8, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let mval = self._get_op(m, sf);
+
+        let shift_type = ShiftType::decode(shift).unwrap();
+
+        let operand2 = if sf {
+            shared::shift_reg::<64>(mval, shift_type, imm6 as usize)
+        } else {
+            shared::shift_reg::<32>(mval, shift_type, imm6 as usize)
+        };
+
+        let result = if sf {
+            operand1 | operand2
+        } else {
+            ((operand1 as u32) | (operand2 as u32)) as u64
+        };
+
+        self._set_op(d, result, sf);
+    }
 }
