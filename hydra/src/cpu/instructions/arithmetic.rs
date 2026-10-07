@@ -120,7 +120,7 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 2);
     /// // `ADD X2, X0, X1, UXTB #3`
-    /// cpu._add_er(true, 1, 0b000, 3, 0, 2);
+    /// cpu.add_er(true, 1, 0b000, 3, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), 17);
     /// ```
     ///
@@ -133,7 +133,7 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 500);
     /// // `ADD X2, X0, X1, UXTB #3`
-    /// cpu._add_er(true, 1, 0b000, 3, 0, 2);
+    /// cpu.add_er(true, 1, 0b000, 3, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), 1953);
     /// ```
     ///
@@ -145,12 +145,12 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 500);
     /// // `ADD X2, X0, X1, UXTD #3`
-    /// cpu._add_er(true, 1, 0b011, 3, 0, 2);
+    /// cpu.add_er(true, 1, 0b011, 3, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), 4001);
     /// ```
     ///
     /// Without the masking to byte-width, we get 4001 instead.
-    pub fn _add_er(
+    pub fn add_er(
         &mut self,
         sf: bool,
         m: Register,
@@ -185,7 +185,7 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, 1);
     /// // `ADD X1, X0, #10 LSL #0`
-    /// cpu._add_imm(true, false, 10, 0, 1);
+    /// cpu.add_imm(true, false, 10, 0, 1);
     /// assert_eq!(cpu.__dbg_get_x(1), 11);
     /// ```
     ///
@@ -194,10 +194,10 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, 1);
     /// // `ADD X1, X0, #10 LSL #12`
-    /// cpu._add_imm(true, true, 10, 0, 1);
+    /// cpu.add_imm(true, true, 10, 0, 1);
     /// assert_eq!(cpu.__dbg_get_x(1), 40961);
     /// ```
-    pub fn _add_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: Register, d: Register) {
+    pub fn add_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: Register, d: Register) {
         let imm12 = n_bits(imm12, 12);
         let imm = if sh { imm12 << 12 } else { imm12 };
 
@@ -222,7 +222,7 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 2);
     /// // `ADD X2, X0, X1, LSL #3`
-    /// cpu._add_sr(true, 0b00, 1, 3, 0, 2);
+    /// cpu.add_sr(true, 0b00, 1, 3, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), 17);
     /// ```
     ///
@@ -232,7 +232,7 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, 36);
     /// // `ADD X2, X0, X1, LSR #3`
-    /// cpu._add_sr(true, 0b01, 1, 3, 0, 2);
+    /// cpu.add_sr(true, 0b01, 1, 3, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), 5);
     /// ```
     ///
@@ -242,18 +242,10 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, 1);
     /// cpu.__dbg_set_x(1, -44i64 as u64);
     /// // `ADD X2, X0, X1, ASR #2`
-    /// cpu._add_sr(true, 0b10, 1, 2, 0, 2);
+    /// cpu.add_sr(true, 0b10, 1, 2, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), -10i64 as u64);
     /// ```
-    pub fn _add_sr(
-        &mut self,
-        sf: bool,
-        shift: u8,
-        m: Register,
-        imm6: u8,
-        n: Register,
-        d: Register,
-    ) {
+    pub fn add_sr(&mut self, sf: bool, shift: u8, m: Register, imm6: u8, n: Register, d: Register) {
         let operand1 = self._get_op(n, sf);
         let mval = self._get_op(m, sf);
 
@@ -290,11 +282,11 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, 5);
     /// cpu.__dbg_set_x(1, u64::MAX >> 2);
     /// // `ADDS X2, X0, X1, UXTB #3`
-    /// cpu._adds_er(true, 1, 0b011, 0b010, 0, 2);
+    /// cpu.adds_er(true, 1, 0b011, 0b010, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), 1);
     /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
     /// ```
-    pub fn _adds_er(
+    pub fn adds_er(
         &mut self,
         sf: bool,
         m: Register,
@@ -331,7 +323,7 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, u64::MAX);
     /// // `ADDS X1, X0, #10 LSL #0`
-    /// cpu._adds_imm(true, false, 10, 0, 1);
+    /// cpu.adds_imm(true, false, 10, 0, 1);
     /// assert_eq!(cpu.__dbg_get_x(1), 9);
     /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
     /// ```
@@ -341,11 +333,11 @@ impl Cpu {
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, u64::MAX);
     /// // `ADDS X1, X0, #10 LSL #12`
-    /// cpu._adds_imm(true, true, 10, 0, 1);
+    /// cpu.adds_imm(true, true, 10, 0, 1);
     /// assert_eq!(cpu.__dbg_get_x(1), 40959);
     /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
     /// ```
-    pub fn _adds_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: Register, d: Register) {
+    pub fn adds_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: Register, d: Register) {
         let imm12 = n_bits(imm12, 12);
         let imm = if sh { imm12 << 12 } else { imm12 };
 
@@ -366,13 +358,15 @@ impl Cpu {
     /// This instruction adds a register value and an optionally-shifted register value, and writes the result to the destination register.
     /// It updates the condition flags based on the result.
     ///
+    /// This does NOT overflow
+    ///
     /// ```
     /// # use hydra::cpu::{Cpu, ExtendType};
     /// # let mut cpu = Cpu::default();
     /// cpu.__dbg_set_x(0, 8);
     /// cpu.__dbg_set_x(1, u64::MAX >> 3);
     /// // `ADDS X2, X0, X1, LSL #3`
-    /// cpu._adds_sr(true, 0b00, 1, 3, 0, 2);
+    /// cpu.adds_sr(true, 0b00, 1, 3, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), 0);
     /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
     /// ```
@@ -383,7 +377,7 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, u64::MAX);
     /// cpu.__dbg_set_x(1, 36);
     /// // `ADDS X2, X0, X1, LSR #3`
-    /// cpu._adds_sr(true, 0b01, 1, 3, 0, 2);
+    /// cpu.adds_sr(true, 0b01, 1, 3, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), 3);
     /// assert!(cpu.__dbg_get_pstate().__dbg_get_C());
     /// ```
@@ -394,13 +388,11 @@ impl Cpu {
     /// cpu.__dbg_set_x(0, u64::MIN);
     /// cpu.__dbg_set_x(1, -44i64 as u64);
     /// // `ADDS X2, X0, X1, ASR #2`
-    /// cpu._adds_sr(true, 0b10, 1, 2, 0, 2);
+    /// cpu.adds_sr(true, 0b10, 1, 2, 0, 2);
     /// assert_eq!(cpu.__dbg_get_x(2), -11i64 as u64);
     /// assert!(!cpu.__dbg_get_pstate().__dbg_get_C());
     /// ```
-    ///
-    /// This does NOT overflow
-    pub fn _adds_sr(
+    pub fn adds_sr(
         &mut self,
         sf: bool,
         shift: u8,
@@ -431,17 +423,8 @@ impl Cpu {
     /// This instruction shifts a register value right by a variable number of bits, shifting in copies of its sign bit, and writes the
     /// result to the destination register. The value of the second source register modulo the register size in bits gives the number of
     /// bits by which the first source register is right-shifted.
-    pub fn _asr_reg(&mut self, sf: bool, m: Register, n: Register, d: Register) {
+    pub fn asr_reg(&mut self, sf: bool, m: Register, n: Register, d: Register) {
         self.asrv(sf, m, n, d);
-    }
-
-    /// **ASR (immediate)**: Arithmetic shift right (immediate)
-    ///
-    /// This instruction shifts a register value right by an immediate number of bits, shifting in copies of the sign bit in the upper
-    /// bits and zeros in the lower bits, and writes the result to the destination register.
-    #[allow(unused_variables)]
-    pub fn _asr_imm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: Register, d: Register) {
-        todo!("ASR (immediate) is an alias of SBFM which is yet to be implemented")
     }
 
     /// **ASRV**: Arithmetic shift right variable

@@ -168,13 +168,9 @@ pub(super) fn decode_bit_masks<const M: usize>(imm_n: bool, imms: u8, immr: u8) 
 
     let esize = (1u64 << len) as u32;
     let d = diff & levels;
-    println!("d: {}", d);
 
-    println!("s: {}, 1 << (s + 1): {}", s, (1u64 << (s + 1)) - 1);
     let welem = (1u64 << (s + 1)) - 1;
     let telem = (1u64 << (d + 1)) - 1;
-    println!("welem telem {} {}", welem, telem);
-    println!("esize: {}", esize);
 
     let wmask = replicate(ror(welem, r as u32, esize), esize, M as u32);
     let tmask = replicate(telem, esize as u32, M as u32);

@@ -63,10 +63,15 @@ impl ExtendType {
     }
 }
 
+#[derive(Debug)]
 pub enum ShiftType {
+    /// Logical Shift Left
     LSL = 0b00,
+    /// Logical Shift Right
     LSR = 0b01,
+    /// Arithmetic Shift Right
     ASR = 0b10,
+    /// Rotate Right
     ROR = 0b11,
 }
 
