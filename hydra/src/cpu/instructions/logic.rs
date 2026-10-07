@@ -582,4 +582,68 @@ impl Cpu {
             self._set_op(d, result, sf);
         }
     }
+
+    /// **EOR (shifted register)**: Bitwise exclusive-OR (shifted register)
+    ///
+    /// This instruction performs a bitwise exclusive-OR between a register value and an optionally-shifted register value, and
+    /// writes the result to the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 123);
+    /// cpu.__dbg_set_x(1, 6);
+    /// cpu.eor_sr(false, 0b00, 1, 2, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 0x63);
+    /// ```
+    pub fn eor_sr(&mut self, sf: bool, shift: u8, m: Register, imm6: u8, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let mval = self._get_op(m, sf);
+
+        let shift_type = ShiftType::decode(shift).unwrap();
+
+        let operand2 = shared::shift_reg(mval, shift_type, imm6 as usize);
+
+        let result = if sf {
+            operand1 ^ operand2
+        } else {
+            ((operand1 as u32) ^ (operand2 as u32)) as u64
+        };
+
+        self._set_op(d, result, sf);
+    }
+
+    /// **EXTR**: Extract register
+    ///
+    /// This instruction extracts a register from a pair of registers.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 1632208504);
+    /// cpu.__dbg_set_x(1, 24810007);
+    /// cpu.extr(false, false, 1, 8, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 0x78017a92);
+    /// ```
+    pub fn extr(&mut self, sf: bool, N: bool, m: Register, imms: u8, n: Register, d: Register) {
+        if N != sf {
+            self.end_of_decode(DecodeType::UNDEF);
+        }
+        if !sf && nth_bit(imms, 5) {
+            self.end_of_decode(DecodeType::UNDEF);
+        }
+
+        let operand1 = self._get_op(n, sf);
+        let operand2 = self._get_op(m, sf);
+
+        let result = if sf {
+            let concat: u128 = (operand1 as u128) << 64 | operand2 as u128;
+            ((concat >> imms) & ones(64) as u128) as u64
+        } else {
+            let concat: u64 = (operand1 << 32) | operand2;
+            (concat >> imms) & ones(32)
+        };
+
+        self._set_op(d, result, sf);
+    }
 }
