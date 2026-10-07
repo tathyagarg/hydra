@@ -160,7 +160,13 @@ pub(super) fn shift_reg<const N: usize>(val: u64, shift_type: ShiftType, amount:
                 (val as i32 >> amount) as u64
             }
         }
-        ShiftType::ROR => val,
+        ShiftType::ROR => {
+            if N == 64 {
+                val.rotate_right(amount as u32)
+            } else {
+                (val as u32).rotate_right(amount as u32) as u64
+            }
+        }
     }
 }
 

@@ -587,4 +587,91 @@ impl Cpu {
 
         self._set_op(d, result & ones(datasize), sf);
     }
+
+    /// **RORV**: Rotate right variable
+    ///
+    /// This instruction provides the value of the contents of a register rotated by a variable number of bits. The bits that are rotated
+    /// off the right end are inserted into the vacated bit positions on the left. The value of the second source register modulo the
+    /// register size in bits gives the number of bits by which the first source register is right-shifted.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 18);
+    /// cpu.__dbg_set_x(1, 12);
+    /// cpu.rorv(false, 1, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 18874368);
+    /// ```
+    pub fn rorv(&mut self, sf: bool, m: Register, n: Register, d: Register) {
+        let operand2 = self._get_op(m, sf);
+        let rn = self._get_op(n, sf);
+
+        let datasize = 32 << sf as u32;
+
+        self._set_op(
+            d,
+            if sf {
+                shared::shift_reg::<64>(rn, ShiftType::ROR, (operand2 & ones(datasize)) as usize)
+            } else {
+                shared::shift_reg::<32>(rn, ShiftType::ROR, (operand2 & ones(datasize)) as usize)
+            },
+            sf,
+        );
+    }
+
+    /// **SBC**: Subtract with carry
+    ///
+    /// This instruction subtracts a register value and the value of NOT (Carry flag) from a register value, and writes the result to
+    /// the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::Cpu;
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 10);
+    /// cpu.__dbg_set_x(1, 2);
+    /// cpu.__dbg_get_pstate().__dbg_set_C(true);
+    /// cpu.sbc(true, 1, 0, 2);  // `SBC X2, X0, X1`
+    /// assert_eq!(cpu.__dbg_get_x(2), 8);
+    /// ```
+    pub fn sbc(&mut self, sf: bool, m: Register, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let operand2 = !self._get_op(m, sf);
+
+        let (result, _) = if sf {
+            shared::add_with_carry::<64>(operand1, operand2, self.pstate.C())
+        } else {
+            shared::add_with_carry::<32>(operand1, operand2, self.pstate.C())
+        };
+
+        self._set_op(d, result, sf);
+    }
+
+    /// **SBCS**: Subtract with carry, setting flags
+    ///
+    /// This instruction subtracts a register value and the value of NOT (Carry flag) from a register value, and writes the result to
+    /// the destination register. It updates the condition flags based on the result.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, common::NZCV};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 10);
+    /// cpu.__dbg_set_x(1, 2);
+    /// cpu.__dbg_get_pstate().__dbg_set_C(true);
+    /// cpu.sbcs(true, 1, 0, 2);  // `SBCS X2, X0, X1`
+    /// assert_eq!(cpu.__dbg_get_x(2), 8);
+    /// assert_eq!(cpu.__dbg_get_pstate().nzcv(), NZCV::init(false, false, true, false));
+    /// ```
+    pub fn sbcs(&mut self, sf: bool, m: Register, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let operand2 = !self._get_op(m, sf);
+
+        let (result, nzcv) = if sf {
+            shared::add_with_carry::<64>(operand1, operand2, self.pstate.C())
+        } else {
+            shared::add_with_carry::<32>(operand1, operand2, self.pstate.C())
+        };
+
+        self._set_op(d, result, sf);
+        self.pstate.set_nzcv(&nzcv);
+    }
 }
