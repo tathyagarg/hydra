@@ -504,6 +504,24 @@ impl Cpu {
     /// This instruction shifts a register value right by a variable number of bits, shifting in zeros, and writes the result to the
     /// destination register. The value of the second source register modulo the register size in bits gives the number of bits by
     /// which the first source register is right-shifted.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 3284398546);
+    /// cpu.__dbg_set_x(1, 12);
+    /// cpu.lsrv(false, 1, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 801855);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, -1234000707i32 as u64);
+    /// cpu.__dbg_set_x(1, 12);
+    /// cpu.lsrv(false, 1, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 747306);
+    /// ```
     pub fn lsrv(&mut self, sf: bool, m: Register, n: Register, d: Register) {
         let operand2 = self._get_op(m, sf);
         let rn = self._get_op(n, sf);
@@ -524,12 +542,22 @@ impl Cpu {
     /// **MADD**: Multiply-add
     ///
     /// This instruction multiplies two register values, adds a third register value, and writes the result to the destination register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 10);
+    /// cpu.__dbg_set_x(1, 3);
+    /// cpu.__dbg_set_x(2, 5);
+    /// cpu.madd(false, 0, 1, 2, 3);
+    /// assert_eq!(cpu.__dbg_get_x(3), 53);
+    /// ```
     pub fn madd(&mut self, sf: bool, m: Register, a: Register, n: Register, d: Register) {
         let operand1 = self._get_op(n, sf);
         let operand2 = self._get_op(m, sf);
         let operand3 = self._get_op(a, sf);
 
-        let result = operand3 + operand1 * operand2;
+        let result = operand3 + (operand1 * operand2);
         let datasize = 32 << sf as u32;
 
         self._set_op(d, result & ones(datasize), sf);
