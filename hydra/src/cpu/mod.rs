@@ -21,6 +21,7 @@ mod shared;
 
 const LOWER_32: u64 = 0xFFFF_FFFF_0000_0000;
 const REG_SP: usize = 0b11111;
+const REG_ZR: usize = 0b11111;
 
 pub type Register = usize;
 

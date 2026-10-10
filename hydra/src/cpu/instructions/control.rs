@@ -1,5 +1,5 @@
 use crate::cpu::{
-    BranchType, CmpOp, Cpu, DecodeType, Feature, Register,
+    BranchType, CmpOp, Cpu, DecodeType, Feature, REG_ZR, Register,
     common::*,
     fault::FaultRecord,
     regs::{EDSCRField, RegisterField},
@@ -410,5 +410,51 @@ impl Cpu {
         self.btype_next = 0b00;
 
         self.branch_to::<64>(target, BranchType::RET, false);
+    }
+
+    /// **SYS**: System instruction
+    ///
+    /// For more information, see op0 == 0b01, cache maintenance, TLB maintenance, address translation, prediction restriction,
+    /// BRBE, Trace Extension, Guarded Control Stack, and FEAT_RME_GPC3 instructions for the encodings of System
+    /// instructions.
+    #[allow(unused_variables)]
+    pub fn sys(&mut self, op1: u8, crn: u8, crm: u8, op2: u8, t: Register) {
+        panic!("??")
+    }
+
+    /// **TBNZ**: Test bit and branch if nonzero
+    ///
+    /// This instruction compares the value of a bit in a general-purpose register with zero, and conditionally branches to a label at a
+    /// PC-relative offset if the comparison is not equal. This instruction provides a hint that this is not a subroutine call or return.
+    /// This instruction does not affect condition flags.
+    pub fn tbnz(&mut self, b5: bool, b40: u8, imm14: u16, t: Register) {
+        let operand = if t == REG_ZR { 0 } else { self._get_op(t, b5) };
+
+        let bit_pos = ((b5 as u8) << 6) | b40;
+        let offset = shared::sint::<16, u16>(imm14 << 2) as u64;
+
+        if nth_bit(operand, bit_pos as usize) {
+            self.branch_to::<64>(self.get_PC64().wrapping_add(offset), BranchType::DIR, true);
+        } else {
+            self.branch_not_taken(BranchType::DIR, true);
+        }
+    }
+
+    /// **TBZ**: Test bit and branch if zero
+    ///
+    /// This instruction compares the value of a test bit with zero, and conditionally branches to a label at a PC-relative offset if the
+    /// comparison is equal. This instruction provides a hint that this is not a subroutine call or return. This instruction does not
+    /// affect condition flags.
+    pub fn tbz(&mut self, b5: bool, b40: u8, imm14: u16, t: Register) {
+        let operand = if t == REG_ZR { 0 } else { self._get_op(t, b5) };
+
+        let bit_pos = ((b5 as u8) << 6) | b40;
+        let offset = shared::sint::<16, u16>(imm14 << 2) as u64;
+
+        if !nth_bit(operand, bit_pos as usize) {
+            self.branch_to::<64>(self.get_PC64().wrapping_add(offset), BranchType::DIR, true);
+        } else {
+            self.branch_not_taken(BranchType::DIR, true);
+        }
     }
 }

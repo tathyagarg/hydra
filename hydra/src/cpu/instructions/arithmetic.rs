@@ -919,4 +919,30 @@ impl Cpu {
         self.pstate.set_nzcv(&nzcv);
         self._set_op(d, result, sf);
     }
+
+    /// **UBFM**: Unsigned bitfield move
+    ///
+    /// This instruction is usually accessed using one of its aliases, which are always preferred for disassembly.
+    /// If &lt;imms&gt; is greater than or equal to &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;-&lt;immr&gt;+1) bits starting from bit position
+    /// &lt;immr&gt; in the source register to the least significant bits of the destination register.
+    /// If &lt;imms&gt; is less than &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;+1) bits from the least significant bits of the source register
+    /// to bit position (regsize-&lt;immr&gt;) of the destination register, where regsize is the destination register size of 32 or 64 bits.
+    /// In both cases, the destination bits below and above the bitfield are set to zero.
+    pub fn ubfm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: Register, d: Register) {
+        let (wmask, tmask) = if sf {
+            shared::decode_bit_masks::<64>(N, imms, immr)
+        } else {
+            shared::decode_bit_masks::<32>(N, imms, immr)
+        };
+
+        let src = self._get_op(n, sf);
+
+        let bot = if sf {
+            src.rotate_right(immr as u32)
+        } else {
+            (src as u32).rotate_right(immr as u32) as u64
+        } & wmask;
+
+        self._set_op(d, bot & tmask, sf);
+    }
 }
