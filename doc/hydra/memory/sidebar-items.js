@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Memory"],"trait":["ReadableInt"]};
+window.SIDEBAR_ITEMS = {"enum":["Endian"],"struct":["Memory"],"trait":["ReadableInt"]};

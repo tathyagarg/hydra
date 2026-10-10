@@ -34,6 +34,7 @@ pub type Signal = bool;
 pub const HIGH: Signal = true;
 pub const LOW: Signal = false;
 
+#[derive(Debug)]
 pub enum CpuError {
     InstructionReadError,
 }
@@ -667,6 +668,45 @@ impl Cpu {
                 rn,
                 rd,
             } => self.add_er(sf, rm, option, imm3, rn, rd),
+            Instruction::AddImm {
+                sf,
+                sh,
+                imm12,
+                rn,
+                rd,
+            } => self.add_imm(sf, sh, imm12, rn, rd),
+            Instruction::AddSr {
+                sf,
+                shift,
+                rm,
+                imm6,
+                rn,
+                rd,
+            } => self.add_sr(sf, shift, rm, imm6, rn, rd),
+            Instruction::Movz { sf, rd, imm16, hw } => self.movz(sf, hw, imm16, rd),
+            Instruction::SubEr {
+                sf,
+                rm,
+                option,
+                imm3,
+                rn,
+                rd,
+            } => self.sub_er(sf, rm, option, imm3, rn, rd),
+            Instruction::SubImm {
+                sf,
+                sh,
+                imm12,
+                rn,
+                rd,
+            } => self.sub_imm(sf, sh, imm12, rn, rd),
+            Instruction::SubSr {
+                sf,
+                shift,
+                rm,
+                imm6,
+                rn,
+                rd,
+            } => self.sub_sr(sf, shift, rm, imm6, rn, rd),
         }
     }
 
@@ -677,6 +717,7 @@ impl Cpu {
 
         let decoded = decode::decode(instruction_word);
         if let Some(instr) = decoded {
+            println!("Executing instruction: {:?}", instr);
             self.execute_instruction(instr);
         }
 
