@@ -21,6 +21,40 @@ pub enum DebugHalt {
 }
 
 impl Cpu {
+    /// **BL**: Branch with link
+    ///
+    /// This instruction branches to a PC-relative offset, setting register X30 to PC+4. This instruction provides a hint that this is a
+    /// subroutine call.
+    pub fn bl(&mut self, imm26: u32) {
+        let offset = shared::sint::<28, u32>(imm26 << 2) as u64;
+
+        if Cpu::is_feature_implemented(Feature::GCS) {
+            todo!("GCS stuff");
+        }
+
+        self._set_op(30, self.get_PC64() + 4, true);
+        self.branch_to::<64>(
+            self.get_PC64().wrapping_add(offset),
+            BranchType::DIRCALL,
+            true,
+        );
+    }
+
+    /// **BLR**: Branch with link to register
+    ///
+    /// This instruction calls a subroutine at an address in a register, setting register X30 to PC+4. This instruction provides a hint
+    /// that this is a subroutine call.
+    pub fn blr(&mut self, n: Register) {
+        let target = self._get_op(n, true);
+        if Cpu::is_feature_implemented(Feature::GCS) {
+            todo!("GCS stuff");
+        }
+
+        self.btype_next = 0b10;
+        self._set_op(30, self.get_PC64() + 4, true);
+        self.branch_to::<64>(target, BranchType::INDCALL, false);
+    }
+
     /// **B.cond**: Branch conditionally
     ///
     /// This instruction branches conditionally to a label at a PC-relative offset. This instruction provides a hint that this is not a

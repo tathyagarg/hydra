@@ -482,47 +482,35 @@ pub enum Feature {
     AA32EL1,
     AA32EL2,
     AA32EL3,
-
     AA64,
     AA64EL0,
     AA64EL1,
     AA64EL2,
     AA64EL3,
-
     BRBE,
     BRBEv1p1,
     BTI,
-
     CMPBR,
     CSSC,
-
     DoubleLock,
-
     E2H0,
     ExS,
-
     FlagM,
     FlagM2,
-
+    GCS,
     HBC,
-
     IESB,
-
     MPAMv0p1,
     MPAMv1p1,
-
     PAuth,
     PMUv3,
     #[allow(non_camel_case_types)]
     PMUv3_ICNTR,
-
     RME,
-
     SECURE,
     SEL2,
     SME,
     SPE,
-
     VHE,
 }
 
@@ -538,46 +526,34 @@ impl Cpu {
             Feature::AA32EL1 => false,
             Feature::AA32EL2 => false,
             Feature::AA32EL3 => false,
-
             Feature::AA64 => true,
             Feature::AA64EL0 => false,
             Feature::AA64EL1 => false,
             Feature::AA64EL2 => false,
             Feature::AA64EL3 => false,
-
             Feature::BRBE => false,
             Feature::BRBEv1p1 => false,
             Feature::BTI => false,
-
             Feature::CMPBR => true,
             Feature::CSSC => true,
-
             Feature::DoubleLock => false,
-
             Feature::E2H0 => false,
             Feature::ExS => false,
-
             Feature::FlagM => false,
             Feature::FlagM2 => false,
-
+            Feature::GCS => false,
             Feature::HBC => true,
-
             Feature::IESB => false,
-
             Feature::MPAMv0p1 => false,
             Feature::MPAMv1p1 => false,
-
             Feature::PAuth => false,
             Feature::PMUv3 => false,
             Feature::PMUv3_ICNTR => false,
-
             Feature::RME => false,
-
             Feature::SECURE => false,
             Feature::SEL2 => false,
             Feature::SME => false,
             Feature::SPE => false,
-
             Feature::VHE => false,
         }
     }
@@ -636,12 +612,12 @@ impl Cpu {
     ///
     /// This instruction adds an immediate value to the PC value to form a PC-relative address, and writes the result to the
     /// destination register.
-    pub fn adr(&mut self, immlo: u8, immhi: u32, d: usize) {
+    pub fn adr(&mut self, immlo: u8, immhi: u32, d: Register) {
         let immlo = to_uint::<2>(immlo as u64);
         let immhi = to_uint::<19>(immhi as u64);
 
         let imm = (immhi << 2) | immlo;
-        self.x[d] = self.get_PC64() + imm;
+        self._set_op(d, self.get_PC64().wrapping_add(imm), true);
     }
 
     /// **ADRP**: Form PC-relative address to 4KB page
@@ -655,197 +631,7 @@ impl Cpu {
         let imm = ((immhi << 2) | immlo) << 12;
         let base = self.get_PC64() & (!0u64 << 12);
 
-        self.x[d] = base + imm;
-    }
-
-    /// **AT**: Address translate
-    ///
-    /// For more information, see op0 == 0b01, cache maintenance, TLB maintenance, address translation, prediction restriction,
-    /// BRBE, Trace Extension, Guarded Control Stack, and FEAT_RME_GPC3 instructions.
-    #[allow(unused_variables)]
-    pub fn at(&mut self, op1: u8, CRm: u8, op2: u8, t: usize) {
-        todo!("AT is an alias of SYS which is yet to be implemented");
-    }
-
-    /// **AUTDA, AUTDZA**: Authenticate data address, using key A
-    ///
-    /// This instruction authenticates a data address, using a modifier and key A.
-    ///
-    /// The address is in the general-purpose register that is specified by &gt;Xd>.
-    ///
-    /// The modifier is:
-    /// - In the general-purpose register or stack pointer that is specified by &gt;Xn|SP>, for AUTDA.
-    /// - The value zero, for AUTDZA.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    #[allow(unused_variables)]
-    pub fn autda_autdza(&mut self, Z: bool, n: usize, d: usize) {
-        todo!("Not yet implemented");
-    }
-
-    /// **AUTDB, AUTDZB**: Authenticate data address, using key B
-    ///
-    /// This instruction authenticates a data address, using a modifier and key B.
-    ///
-    /// The address is in the general-purpose register that is specified by &gt;Xd>.
-    ///
-    /// The modifier is:
-    /// - In the general-purpose register or stack pointer that is specified by &gt;Xn|SP> for AUTDB.
-    /// - The value zero, for AUTDZB.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    #[allow(unused_variables)]
-    pub fn autdb_autdzb(&mut self, Z: bool, n: usize, d: usize) {
-        todo!("Not yet implemented");
-    }
-
-    /// AUTIA, AUTIA1716, AUTIASP, AUTIAZ, AUTIZA**: Authenticate instruction address, using key A
-    ///
-    /// This instruction authenticates an instruction address, using a modifier and key A.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    ///
-    /// The address is:
-    /// - In the general-purpose register that is specified by &gt;Xd> for AUTIA and AUTIZA.
-    /// - In X17, for AUTIA1716.
-    /// - In X30, for AUTIASP and AUTIAZ.
-    ///
-    /// The modifier is:
-    /// - In the general-purpose register or stack pointer that is specified by &gt;Xn|SP> for AUTIA.
-    /// - The value zero, for AUTIZA and AUTIAZ.
-    /// - In X16, for AUTIA1716.
-    /// - In SP, for AUTIASP.
-    ///
-    /// If FEAT_PAuth_LR is implemented and PSTATE.PACM is 1, then AUTIA1716 and AUTIASP include a second modifier
-    /// that is:
-    /// - In X15, for AUTIA1716.
-    /// - In X16, for AUTIASP.
-    ///
-    /// It has encodings from 2 classes: Integer and System
-    #[allow(unused_variables)]
-    pub fn autia_autia1716_autiasp_autiaz_autiza(&mut self, Z: bool, n: usize, d: usize) {
-        todo!("Not yet implemented");
-    }
-
-    /// **AUTIA171615**: Authenticate instruction address, using key A
-    ///
-    /// This instruction authenticates an instruction address, using two modifiers and key A. The address is in X17. The 64-bit
-    /// value of modifier1 is the value in X16. The 64-bit value of modifier2 is the value in X15.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    pub fn autia171615(&mut self) {
-        todo!("Not yet implemented");
-    }
-
-    /// **AUTIASPPC**: Authenticate return address using key A, using an immediate offset
-    ///
-    /// This instruction authenticates an instruction address, using two modifiers and key A.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    ///
-    /// The address is in X30.
-    ///
-    /// The first modifier is in SP.
-    ///
-    /// The second modifier is the address of a program label.
-    #[allow(unused_variables)]
-    pub fn autiasppc(&mut self, imm16: u16) {
-        todo!("Not yet implemented");
-    }
-
-    /// **AUTIASPPCR**: Authenticate return address using key A, using a register
-    /// This instruction authenticates an instruction address, using two modifiers and key A.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    ///
-    /// The address is in X30.
-    ///
-    /// The first modifier is in SP.
-    ///
-    /// The second modifier is in the general-purpose register that is specified by &gt;Xn>.
-    #[allow(unused_variables)]
-    pub fn autiasppcr(&mut self, n: usize) {
-        todo!("Not yet implemented");
-    }
-
-    /// **AUTIB, AUTIB1716, AUTIBSP, AUTIBZ, AUTIZB**: Authenticate instruction address, using key B
-    ///
-    /// This instruction authenticates an instruction address, using a modifier and key B.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    ///
-    /// The address is:
-    /// - In the general-purpose register that is specified by &gt;Xd&lt; for AUTIB and AUTIZB.
-    /// - In X17, for AUTIB1716.
-    /// - In X30, for AUTIBSP and AUTIBZ.
-    ///
-    /// The modifier is:
-    /// - In the general-purpose register or stack pointer that is specified by &gt;Xn|SP&lt; for AUTIB.
-    /// - The value zero, for AUTIZB and AUTIBZ.
-    /// - In X16, for AUTIB1716.
-    /// - In SP, for AUTIBSP.
-    ///
-    /// If FEAT_PAuth_LR is implemented and PSTATE.PACM is 1, then AUTIB1716 and AUTIBSP include a second modifier
-    /// that is:
-    /// - In X15, for AUTIB1716.
-    /// - In X16, for AUTIBSP.
-    ///
-    /// It has encodings from 2 classes: Integer and System
-    #[allow(unused_variables)]
-    pub fn autib_autib1716_autibsp_autibz_autizb(&mut self, Z: bool, n: usize, d: usize) {
-        todo!("Not yet implemented");
-    }
-
-    /// **AUTIB171615**: Authenticate instruction address, using key B
-    ///
-    /// This instruction authenticates an instruction address, using two modifiers and key B. The address is in X17. The 64-bit
-    /// value of modifier1 is the value in X16. The 64-bit value of modifier2 is the value in X15.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    pub fn autib171615(&mut self) {
-        todo!("Not yet implemented");
-    }
-
-    /// **AUTIBSPPC**: Authenticate return address using key B, using an immediate offset
-    ///
-    /// This instruction authenticates an instruction address, using two modifiers and key B.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    ///
-    /// The address is in X30.
-    ///
-    /// The first modifier is in SP.
-    ///
-    /// The second modifier is the address of a program label.
-    #[allow(unused_variables)]
-    pub fn autibsppc(&mut self, imm16: u16) {
-        todo!("Not yet implemented");
-    }
-
-    /// **AUTIBSPPCR**: Authenticate return address using key B, using a register
-    ///
-    /// This instruction authenticates an instruction address, using two modifiers and key B.
-    ///
-    /// If the authentication passes, the upper bits of the address are restored to enable subsequent use of the address. For
-    /// information on behavior if the authentication fails, see Faulting on pointer authentication.
-    ///
-    /// The address is in X30.
-    ///
-    /// The first modifier is in SP.
-    ///
-    /// The second modifier is in the general-purpose register that is specified by &gt;Xn>.
-    #[allow(unused_variables)]
-    pub fn autisppcr(&mut self, n: usize) {
-        todo!("Not yet implemented");
+        self._set_op(d, base.wrapping_add(imm), true);
     }
 
     /// **AXFLAG**: Convert floating-point condition flags from Arm to external format
@@ -858,275 +644,4 @@ impl Cpu {
 
         self.pstate.set_nzcv(&NZCV::init(false, z, c, false));
     }
-
-    /// **BL**: Branch with link
-    ///
-    /// This instruction branches to a PC-relative offset, setting register X30 to PC+4. This instruction provides a hint that this is a
-    /// subroutine call.
-    #[allow(unused_variables)]
-    pub fn bl(&mut self, imm26: u32) {
-        todo!()
-    }
-
-    /// **BLR**: Branch with link to register
-    ///
-    /// This instruction calls a subroutine at an address in a register, setting register X30 to PC+4. This instruction provides a hint
-    /// that this is a subroutine call.
-    #[allow(unused_variables)]
-    pub fn blr(&mut self, n: usize) {
-        todo!()
-    }
-
-    /// **BLRAA, BLRAAZ, BLRAB, BLRABZ**: Branch with link to register, with pointer authentication
-    ///
-    /// This instruction authenticates the address in the general-purpose register that is specified by &lt;Xn&gt;, using a modifier and the
-    /// specified key, and calls a subroutine at the authenticated address, setting register X30 to PC+4.
-    ///
-    /// The modifier is:
-    /// - In the general-purpose register or stack pointer that is specified by <Xm|SP>, for BLRAA and BLRAB.
-    /// - The value zero, for BLRAAZ and BLRABZ.
-    ///
-    /// Key A is used for BLRAA and BLRAAZ. Key B is used for BLRAB and BLRABZ.
-    ///
-    /// If the authentication passes, the PE continues execution at the target of the branch. For information on behavior if the
-    /// authentication fails, see Faulting on pointer authentication.
-    ///
-    /// The authenticated address is not written back to the general-purpose register.
-    ///
-    /// This instruction provides a hint that this is a subroutine call.
-    #[allow(unused_variables)]
-    pub fn blraa_blraaz_blrab_blrabz(&mut self, Z: bool, M: bool, n: u8, m: u8) {
-        todo!()
-    }
-
-    /// **BR**: Branch to register
-    ///
-    /// This instruction branches unconditionally to an address in a register. This instruction provides a hint that this is not a
-    /// subroutine call or return.
-    #[allow(unused_variables)]
-    pub fn br(&mut self, n: usize) {
-        todo!()
-    }
-
-    /// **BRAA, BRAAZ, BRAB, BRABZ**: Branch to register, with pointer authentication
-    ///
-    /// This instruction authenticates the address in the general-purpose register that is specified by &lt;Xn&gt;, using a modifier and the
-    /// specified key, and branches to the authenticated address.
-    ///
-    /// The modifier is:
-    /// - In the general-purpose register or stack pointer that is specified by <Xm|SP>, for BRAA and BRAB.
-    /// - The value zero, for BRAAZ and BRABZ.
-    ///
-    /// Key A is used for BRAA and BRAAZ. Key B is used for BRAB and BRABZ.
-    ///
-    /// If the authentication passes, the PE continues execution at the target of the branch. For information on behavior if the
-    /// authentication fails, see Faulting on pointer authentication.
-    ///
-    /// The authenticated address is not written back to the general-purpose register.
-    ///
-    /// This instruction provides a hint that this is not a subroutine call or return.
-    #[allow(unused_variables)]
-    pub fn braa_braaz_brab_brabz(&mut self, Z: bool, M: bool, n: u8, m: u8) {
-        todo!()
-    }
-
-    /// **BRB**: Branch record buffer
-    ///
-    /// For more information, see op0 == 0b01, cache maintenance, TLB maintenance, address translation, prediction restriction,
-    /// BRBE, Trace Extension, Guarded Control Stack, and FEAT_RME_GPC3 instructions.
-    #[allow(unused_variables)]
-    pub fn brb(&mut self, op2: u8, t: u8) {
-        todo!()
-    }
-
-    /// **BRK**: Breakpoint instruction
-    ///
-    /// This instruction generates a Breakpoint Instruction exception. The PE records the exception in ESR_ELx, using the EC
-    /// value 0x3C, and captures the value of the immediate argument in ESR_ELx.ISS.
-    ///
-    /// Within a guarded memory region, while PSTATE.BTYPE != 0b00, a BRK instruction will not generate a Branch Target
-    /// exception and will generate a Breakpoint Instruction exception as normal. For more information, see PSTATE.BTYPE.
-    #[allow(unused_variables)]
-    pub fn brk(&mut self, imm16: u16) {
-        todo!()
-    }
-
-    /// **BTI**: Branch target identification
-    ///
-    /// This instruction is used to guard against the execution of instructions that are not the intended target of a branch.
-    ///
-    /// Outside of a guarded memory region, a BTI instruction executes as a NOP. Within a guarded memory region, while
-    /// PSTATE.BTYPE != 0b00, a BTI instruction compatible with the current value of PSTATE.BTYPE will not generate a
-    /// Branch Target Exception and will allow execution of subsequent instructions within the memory region. For more
-    /// information, see PSTATE.BTYPE.
-    ///
-    /// The operand &lt;targets&gt; passed to a BTI instruction determines the values of PSTATE.BTYPE that the BTI instruction is
-    /// compatible with.
-    #[allow(unused_variables)]
-    pub fn bti(&mut self, op2: u8) {
-        todo!()
-    }
-
-    /// **CAS, CASA, CASAL, CASL**: Compare and swap word or doubleword in memory
-    ///
-    /// This instruction reads a 32-bit word or 64-bit doubleword from memory, and compares it against the value held in a first
-    /// register. If the comparison is equal, the value in a second register is written to memory. If the comparison is not equal, the
-    /// architecture permits writing the value read from the location to memory. If the write is performed, the read and write occur
-    /// atomically such that no other modification of the memory location can take place between the read and write.
-    /// - If the destination register is not one of WZR or XZR, CASA and CASAL load from memory with acquire semantics.
-    /// - CASL and CASAL store to memory with release semantics.
-    /// - CAS has neither acquire nor release semantics.
-    ///
-    /// The architecture permits that the data read clears any exclusive monitors associated with that location, even if the compare
-    /// subsequently fails.
-    ///
-    /// If the instruction generates a synchronous Data Abort, the register which is compared and loaded, that is &lt;Ws&gt;, or &lt;Xs&gt;, is
-    /// restored to the value held in the register before the instruction was executed.
-    ///
-    /// For a CAS or CASA instruction, when &lt;Ws&gt; or &lt;Xs&gt; specifies the same register as &lt;Wt&gt; or &lt;Xt&gt;, this signals to the memory
-    /// system that an additional subsequent CAS, CASA, CASAL, or CASL access to the specified location is expected to occur in the
-    /// near future in the absence of taking an exception or exceptional software conditions. The memory system can respond by
-    /// taking actions that are expected to enable the subsequent CAS, CASA, CASAL, or CASL access to succeed when it does occur.
-    ///
-    /// A code sequence starting with a CAS or CASA instruction for which &lt;Ws&gt; or &lt;Xs&gt; specifies the same register as &lt;Wt&gt; or
-    /// &lt;Xt&gt;, and ending with a subsequent CAS, CASA, CASAL, or CASL to the same location, exhibits the following properties for
-    /// best performance when the location may be accessed concurrently, on one or more other PEs:
-    /// - The sequence does not contain any direct System register writes, address translation instructions, cache or TLB
-    /// maintenance operations, exception producing instructions, exception returns, or ISB barriers.
-    /// - The execution of the sequence includes 32 or fewer instructions.
-    /// - The value provided in &lt;Ws&gt; or &lt;Xs&gt; of the first CAS or CASA is a value likely to result in the comparison failing. A
-    /// failing comparison result may lead to better performance due to the hardware not performing a write to memory.
-    ///
-    /// NOTE:
-    /// For a CAS or CASA instruction, when &lt;Ws&gt; or &lt;Xs&gt; specifies the same register as &lt;Wt&gt; or &lt;Xt&gt;, the value in memory is not
-    /// modified, because the CAS or CASA either fails its compare or writes the same value back to memory.
-    /// For performance reasons, Arm recommends that software not use a CAS or CASA instruction when &lt;Ws&gt; or &lt;Xs&gt; specifies the
-    /// same register as &lt;Wt&gt; or &lt;Xt&gt; in a routine that includes a subsequent CAS, CASA, CASAL, or CASL for any of the following
-    /// purposes:
-    /// - To load the value that will be compared to conditionally determine whether or not to execute the subsequent CAS,
-    /// CASA, CASAL, or CASL.
-    /// - As a form of prefetch executed between the instruction loading the value that will be compared and the subsequent
-    /// compare instruction that conditionally determines whether or not to execute the subsequent CAS, CASA, CASAL, or
-    /// CASL.
-    ///
-    /// This guidance does not apply when &lt;Ws&gt; or &lt;Xs&gt; specifies the same register as &lt;Wt&gt; or &lt;Xt&gt; for a CAS or CASA instruction
-    /// and the compare between the CAS or CASA and the subsequent CAS, CASA, CASAL, or CASL is intended to detect an
-    /// exceptional software condition such that the result of the compare does not prevent the subsequent CAS, CASA, CASAL,
-    /// or CASL from executing under normal operating conditions.
-    #[allow(unused_variables)]
-    pub fn cas_casa_casal_casl(
-        &mut self,
-        size: u8,
-        A: bool,
-        s: usize,
-        R: bool,
-        n: usize,
-        t: usize,
-    ) {
-        todo!()
-    }
-
-    /// **CASB, CASAB, CASALB, CASLB**: Compare and swap byte in memory
-    ///
-    /// This instruction reads an 8-bit byte from memory, and compares it against the value held in a first register. If the comparison
-    /// is equal, the value in a second register is written to memory. If the comparison is not equal, the architecture permits writing
-    /// the value read from the location to memory. If the write is performed, the read and write occur atomically such that no other
-    /// modification of the memory location can take place between the read and write.
-    /// - If the destination register is not WZR, CASAB and CASALB load from memory with acquire semantics.
-    /// - CASLB and CASALB store to memory with release semantics.
-    /// - CASB has neither acquire nor release semantics.
-    ///
-    /// The architecture permits that the data read clears any exclusive monitors associated with that location, even if the compare
-    /// subsequently fails.
-    ///
-    /// If the instruction generates a synchronous Data Abort, the register which is compared and loaded, that is &lt;Ws&gt;, is restored to
-    /// the values held in the register before the instruction was executed.
-    ///
-    /// For a CASB or CASAB instruction, when &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, this signals to the memory system that an
-    /// additional subsequent CASB, CASAB, CASALB, or CASLB access to the specified location is expected to occur in the near
-    /// future in the absence of taking an exception or exceptional software conditions. The memory system can respond by taking
-    /// actions that are expected to enable the subsequent CASB, CASAB, CASALB, or CASLB access to succeed when it does occur.
-    ///
-    /// A code sequence starting with a CASB or CASAB instruction for which &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, and ending
-    /// with a subsequent CASB, CASAB, CASALB, or CASLB to the same location, exhibits the following properties for best
-    /// performance when the location may be accessed concurrently, on one or more other PEs:
-    /// - The sequence does not contain any direct System register writes, address translation instructions, cache or TLB
-    /// maintenance operations, exception producing instructions, exception returns, or ISB barriers.
-    /// - The execution of the sequence includes 32 or fewer instructions.
-    /// - The value provided in &lt;Ws&gt; of the first CASB or CASAB is a value likely to result in the comparison failing. A failing
-    /// comparison result may lead to better performance due to the hardware not performing a write to memory.
-    ///
-    /// NOTE:
-    /// For a CASB or CASAB instruction, when &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, the value in memory is not modified,
-    /// because the CASB or CASAB either fails its compare or writes the same value back to memory.
-    /// For performance reasons, Arm recommends that software not use a CASB or CASAB instruction when &lt;Ws&gt; specifies the same
-    /// register as &lt;Wt&gt; in a routine that includes a subsequent CASB, CASAB, CASALB, or CASLB for any of the following purposes:
-    /// - To load the value that will be compared to conditionally determine whether or not to execute the subsequent CASB,
-    /// CASAB, CASALB, or CASLB.
-    /// - As a form of prefetch executed between the instruction loading the value that will be compared and the subsequent
-    /// compare instruction that conditionally determines whether or not to execute the subsequent CASB, CASAB, CASALB,
-    /// or CASLB.
-    ///
-    /// This guidance does not apply when &lt;Ws&gt; specifies the same register as &lt;Wt&gt; for a CASB or CASAB instruction and the
-    /// compare between the CASB or CASAB and the subsequent CASB, CASAB, CASALB, or CASLB is intended to detect an
-    /// exceptional software condition such that the result of the compare does not prevent the subsequent CASB, CASAB, CASALB,
-    /// or CASLB from executing under normal operating conditions.
-    #[allow(unused_variables)]
-    pub fn casb_casab_casalb_caslb(&mut self, A: bool, s: usize, R: bool, n: usize, t: usize) {
-        todo!()
-    }
-
-    /// **CASH, CASAH, CASALH, CASLH**: Compare and swap halfword in memory
-    ///
-    /// This instruction reads a 16-bit halfword from memory, and compares it against the value held in a first register. If the
-    /// comparison is equal, the value in a second register is written to memory. If the comparison is not equal, the architecture
-    /// permits writing the value read from the location to memory. If the write is performed, the read and write occur atomically
-    /// such that no other modification of the memory location can take place between the read and write.
-    /// - If the destination register is not WZR, CASAH and CASALH load from memory with acquire semantics.
-    /// - CASLH and CASALH store to memory with release semantics.
-    /// - CASH has neither acquire nor release semantics.
-    ///
-    /// The architecture permits that the data read clears any exclusive monitors associated with that location, even if the compare
-    /// subsequently fails.
-    ///
-    /// If the instruction generates a synchronous Data Abort, the register which is compared and loaded, that is &lt;Ws&gt;, is restored to
-    /// the values held in the register before the instruction was executed.
-    ///
-    /// For a CASH or CASAH instruction, when &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, this signals to the memory system that an
-    /// additional subsequent CASH, CASAH, CASALH, or CASLH access to the specified location is expected to occur in the near
-    /// future in the absence of taking an exception or exceptional software conditions. The memory system can respond by taking
-    /// actions that are expected to enable the subsequent CASH, CASAH, CASALH, or CASLH access to succeed when it does occur.
-    ///
-    /// A code sequence starting with a CASH or CASAH instruction for which &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, and ending
-    /// with a subsequent CASH, CASAH, CASALH, or CASLH to the same location, exhibits the following properties for best
-    /// performance when the location may be accessed concurrently, on one or more other PEs:
-    /// - The sequence does not contain any direct System register writes, address translation instructions, cache or TLB
-    /// maintenance operations, exception producing instructions, exception returns, or ISB barriers.
-    /// - The execution of the sequence includes 32 or fewer instructions.
-    /// - The value provided in &lt;Ws&gt; of the first CASH or CASAH is a value likely to result in the comparison failing. A failing
-    /// comparison result may lead to better performance due to the hardware not performing a write to memory.
-    ///
-    /// NOTE:
-    /// For a CASH or CASAH instruction, when &lt;Ws&gt; specifies the same register as &lt;Wt&gt;, the value in memory is not modified,
-    /// because the CASH or CASAH either fails its compare or writes the same value back to memory.
-    /// For performance reasons, Arm recommends that software not use a CASH or CASAH instruction when &lt;Ws&gt; specifies the same
-    /// register as &lt;Wt&gt; in a routine that includes a subsequent CASH, CASAH, CASALH, or CASLH for any of the following purposes:
-    /// - To load the value that will be compared to conditionally determine whether or not to execute the subsequent CASH,
-    /// CASAH, CASALH, or CASLH.
-    /// - As a form of prefetch executed between the instruction loading the value that will be compared and the subsequent
-    /// compare instruction that conditionally determines whether or not to execute the subsequent CASH, CASAH, CASALH,
-    /// or CASLH.
-    ///
-    /// This guidance does not apply when &lt;Ws&gt; specifies the same register as &lt;Wt&gt; for a CASH or CASAH instruction and the
-    /// compare between the CASH or CASAH and the subsequent CASH, CASAH, CASALH, or CASLH is intended to detect an
-    /// exceptional software condition such that the result of the compare does not prevent the subsequent CASH, CASAH, CASALH,
-    /// or CASLH from executing under normal operating conditions.
-    #[allow(unused_variables)]
-    pub fn cash_casah_casalh_caslh(&mut self, A: bool, s: usize, R: bool, n: usize, t: usize) {
-        todo!()
-    }
-
-    // TODO: CASP, CASPA, CASPAL, CASPL
-    // TODO: CASPT, CASPAT, CASPALT, CASPLT
-    // TODO: CAST, CASAT, CASALT, CASLT
 }
