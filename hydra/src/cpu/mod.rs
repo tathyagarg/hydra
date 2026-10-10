@@ -1,16 +1,21 @@
 #![allow(dead_code, non_snake_case)]
 
-use crate::cpu::{
-    brbe::{BRBINF_EL1_Type, BRBSRC_EL1_Type, BRBTGT_EL1_Type, Brbe},
-    common::NZCV,
-    pmu::Pmu,
-    regs::MPAMVPMnEL2Type,
+use crate::{
+    cpu::{
+        brbe::{BRBINF_EL1_Type, BRBSRC_EL1_Type, BRBTGT_EL1_Type, Brbe},
+        common::NZCV,
+        decode::Instruction,
+        pmu::Pmu,
+        regs::MPAMVPMnEL2Type,
+    },
+    memory::Memory,
 };
 
 mod accessors;
 mod brbe;
 pub mod common;
 mod constraint;
+pub mod decode;
 mod exeception;
 mod fault;
 mod instructions;
@@ -20,14 +25,18 @@ mod regs;
 mod shared;
 
 const LOWER_32: u64 = 0xFFFF_FFFF_0000_0000;
-const REG_SP: usize = 0b11111;
-const REG_ZR: usize = 0b11111;
+const REG_SP: Register = 0b11111;
+const REG_ZR: Register = 0b11111;
 
-pub type Register = usize;
+pub type Register = u8;
 
 pub type Signal = bool;
 pub const HIGH: Signal = true;
 pub const LOW: Signal = false;
+
+pub enum CpuError {
+    InstructionReadError,
+}
 
 pub enum CmpOp {
     EQ,
@@ -558,23 +567,23 @@ impl Cpu {
         }
     }
 
-    pub fn _get_op(&self, n: usize, cond: bool) -> u64 {
+    pub fn _get_op(&self, n: Register, cond: bool) -> u64 {
         if cond {
-            self.x[n]
+            self.x[n as usize]
         } else {
-            self.x[n] as u32 as u64
+            self.x[n as usize] as u32 as u64
         }
     }
 
-    pub fn _set_op(&mut self, n: usize, v: u64, cond: bool) {
+    pub fn _set_op(&mut self, n: Register, v: u64, cond: bool) {
         if cond {
-            self.x[n] = v;
+            self.x[n as usize] = v;
         } else {
-            self.x[n] = to_uint::<32>(v);
+            self.x[n as usize] = to_uint::<32>(v);
         }
     }
 
-    pub fn _get_reg_or_sp(&self, n: usize, cond: bool) -> u64 {
+    pub fn _get_reg_or_sp(&self, n: Register, cond: bool) -> u64 {
         if n == REG_SP {
             self.sp
         } else {
@@ -582,7 +591,7 @@ impl Cpu {
         }
     }
 
-    pub fn _set_reg_or_sp(&mut self, n: usize, value: u64, cond: bool) {
+    pub fn _set_reg_or_sp(&mut self, n: Register, value: u64, cond: bool) {
         if n == REG_SP {
             self.sp = value;
         } else {
@@ -624,7 +633,7 @@ impl Cpu {
     ///
     /// This instruction adds an immediate value that is shifted left by 12 bits, to the PC value to form a PC-relative address, with
     /// the bottom 12 bits masked out, and writes the result to the destination register.
-    pub fn adrp(&mut self, immlo: u8, immhi: u32, d: usize) {
+    pub fn adrp(&mut self, immlo: u8, immhi: u32, d: Register) {
         let immlo = to_uint::<2>(immlo as u64);
         let immhi = to_uint::<19>(immhi as u64);
 
@@ -643,5 +652,36 @@ impl Cpu {
         let c = self.pstate.C() && !self.pstate.V();
 
         self.pstate.set_nzcv(&NZCV::init(false, z, c, false));
+    }
+
+    fn execute_instruction(&mut self, instr: Instruction) {
+        match instr {
+            Instruction::Abs { sf, rn, rd } => self.abs(sf, rn, rd),
+            Instruction::Adc { sf, rm, rn, rd } => self.adc(sf, rm, rn, rd),
+            Instruction::Adcs { sf, rm, rn, rd } => self.adcs(sf, rm, rn, rd),
+            Instruction::AddEr {
+                sf,
+                rm,
+                option,
+                imm3,
+                rn,
+                rd,
+            } => self.add_er(sf, rm, option, imm3, rn, rd),
+        }
+    }
+
+    pub fn step(&mut self, memory: &mut Memory) -> Result<(), CpuError> {
+        let instruction_word = memory
+            .read::<u32>(self.get_PC64() as usize)
+            .ok_or(CpuError::InstructionReadError)?;
+
+        let decoded = decode::decode(instruction_word);
+        if let Some(instr) = decoded {
+            self.execute_instruction(instr);
+        }
+
+        self._pc += 4;
+
+        Ok(())
     }
 }

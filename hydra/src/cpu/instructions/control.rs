@@ -118,8 +118,8 @@ impl Cpu {
         let offset = shared::sint::<11, u16>(imm9 << 2) as u64;
 
         let datasize = 8usize << (H as u8);
-        let operand1 = n_bits(self.x[t], datasize);
-        let operand2 = n_bits(self.x[m], datasize);
+        let operand1 = n_bits(self.x[t as usize], datasize);
+        let operand2 = n_bits(self.x[m as usize], datasize);
 
         let cond = if unsigned {
             let value1 = operand1;

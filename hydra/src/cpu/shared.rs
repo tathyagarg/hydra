@@ -1,5 +1,6 @@
 use crate::cpu::{
-    BranchType, Cpu, DecodeType, EndOfInstructionReason, ExtendType, Feature, HIGH, ShiftType,
+    BranchType, Cpu, DecodeType, EndOfInstructionReason, ExtendType, Feature, HIGH, Register,
+    ShiftType,
     brbe::{BRBSRC_EL1_Type, BRBTGT_EL1_Type},
     common::*,
     constraint::{Constraint, Unpredictable},
@@ -1491,8 +1492,8 @@ impl Cpu {
         privileged: bool,
         tagchecked: bool,
         ispair: bool,
-        Rt: Option<usize>,
-        Rt2: Option<usize>,
+        Rt: Option<Register>,
+        Rt2: Option<Register>,
     ) -> AccessDescriptor {
         let mut accdesc = self.new_accdesc_from_acctype(AccessType::GPR);
 
@@ -1515,7 +1516,7 @@ impl Cpu {
         nontemporal: bool,
         privileged: bool,
         tagchecked: bool,
-        Rt: Option<usize>,
+        Rt: Option<Register>,
     ) -> AccessDescriptor {
         let ispair = false;
         let Rt2 = None;

@@ -118,8 +118,8 @@
 <a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">let </span>offset = shared::sint::&lt;<span class="number">11</span>, u16&gt;(imm9 &lt;&lt; <span class="number">2</span>) <span class="kw">as </span>u64;
 <a href=#119 id=119 data-nosnippet>119</a>
 <a href=#120 id=120 data-nosnippet>120</a>        <span class="kw">let </span>datasize = <span class="number">8usize </span>&lt;&lt; (H <span class="kw">as </span>u8);
-<a href=#121 id=121 data-nosnippet>121</a>        <span class="kw">let </span>operand1 = n_bits(<span class="self">self</span>.x[t], datasize);
-<a href=#122 id=122 data-nosnippet>122</a>        <span class="kw">let </span>operand2 = n_bits(<span class="self">self</span>.x[m], datasize);
+<a href=#121 id=121 data-nosnippet>121</a>        <span class="kw">let </span>operand1 = n_bits(<span class="self">self</span>.x[t <span class="kw">as </span>usize], datasize);
+<a href=#122 id=122 data-nosnippet>122</a>        <span class="kw">let </span>operand2 = n_bits(<span class="self">self</span>.x[m <span class="kw">as </span>usize], datasize);
 <a href=#123 id=123 data-nosnippet>123</a>
 <a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">let </span>cond = <span class="kw">if </span>unsigned {
 <a href=#125 id=125 data-nosnippet>125</a>            <span class="kw">let </span>value1 = operand1;
