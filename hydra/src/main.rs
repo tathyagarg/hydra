@@ -3,12 +3,15 @@ pub mod memory;
 
 fn main() {
     let mut cpu = cpu::Cpu::default();
-    let mut memory = memory::Memory::from(vec![
-        0xd2, 0x80, 0x00, 0x61, // MOVZ X1, #3
-        0xd2, 0x80, 0x00, 0x42, // MOVZ X2, #2
-        0x8b, 0x01, 0x00, 0x43, // ADD X3, X1, X2
-        0xcb, 0x02, 0x00, 0x24, // SUB X4, X1, X2
-    ]);
+    let mut memory = memory::Memory::init(
+        vec![
+            0x61, 0x00, 0x80, 0xd2, // MOVZ X1, #3
+            0x42, 0x00, 0x80, 0xd2, // MOVZ X2, #2
+            0x43, 0x00, 0x01, 0x8b, // ADD X3, X1, X2
+            0x24, 0x00, 0x02, 0xcb, // SUB X4, X1, X2
+        ],
+        memory::Endian::Little,
+    );
 
     for _ in 0..4 {
         cpu.step(&mut memory).unwrap();

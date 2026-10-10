@@ -69,6 +69,10 @@ impl From<Vec<u8>> for Memory {
 }
 
 impl Memory {
+    pub fn init(data: Vec<u8>, endian: Endian) -> Self {
+        Self { data, endian }
+    }
+
     pub fn read<T: ReadableInt>(&self, offset: usize) -> Option<T> {
         let slice = self.data.get(offset..)?;
         match self.endian {
