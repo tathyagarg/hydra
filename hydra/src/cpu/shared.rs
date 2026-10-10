@@ -31,7 +31,7 @@ pub enum SecurityState {
     Secure,
 }
 
-fn replicate(val: u64, elem_bits: u32, total_bits: u32) -> u64 {
+pub fn replicate(val: u64, elem_bits: u32, total_bits: u32) -> u64 {
     println!("repl: {} {} {}", val, elem_bits, total_bits);
     let elem = val & ones(elem_bits);
 

@@ -1,6 +1,6 @@
 use crate::cpu::{
     Cpu, DecodeType, ExtendType, Feature, Register, ShiftType,
-    common::{n_bits, ones},
+    common::{n_bits, nth_bit, ones},
     shared,
 };
 
@@ -253,15 +253,11 @@ impl Cpu {
 
         let shift_type = ShiftType::decode(shift).unwrap();
 
-        let operand2 = if sf {
-            shared::shift_reg::<64>(mval, shift_type, imm6 as usize)
-        } else {
-            shared::shift_reg::<32>(mval, shift_type, imm6 as usize)
-        };
-
         let (result, _) = if sf {
+            let operand2 = shared::shift_reg::<64>(mval, shift_type, imm6 as usize);
             shared::add_with_carry::<64>(operand1, operand2, false)
         } else {
+            let operand2 = shared::shift_reg::<32>(mval, shift_type, imm6 as usize);
             shared::add_with_carry::<32>(operand1, operand2, false)
         };
 
@@ -673,5 +669,254 @@ impl Cpu {
 
         self._set_op(d, result, sf);
         self.pstate.set_nzcv(&nzcv);
+    }
+
+    /// **SBFM**: Signed bitfield move
+    ///
+    /// This instruction is usually accessed using one of its aliases, which are always preferred for disassembly.
+    /// If &lt;imms&gt; is greater than or equal to &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;-&lt;immr&gt;+1) bits starting from bit position
+    /// &lt;immr&gt; in the source register to the least significant bits of the destination register.
+    /// If &lt;imms&gt; is less than &lt;immr&gt;, this copies a bitfield of (&lt;imms&gt;+1) bits from the least significant bits of the source register
+    /// to bit position (regsize-&lt;immr&gt;) of the destination register, where regsize is the destination register size of 32 or 64 bits.
+    /// In both cases, the destination bits below the bitfield are set to zero, and the bits above the bitfield are set to a copy of the
+    /// most significant bit of the bitfield.
+    pub fn sbfm(&mut self, sf: bool, N: bool, immr: u8, imms: u8, n: Register, d: Register) {
+        let (wmask, tmask) = if sf {
+            shared::decode_bit_masks::<64>(N, imms, immr)
+        } else {
+            shared::decode_bit_masks::<32>(N, imms, immr)
+        };
+
+        let src = self._get_op(n, sf);
+
+        let bot = if sf {
+            src.rotate_right(immr as u32)
+        } else {
+            (src as u32).rotate_right(immr as u32) as u64
+        } & wmask;
+
+        let top = shared::replicate(nth_bit(src, imms as usize) as u64, 1, 32 << sf as u32);
+
+        self._set_op(d, (top & !tmask) | (bot & tmask), sf);
+    }
+
+    /// **SUB (extended register)**: Subtract extended and scaled register
+    ///
+    /// This instruction subtracts a sign-extended or zero-extended register value, followed by an optional left shift amount, from a
+    /// register value, and writes the result to the destination register. The argument that is extended from the <Rm> register can be a
+    /// byte, halfword, word, or doubleword.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 10);
+    /// cpu.__dbg_set_x(1, 2);
+    /// // `SUB X2, X0, X1, UXTB #3`
+    /// cpu.sub_er(true, 1, 0b000, 2, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 2);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 2000);
+    /// cpu.__dbg_set_x(1, 500);
+    /// // `SUB X2, X0, X1, UXTB #3`
+    /// cpu.sub_er(true, 1, 0b000, 3, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 48);
+    /// ```
+    pub fn sub_er(
+        &mut self,
+        sf: bool,
+        m: Register,
+        option: u8,
+        imm3: u8,
+        n: Register,
+        d: Register,
+    ) {
+        let operand1 = self._get_reg_or_sp(n, sf);
+
+        let mval = self._get_op(m, option & 0b11 == 0b11);
+        let extend_type = ExtendType::decode(option).unwrap();
+
+        let (result, _) = if sf {
+            let operand2 = !shared::extend_reg::<64>(mval, extend_type, imm3);
+            shared::add_with_carry::<64>(operand1, operand2, true)
+        } else {
+            let operand2 = !shared::extend_reg::<32>(mval, extend_type, imm3);
+            shared::add_with_carry::<32>(operand1, operand2, true)
+        };
+
+        self._set_reg_or_sp(d, result, sf);
+    }
+
+    /// **SUB (immediate)**: Subtract immediate value
+    ///
+    /// This instruction subtracts an optionally-shifted immediate value from a register value, and writes the result to the destination
+    /// register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 12);
+    /// // `SUB X1, X0, #10 LSL #0`
+    /// cpu.sub_imm(true, false, 10, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 2);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 50000);
+    /// // `SUB X1, X0, #10 LSL #12`
+    /// cpu.sub_imm(true, true, 10, 0, 1);
+    /// assert_eq!(cpu.__dbg_get_x(1), 9040);
+    /// ```
+    pub fn sub_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: Register, d: Register) {
+        let imm12 = n_bits(imm12, 12);
+        let imm = if sh { imm12 << 12 } else { imm12 };
+
+        let operand1 = self._get_reg_or_sp(n, sf);
+
+        let (result, _) = if sf {
+            shared::add_with_carry::<64>(operand1, !imm, true)
+        } else {
+            shared::add_with_carry::<32>(operand1, !imm, true)
+        };
+
+        self._set_reg_or_sp(d, result, sf);
+    }
+
+    /// **SUB (shifted register)**: Subtract optionally-shifted register
+    ///
+    /// This instruction subtracts an optionally-shifted register value from a register value, and writes the result to the destination
+    /// register.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 16);
+    /// cpu.__dbg_set_x(1, 2);
+    /// // `SUB X2, X0, X1, LSL #3`
+    /// cpu.sub_sr(true, 0b00, 1, 3, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 0);
+    /// ```
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, 6);
+    /// cpu.__dbg_set_x(1, 36);
+    /// // `SUB X2, X0, X1, LSR #3`
+    /// cpu.sub_sr(true, 0b01, 1, 3, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 2);
+    /// ```
+    pub fn sub_sr(&mut self, sf: bool, shift: u8, m: Register, imm6: u8, n: Register, d: Register) {
+        let operand1 = self._get_op(n, sf);
+        let mval = self._get_op(m, sf);
+
+        let shift_type = ShiftType::decode(shift).unwrap();
+
+        let (result, _) = if sf {
+            let operand2 = !shared::shift_reg::<64>(mval, shift_type, imm6 as usize);
+            shared::add_with_carry::<64>(operand1, operand2, true)
+        } else {
+            let operand2 = !shared::shift_reg::<32>(mval, shift_type, imm6 as usize);
+            shared::add_with_carry::<32>(operand1, operand2, true)
+        };
+
+        self._set_op(d, result, sf);
+    }
+
+    /// **SUBS (extended register)**: Subtract extended and scaled register, setting flags
+    ///
+    /// This instruction subtracts a sign-extended or zero-extended register value, followed by an optional left shift amount, from a
+    /// register value, and writes the result to the destination register. The argument that is extended from the <Rm> register can be a
+    /// byte, halfword, word, or doubleword. It updates the condition flags based on the result.
+    ///
+    /// ```
+    /// # use hydra::cpu::{Cpu, ExtendType};
+    /// # let mut cpu = Cpu::default();
+    /// cpu.__dbg_set_x(0, u64::MIN + 4);
+    /// cpu.__dbg_set_x(1, 2);
+    /// // `SUBS X2, X0, X1, UXTB #3`
+    /// cpu.subs_er(true, 1, 0b010, 0b001, 0, 2);
+    /// assert_eq!(cpu.__dbg_get_x(2), 0);
+    /// assert!(cpu.__dbg_get_pstate().Z());
+    /// ```
+    pub fn subs_er(
+        &mut self,
+        sf: bool,
+        m: Register,
+        option: u8,
+        imm3: u8,
+        n: Register,
+        d: Register,
+    ) {
+        let operand1 = self._get_reg_or_sp(n, sf);
+
+        let mval = self._get_op(m, option & 0b11 == 0b11);
+        let extend_type = ExtendType::decode(option).unwrap();
+
+        let (result, nzcv) = if sf {
+            let operand2 = !shared::extend_reg::<64>(mval, extend_type, imm3);
+            shared::add_with_carry::<64>(operand1, operand2, true)
+        } else {
+            let operand2 = !shared::extend_reg::<32>(mval, extend_type, imm3);
+            shared::add_with_carry::<32>(operand1, operand2, true)
+        };
+
+        self.pstate.set_nzcv(&nzcv);
+        self._set_reg_or_sp(d, result, sf);
+    }
+
+    /// **SUBS (immediate)**: Subtract immediate value, setting flags
+    ///
+    /// This instruction subtracts an optionally-shifted immediate value from a register value, and writes the result to the destination
+    /// register. It updates the condition flags based on the result.
+    pub fn subs_imm(&mut self, sf: bool, sh: bool, imm12: u16, n: Register, d: Register) {
+        let imm12 = n_bits(imm12, 12);
+        let imm = if sh { imm12 << 12 } else { imm12 };
+
+        let operand1 = self._get_reg_or_sp(n, sf);
+
+        let (result, nzcv) = if sf {
+            shared::add_with_carry::<64>(operand1, !imm, true)
+        } else {
+            shared::add_with_carry::<32>(operand1, !imm, true)
+        };
+
+        self.pstate.set_nzcv(&nzcv);
+        self._set_reg_or_sp(d, result, sf);
+    }
+
+    /// **SUBS (shifted register)**: Subtract optionally-shifted register, setting flags
+    ///
+    /// This instruction subtracts an optionally-shifted register value from a register value, and writes the result to the destination
+    /// register. It updates the condition flags based on the result.
+    pub fn subs_sr(
+        &mut self,
+        sf: bool,
+        shift: u8,
+        m: Register,
+        imm6: u8,
+        n: Register,
+        d: Register,
+    ) {
+        let operand1 = self._get_op(n, sf);
+        let mval = self._get_op(m, sf);
+
+        let shift_type = ShiftType::decode(shift).unwrap();
+
+        let (result, nzcv) = if sf {
+            let operand2 = !shared::shift_reg::<64>(mval, shift_type, imm6 as usize);
+            shared::add_with_carry::<64>(operand1, operand2, true)
+        } else {
+            let operand2 = !shared::shift_reg::<32>(mval, shift_type, imm6 as usize);
+            shared::add_with_carry::<32>(operand1, operand2, true)
+        };
+
+        self.pstate.set_nzcv(&nzcv);
+        self._set_op(d, result, sf);
     }
 }

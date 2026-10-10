@@ -596,11 +596,7 @@ impl Cpu {
             ((operand1 as u32) ^ (imm as u32)) as u64
         };
 
-        if d == REG_SP {
-            self.sp = result;
-        } else {
-            self._set_op(d, result, sf);
-        }
+        self._set_reg_or_sp(d, result, sf);
     }
 
     /// **EOR (shifted register)**: Bitwise exclusive-OR (shifted register)
@@ -732,11 +728,7 @@ impl Cpu {
             ((operand1 as u32) | (imm as u32)) as u64
         };
 
-        if d == REG_SP {
-            self.sp = result;
-        } else {
-            self._set_op(d, result, sf);
-        }
+        self._set_reg_or_sp(d, result, sf);
     }
 
     /// **ORR (shifted register)**: Bitwise OR (shifted register)
