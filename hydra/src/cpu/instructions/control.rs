@@ -26,7 +26,7 @@ impl Cpu {
     /// This instruction branches to a PC-relative offset, setting register X30 to PC+4. This instruction provides a hint that this is a
     /// subroutine call.
     pub fn bl(&mut self, imm26: u32) {
-        let offset = shared::sint::<28, u32>(imm26 << 2) as u64;
+        let offset = shared::sign_extend::<28, u32>(imm26 << 2) as u64;
 
         if Cpu::is_feature_implemented(Feature::GCS) {
             todo!("GCS stuff");
@@ -60,7 +60,7 @@ impl Cpu {
     /// This instruction branches conditionally to a label at a PC-relative offset. This instruction provides a hint that this is not a
     /// subroutine call or return.
     pub fn b_cond(&mut self, imm19: u32, cond: u8) {
-        let offset = shared::sint::<21, u32>(imm19 << 2) as u64;
+        let offset = shared::sign_extend::<21, u32>(imm19 << 2) as u64;
         if self.condition_holds(cond) {
             println!("Condition holds, branching to offset: {:#x}", offset);
             self.branch_to::<64>(self.get_PC64().wrapping_add(offset), BranchType::DIR, true);
@@ -74,7 +74,7 @@ impl Cpu {
     /// This instruction branches unconditionally to a label at a PC-relative offset. This instruction provides a hint that this is not a
     /// subroutine call or return.
     pub fn b(&mut self, imm26: u32) {
-        let offset = shared::sint::<28, u32>(imm26 << 2) as u64;
+        let offset = shared::sign_extend::<28, u32>(imm26 << 2) as u64;
         self.branch_to::<64>(self.get_PC64().wrapping_add(offset), BranchType::DIR, false);
     }
 
@@ -87,7 +87,7 @@ impl Cpu {
             self.end_of_decode(DecodeType::UNDEF);
         }
 
-        let offset = shared::sint::<21, u32>(imm19 << 2) as u64;
+        let offset = shared::sign_extend::<21, u32>(imm19 << 2) as u64;
 
         if self.condition_holds(cond) {
             self.branch_to::<64>(self.get_PC64().wrapping_add(offset), BranchType::DIR, true);
@@ -116,7 +116,7 @@ impl Cpu {
             _ => unreachable!(),
         };
 
-        let offset = shared::sint::<11, u16>(imm9 << 2) as u64;
+        let offset = shared::sign_extend::<11, u16>(imm9 << 2) as u64;
 
         let datasize = 8usize << (H as u8);
         let operand1 = n_bits(self.x[t as usize], datasize);
@@ -163,7 +163,7 @@ impl Cpu {
             self.end_of_decode(DecodeType::UNDEF);
         }
 
-        let offset = shared::sint::<11, u16>(imm9 << 2) as u64;
+        let offset = shared::sign_extend::<11, u16>(imm9 << 2) as u64;
 
         let (op, unsigned) = match cc {
             0b000 => (CmpOp::GT, false),
@@ -218,7 +218,7 @@ impl Cpu {
             self.end_of_decode(DecodeType::UNDEF);
         }
 
-        let offset = shared::sint::<11, u16>(imm9 << 2) as u64;
+        let offset = shared::sign_extend::<11, u16>(imm9 << 2) as u64;
 
         let (op, unsigned) = match cc {
             0b000 => (CmpOp::GT, false),
@@ -280,7 +280,7 @@ impl Cpu {
     /// comparison is not equal. This instruction provides a hint that this is not a subroutine call or return. This instruction does not
     /// affect the condition flags.
     pub fn cbnz(&mut self, sf: bool, imm19: u32, t: Register) {
-        let offset = shared::sint::<21, u32>(imm19 << 2) as u64;
+        let offset = shared::sign_extend::<21, u32>(imm19 << 2) as u64;
 
         let operand1 = self._get_op(t, sf);
         if operand1 != 0 {
@@ -296,7 +296,7 @@ impl Cpu {
     /// comparison is equal. This instruction provides a hint that this is not a subroutine call or return. This instruction does not
     /// affect condition flags.
     pub fn cbz(&mut self, sf: bool, imm19: u32, t: Register) {
-        let offset = shared::sint::<21, u32>(imm19 << 2) as u64;
+        let offset = shared::sign_extend::<21, u32>(imm19 << 2) as u64;
 
         let operand1 = self._get_op(t, sf);
         if operand1 == 0 {
@@ -466,7 +466,7 @@ impl Cpu {
         let operand = if t == REG_ZR { 0 } else { self._get_op(t, b5) };
 
         let bit_pos = ((b5 as u8) << 6) | b40;
-        let offset = shared::sint::<16, u16>(imm14 << 2) as u64;
+        let offset = shared::sign_extend::<16, u16>(imm14 << 2) as u64;
 
         if nth_bit(operand, bit_pos as usize) {
             self.branch_to::<64>(self.get_PC64().wrapping_add(offset), BranchType::DIR, true);
@@ -484,7 +484,7 @@ impl Cpu {
         let operand = if t == REG_ZR { 0 } else { self._get_op(t, b5) };
 
         let bit_pos = ((b5 as u8) << 6) | b40;
-        let offset = shared::sint::<16, u16>(imm14 << 2) as u64;
+        let offset = shared::sign_extend::<16, u16>(imm14 << 2) as u64;
 
         if !nth_bit(operand, bit_pos as usize) {
             self.branch_to::<64>(self.get_PC64().wrapping_add(offset), BranchType::DIR, true);

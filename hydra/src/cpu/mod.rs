@@ -11,6 +11,8 @@ use crate::{
     memory::Memory,
 };
 
+mod aarch32;
+mod aarch64;
 mod accessors;
 mod brbe;
 pub mod common;

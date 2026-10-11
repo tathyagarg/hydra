@@ -340,7 +340,6 @@ const IMPLEMENTED_INSTRUCTION_MAP: [(u32, u32, fn(u32) -> Instruction); 13] = [
 ///
 /// ```
 /// # use hydra::cpu::decode::{decode, Instruction};
-///
 /// let input = 0b11011010110000000010001010000101;
 /// let res = decode(input);
 ///

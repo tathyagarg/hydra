@@ -41,7 +41,6 @@ pub enum Regime {
 }
 
 pub fn replicate(val: u64, elem_bits: u32, total_bits: u32) -> u64 {
-    println!("repl: {} {} {}", val, elem_bits, total_bits);
     let elem = val & ones(elem_bits);
 
     let mut result = 0;
@@ -52,7 +51,6 @@ pub fn replicate(val: u64, elem_bits: u32, total_bits: u32) -> u64 {
         pos += elem_bits;
     }
 
-    println!("replicated: {:#X}", result);
     result
 }
 
@@ -71,7 +69,7 @@ pub fn ror(val: u64, amount: u32, width: u32) -> u64 {
 /// Signed Integer function: Converts unsigned int to signed int
 /// Also called SignExtend function
 /// The `N` is the number of used bits in the input `n`
-pub(super) fn sint<const N: usize, T: Into<u64>>(n: T) -> i64 {
+pub(super) fn sign_extend<const N: usize, T: Into<u64>>(n: T) -> i64 {
     let mask = if N == 64 { u64::MAX } else { (1u64 << N) - 1 };
     let n = n.into();
     let sign_bit = 1u64 << (N - 1);
@@ -82,6 +80,9 @@ pub(super) fn sint<const N: usize, T: Into<u64>>(n: T) -> i64 {
     }) as i64
 }
 
+/// AddWithCarry()
+/// ==============
+/// Integer addition with carry input, returning result and NZCV flags
 pub(super) fn add_with_carry<const N: usize>(x: u64, y: u64, carry_in: bool) -> (u64, NZCV) {
     let mask = if N == 64 { u64::MAX } else { (1u64 << N) - 1 };
 
@@ -103,9 +104,11 @@ pub(super) fn add_with_carry<const N: usize>(x: u64, y: u64, carry_in: bool) -> 
     };
 
     let signed_sum = if N == 64 {
-        sint::<N, u64>(x) + sint::<N, u64>(y) + carry_in as i64
+        sign_extend::<N, u64>(x) + sign_extend::<N, u64>(y) + carry_in as i64
     } else {
-        (sint::<N, u32>(x as u32) as i32 + sint::<N, u32>(y as u32) as i32 + carry_in as i32) as i64
+        (sign_extend::<N, u32>(x as u32) as i32
+            + sign_extend::<N, u32>(y as u32) as i32
+            + carry_in as i32) as i64
     };
 
     let result = unsigned_sum & mask;
@@ -140,6 +143,9 @@ fn extend(val: u64, nbits: usize, unsigned: bool) -> u64 {
     }
 }
 
+/// ExtendReg()
+/// ===========
+/// Perform a register extension and shift
 pub(super) fn extend_reg<const N: usize>(val: u64, exttype: ExtendType, shift: u8) -> u64 {
     let (unsigned, len): (bool, usize) = match exttype {
         ExtendType::SXTB => (false, 8),
@@ -158,6 +164,9 @@ pub(super) fn extend_reg<const N: usize>(val: u64, exttype: ExtendType, shift: u
     return extval << shift;
 }
 
+/// ShiftReg()
+/// ==========
+/// Perform shift of a register operand
 pub(super) fn shift_reg<const N: usize>(val: u64, shift_type: ShiftType, amount: usize) -> u64 {
     match shift_type {
         ShiftType::LSL => val << amount,
@@ -205,15 +214,24 @@ pub(super) fn decode_bit_masks<const M: usize>(imm_n: bool, imms: u8, immr: u8) 
 }
 
 impl Cpu {
+    /// Halt()
+    /// ======
     #[allow(unused_variables)]
     pub fn halt(&mut self, reason: u8, is_async: bool, fault: FaultRecord) {
         todo!("not doing alll this")
     }
 
+    /// Halted()
+    /// ========
     pub fn halted(&self) -> bool {
         ![0b00000001, 0b00000010].contains(&EDSCRField::STATUS.fetch_range(self.edscr))
     }
 
+    /// DoubleLockStatus()
+    /// ==================
+    /// Returns the state of the OS Double Lock.
+    ///   FALSE if OSDLR_EL1.DLK == 0 or DBGPRCR_EL1.CORENPDRQ == 1 or the PE is in Debug state.
+    ///   TRUE if OSDLR_EL1.DLK == 1 and DBGPRCR_EL1.CORENPDRQ == 0 and the PE is in Non-debug state.
     pub fn double_lock_status(&self) -> bool {
         if !Cpu::is_feature_implemented(Feature::DoubleLock) {
             return false;
@@ -222,10 +240,19 @@ impl Cpu {
         todo!()
     }
 
+    /// ExternalInvasiveDebugEnabled()
+    /// ==============================
+    /// The definition of this function is IMPLEMENTATION DEFINED.
+    /// In the recommended interface, this function returns the state of the DBGEN signal.
     pub fn external_invasive_debug_enabled(&self) -> bool {
         self.dbgen == HIGH
     }
 
+    /// ExternalSecureInvasiveDebugEnabled()
+    /// ====================================
+    /// The definition of this function is IMPLEMENTATION DEFINED.
+    /// In the recommended interface, this function returns the state of the (DBGEN AND SPIDEN) signal.
+    /// CoreSight allows asserting SPIDEN without also asserting DBGEN, but this is not recommended.
     pub fn external_secure_invasive_debug_enabled(&self) -> bool {
         if !self.have_secure_state() {
             return Cpu::is_feature_implemented(Feature::RME) && self.rtpiden == HIGH;
@@ -234,6 +261,12 @@ impl Cpu {
         self.external_invasive_debug_enabled() && self.spiden == HIGH
     }
 
+    /// ExternalRootInvasiveDebugEnabled()
+    /// ==================================
+    /// The definition of this function is IMPLEMENTATION DEFINED.
+    /// In the recommended interface, this function returns the state of the
+    /// (DBGEN AND RLPIDEN AND RTPIDEN AND SPIDEN) signal when FEAT_SEL2 is implemented
+    /// and the (DBGEN AND RLPIDEN AND RTPIDEN) signal when FEAT_SEL2 is not implemented.
     pub fn external_root_invasive_debug_enabled(&self) -> bool {
         if !Cpu::is_feature_implemented(Feature::RME) {
             return false;
@@ -246,6 +279,11 @@ impl Cpu {
             && self.rtpiden == HIGH;
     }
 
+    /// ExternalRealmInvasiveDebugEnabled()
+    /// ===================================
+    /// The definition of this function is IMPLEMENTATION DEFINED.
+    /// In the recommended interface, this function returns the state of the
+    /// (DBGEN AND RLPIDEN) signal.
     pub fn external_realm_invasive_debug_enabled(&self) -> bool {
         if !Cpu::is_feature_implemented(Feature::RME) {
             return false;
@@ -254,6 +292,9 @@ impl Cpu {
         self.external_invasive_debug_enabled() && self.rlpiden == HIGH
     }
 
+    /// HaltingAllowed()
+    /// ================
+    /// Returns TRUE if halting is currently allowed, FALSE if halting is prohibited.
     pub fn halting_allowed(&self) -> bool {
         if self.halted() || self.double_lock_status() {
             return false;
@@ -268,6 +309,12 @@ impl Cpu {
         }
     }
 
+    /// BranchTargetCheck()
+    /// ===================
+    /// This function is executed checks if the current instruction is a valid target for a branch
+    /// taken into, or inside, a guarded page. It is executed on every cycle once the current
+    /// instruction has been decoded and the values of InGuardedPage and BTypeCompatible have been
+    /// determined for the current instruction.
     pub fn branch_target_check(&self) {
         assert!(Cpu::is_feature_implemented(Feature::BTI) && !self.using_aarch32());
 
@@ -280,114 +327,29 @@ impl Cpu {
         }
     }
 
+    /// EndOfInstruction()
+    /// ==================
+    /// Terminate processing of the current instruction.
     pub fn end_of_instruction(&self, end_reason: EndOfInstructionReason) {
         panic!("End of Instruction: {:?}", end_reason);
     }
 
+    /// ExecuteAsNOP()
+    /// ==============
     pub fn execute_as_nop(&self) {
         self.end_of_instruction(EndOfInstructionReason::Retired);
     }
 
+    /// ThisInstrAddr()
+    /// ===============
+    /// Return address of the current instruction.
     pub fn this_instr_addr<const N: usize>(&self) -> u64 {
         assert!(N == 64 || (N == 32 && self.using_aarch32()));
         n_bits(self.get_PC64(), N)
     }
 
-    pub fn aarch32_general_execeptions_to_aarch64(&self) -> bool {
-        return (self.pstate.EL() == EL0 && !self.el_using_aarch32(EL1))
-            || (self.el2_enabled()
-                && !self.el_using_aarch32(EL2)
-                && HCR_EL2Field::TGE.fetch_bit(self.hcr_el2));
-    }
-
-    #[allow(warnings)]
-    pub fn aarch64_take_exception(
-        &self,
-        target_el: EL,
-        exception_in: &ExceptionRecord,
-        preferred_exception_return: u64,
-        vec_offset_in: isize,
-    ) {
-        assert!(
-            self.have_el(target_el)
-                && !self.el_using_aarch32(target_el)
-                && target_el >= self.pstate.EL()
-        );
-
-        if self.halted() {
-            unimplemented!("Take Exception in debug state");
-        }
-
-        let except = exception_in;
-        let mut sync_errors = false;
-        let mut iesb_req = false;
-
-        if Cpu::is_feature_implemented(Feature::IESB) {
-            todo!("IESB feature not implemented");
-        } else {
-            sync_errors = false;
-        }
-
-        let mut brbe_source_allowed = false;
-        let mut brbe_source_address = 0u64;
-
-        if Cpu::is_feature_implemented(Feature::BRBE) {
-            brbe_source_allowed = self.branch_record_allowed(self.pstate.EL());
-            brbe_source_address = preferred_exception_return;
-        }
-
-        if !Cpu::is_feature_implemented(Feature::ExS)
-            || SCTLRField::EIS.fetch_bit(self.get_SCTLR_EL(target_el))
-        {
-            // does nothing?
-            todo!("Synchronize Contexts");
-        } else if !(except.exceptype == Exception::SoftwareBreakpoint
-            || ([
-                Exception::SupervisorCall,
-                Exception::HypervisorCall,
-                Exception::MonitorCall,
-            ]
-            .contains(&except.exceptype)
-                && !except.trapped_syscall_inst))
-        {
-            // does nothing?
-            todo!("Instruction Fetch Barrier");
-        }
-
-        todo!("More bs")
-    }
-
-    pub fn aarch64_undefined(&self) {
-        let route_to_el2 = self.pstate.EL() == EL0
-            && self.el2_enabled()
-            && HCR_EL2Field::TGE.fetch_bit(self.hcr_el2);
-        let preferred_exception_return = self.this_instr_addr::<64>();
-        let vect_offset = 0x0isize;
-
-        let except = ExceptionRecord::syndrome(Exception::Uncategorized);
-
-        if self.pstate.EL() > EL1 {
-            self.aarch64_take_exception(
-                self.pstate.EL(),
-                &except,
-                preferred_exception_return,
-                vect_offset,
-            );
-        } else if route_to_el2 {
-            self.aarch64_take_exception(EL2, &except, preferred_exception_return, vect_offset);
-        } else {
-            self.aarch64_take_exception(EL1, &except, preferred_exception_return, vect_offset);
-        }
-    }
-
-    pub fn aarch32_undefined(&self) {
-        if self.aarch32_general_execeptions_to_aarch64() {
-            self.aarch64_undefined();
-        }
-
-        unimplemented!("AArch32_TakeUndefInstrException");
-    }
-
+    /// Undefined()
+    /// ===========
     pub fn undefined(&self) {
         if self.using_aarch32() {
             self.aarch32_undefined();
@@ -396,6 +358,10 @@ impl Cpu {
         }
     }
 
+    /// EndOfDecode()
+    /// =============
+    /// This function is invoked to end the Decode phase and performs Branch target Checks
+    /// before taking any UNDEFINED exceptions, NOPs, or continuing to execute.
     pub fn end_of_decode(&self, reason: DecodeType) {
         if Cpu::is_feature_implemented(Feature::BTI) && !self.using_aarch32() {
             self.branch_target_check();
@@ -408,6 +374,9 @@ impl Cpu {
         }
     }
 
+    /// ImpDefInt()
+    /// ===========
+    /// Return an IMPLEMENTATION DEFINED integer value identified by the string parameter.
     pub fn imp_def_int(&self, name: &str) -> u64 {
         match name {
             "Number of BRBE Branch records" => 32,
@@ -415,6 +384,9 @@ impl Cpu {
         }
     }
 
+    /// ImpDefBool()
+    /// ============
+    /// Return an IMPLEMENTATION DEFINED boolean value identified by the string parameter.
     pub fn imp_def_bool(&self, name: &str) -> bool {
         match name {
             "Shared SMCU" => false,
@@ -423,6 +395,9 @@ impl Cpu {
         }
     }
 
+    /// ConditionHolds()
+    /// ================
+    /// Return TRUE iff COND currently holds
     pub fn condition_holds(&self, cond: u8) -> bool {
         let result = match cond >> 1 {
             0b000 => self.pstate.Z(),
@@ -443,6 +418,9 @@ impl Cpu {
         }
     }
 
+    /// BranchNotTaken()
+    /// ================
+    /// Called when a branch is not taken.
     #[allow(unused_variables)]
     pub fn branch_not_taken(&self, branch_type: BranchType, branch_conditional: bool) {
         if Cpu::is_feature_implemented(Feature::SPE) {
@@ -450,6 +428,11 @@ impl Cpu {
         }
     }
 
+    /// BranchTo()
+    /// ==========
+    /// Set program counter to a new address, with a branch type.
+    /// Parameter branch_conditional indicates whether the executed branch has a conditional encoding.
+    /// In AArch64 state the address might include a tag in the top eight bits.
     pub fn branch_to<const N: usize>(
         &mut self,
         target: u64,
@@ -483,6 +466,9 @@ impl Cpu {
         }
     }
 
+    /// SecurityStateAtEL()
+    /// ===================
+    /// Returns the effective security state at the exception level based off current settings.
     pub fn security_state_at_el(&self, el: EL) -> SecurityState {
         if Cpu::is_feature_implemented(Feature::RME) {
             if el == EL3 {
@@ -536,177 +522,23 @@ impl Cpu {
         }
     }
 
+    /// CurrentSecurityState()
+    /// ======================
+    /// Returns the effective security state at the exception level based off current settings.
     pub fn current_security_state(&self) -> SecurityState {
         self.security_state_at_el(self.pstate.EL())
     }
 
-    pub fn branch_record_allowed(&self, el: EL) -> bool {
-        if self.el_using_aarch32(el) {
-            return false;
-        }
-
-        if BRBFCR_EL0Field::PAUSED.fetch_bit(self.brbfcr_el0) {
-            return false;
-        }
-
-        if el == EL3 && Cpu::is_feature_implemented(Feature::BRBEv1p1) {
-            return MDCR_EL3Field::E3BREC.fetch_bit(self.mdcr_el3)
-                != MDCR_EL3Field::E3BREW.fetch_bit(self.mdcr_el3);
-        }
-
-        if self.have_el(EL3)
-            && (MDCR_EL3Field::SBRBE.fetch_range(self.mdcr_el3) == 0
-                || (self.current_security_state() == SecurityState::Secure
-                    && MDCR_EL3Field::SBRBE.fetch_range(self.mdcr_el3) == 0b01))
-        {
-            return false;
-        }
-
-        match el {
-            EL3 => false,
-            EL2 => BRBCR_EL2Field::E2BRE.fetch_bit(self.brbcr_el2),
-            EL1 => BRBCR_EL1Field::E1BRE.fetch_bit(self.brbcr_el1),
-            EL0 => {
-                if self.el2_enabled() && HCR_EL2Field::TGE.fetch_bit(self.hcr_el2) {
-                    BRBCR_EL2Field::E0HBRE.fetch_bit(self.brbcr_el2)
-                } else {
-                    BRBCR_EL1Field::E0BRE.fetch_bit(self.brbcr_el1)
-                }
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn filter_branch_record(&self, br: &BranchType, cond: bool) -> bool {
-        match br {
-            BranchType::DIRCALL => {
-                BRBFCR_EL1Field::DIRCALL.fetch_bit(self.brbfcr_el1)
-                    != BRBFCR_EL1Field::EnI.fetch_bit(self.brbfcr_el1)
-            }
-            BranchType::INDCALL => {
-                BRBFCR_EL1Field::INDCALL.fetch_bit(self.brbfcr_el1)
-                    != BRBFCR_EL1Field::EnI.fetch_bit(self.brbfcr_el1)
-            }
-            BranchType::RET => {
-                BRBFCR_EL1Field::RTN.fetch_bit(self.brbfcr_el1)
-                    != BRBFCR_EL1Field::EnI.fetch_bit(self.brbfcr_el1)
-            }
-            BranchType::DIR => {
-                if cond {
-                    BRBFCR_EL1Field::CONDDIR.fetch_bit(self.brbfcr_el1)
-                        != BRBFCR_EL1Field::EnI.fetch_bit(self.brbfcr_el1)
-                } else {
-                    BRBFCR_EL1Field::DIRECT.fetch_bit(self.brbfcr_el1)
-                        != BRBFCR_EL1Field::EnI.fetch_bit(self.brbfcr_el1)
-                }
-            }
-            BranchType::INDIR => {
-                BRBFCR_EL1Field::INDCALL.fetch_bit(self.brbfcr_el1)
-                    != BRBFCR_EL1Field::EnI.fetch_bit(self.brbfcr_el1)
-            }
-            _ => false,
-        }
-    }
-
-    pub fn branch_raw_cycle_count(&self) -> u64 {
-        0
-    }
-
-    pub fn brb_cycle_counting_enabled(&self) -> bool {
-        if self.have_el(EL2) && !BRBCR_EL2Field::CC.fetch_bit(self.brbcr_el2) {
-            return false;
-        }
-
-        if !BRBCR_EL1Field::CC.fetch_bit(self.brbcr_el1) {
-            return false;
-        }
-
-        return true;
-    }
-
-    pub fn first_branch_after_prohibited(&self) -> bool {
-        false
-    }
-
-    pub fn branch_enc_cycle_count(&self) -> (bool, u16) {
-        let mut cc = self.branch_raw_cycle_count();
-        if !self.brb_cycle_counting_enabled() || self.first_branch_after_prohibited() {
-            return (true, 0);
-        }
-
-        let (e, m) = if cc < 2u64.pow(8) {
-            (0u64, (cc & 0b1111111) as u64)
-        } else if cc >= 2u64.pow(20) {
-            (ones(6), ones(8))
-        } else {
-            let mut tempe = 1u64;
-            let mut loopcount = 0;
-            while cc >= 2u64.pow(9) && loopcount < 11 {
-                tempe += 1;
-                cc = cc.div_euclid(2);
-                loopcount += 1;
-            }
-
-            (tempe, (cc & 0b1111111))
-        };
-
-        (false, (e << 6 | m) as u16)
-    }
-
-    pub fn brbe_mispredict_allowed(&self) -> bool {
-        if self.have_el(EL2) && !BRBCR_EL2Field::MPRED.fetch_bit(self.brbcr_el2) {
-            return false;
-        }
-
-        if !BRBCR_EL1Field::MPRED.fetch_bit(self.brbcr_el1) {
-            return false;
-        }
-
-        true
-    }
-
-    pub fn branch_mispredict(&self) -> bool {
-        false
-    }
-
-    pub fn get_brbe_num_records(&self) -> u64 {
-        self.imp_def_int("Number of BRBE Branch records")
-    }
-
-    pub fn update_branch_record_buffer(
-        &mut self,
-        ccu: bool,
-        cc: u16,
-        branch_type: u8,
-        el: EL,
-        mispredict: bool,
-        valid: u8,
-        source_address: u64,
-        target_address: u64,
-    ) {
-        let nbrbe_records = self.get_brbe_num_records() as usize;
-
-        for i in (1..nbrbe_records).rev() {
-            self.brbe.records_src[i] = self.brbe.records_src[i - 1];
-            self.brbe.records_tgt[i] = self.brbe.records_tgt[i - 1];
-            self.brbe.records_inf[i] = self.brbe.records_inf[i - 1];
-        }
-
-        self.brbe.records_inf[0].ccu = ccu;
-        self.brbe.records_inf[0].cc = cc;
-        self.brbe.records_inf[0].el = el;
-        self.brbe.records_inf[0].valid = valid;
-        self.brbe.records_inf[0].mpred = mispredict;
-        self.brbe.records_inf[0].type_ = branch_type;
-
-        self.brbe.records_src[0] = BRBSRC_EL1_Type(source_address);
-        self.brbe.records_tgt[0] = BRBTGT_EL1_Type(target_address);
-    }
-
+    /// PMUEvent()
+    /// ==========
+    /// Generate a PMU event. By default, increment by 1.
     pub fn pmu_event1(&self, pmuevent: u16) {
         self.pmu_event2(pmuevent, 1);
     }
 
+    /// PMUEvent()
+    /// ==========
+    /// Accumulate a PMU Event.
     pub fn pmu_event2(&self, pmuevent: u16, increment: usize) {
         let counters = Cpu::NUM_PMU_COUNTERS;
         if counters != 0 {
@@ -723,6 +555,9 @@ impl Cpu {
         }
     }
 
+    /// PMUEvent()
+    /// ==========
+    /// Accumulate a PMU Event for a specific event counter.
     #[allow(unused_variables)]
     pub fn pmu_event3(&self, pmuevent: u16, increment: usize, idx: usize) {
         if !Cpu::is_feature_implemented(Feature::PMUv3) {
@@ -736,61 +571,33 @@ impl Cpu {
         }
     }
 
+    /// UsingAArch32()
+    /// ==============
+    /// Return TRUE if the current Exception level is using AArch32, FALSE if using AArch64_
     pub fn using_aarch32(&self) -> bool {
         let aarch32 = self.pstate.nRW;
 
         return aarch32;
     }
 
-    pub fn brbe_branch(&mut self, br_type: BranchType, cond: bool, target_address: u64) {
-        if self.branch_record_allowed(self.pstate.EL()) && self.filter_branch_record(&br_type, cond)
-        {
-            let branch_type: u8 = match br_type {
-                BranchType::DIR => {
-                    if cond {
-                        0b001000
-                    } else {
-                        0b000000
-                    }
-                }
-                BranchType::INDIR => 0b000001,
-                BranchType::DIRCALL => 0b000010,
-                BranchType::INDCALL => 0b000011,
-                BranchType::RET => 0b000101,
-                _ => unreachable!(),
-            };
-
-            let (ccu, cc) = self.branch_enc_cycle_count();
-            let el = self.pstate.EL();
-
-            let mispredict = self.brbe_mispredict_allowed() && self.branch_mispredict();
-
-            self.update_branch_record_buffer(
-                ccu,
-                cc,
-                branch_type,
-                el,
-                mispredict,
-                0b11,
-                self.get_PC64(),
-                target_address,
-            );
-
-            self.pmu_event1(Cpu::PMU_EVENT_BRB_FILTRATE);
-        }
-    }
-
+    /// AArch64_BranchAddr()
+    /// ====================
+    /// Return the virtual address with tag bits removed.
+    /// This is typically used when the address will be stored to the program counter.
     pub fn aarch64_branchaddr(&self, vaddress: u64, el: EL) -> u64 {
         let msbit = self.addrtop(vaddress, true, el);
         if msbit == 63 {
             return vaddress;
         } else if ((el == EL0 || el == EL1) || self.el_is_in_host(el)) && nth_bit(vaddress, msbit) {
-            return sint::<64, u64>(vaddress & ((1 << msbit) - 1)) as u64;
+            return sign_extend::<64, u64>(vaddress & ((1 << msbit) - 1)) as u64;
         } else {
             return vaddress & ((1 << msbit) - 1);
         }
     }
 
+    /// HaveAArch32EL()
+    /// ===============
+    /// Return TRUE if Exception level 'el' supports AArch32 in this implementation
     pub fn have_aarch32_el(&self, el: EL) -> bool {
         match el {
             EL0 => Cpu::is_feature_implemented(Feature::AA32EL0),
@@ -801,6 +608,9 @@ impl Cpu {
         }
     }
 
+    /// HaveAArch64()
+    /// =============
+    /// Return TRUE if the highest Exception level is using AArch64 state.
     pub fn have_aarch64(&self) -> bool {
         Cpu::is_feature_implemented(Feature::AA64EL0)
             || Cpu::is_feature_implemented(Feature::AA64EL1)
@@ -808,6 +618,9 @@ impl Cpu {
             || Cpu::is_feature_implemented(Feature::AA64EL3)
     }
 
+    /// HaveEL()
+    /// ========
+    /// Return TRUE if Exception level 'el' is supported
     pub fn have_el(&self, el: EL) -> bool {
         match el {
             EL0 | EL1 => true,
@@ -823,10 +636,16 @@ impl Cpu {
         }
     }
 
+    /// HaveSecureState()
+    /// =================
+    /// Return TRUE if Secure State is supported.
     pub fn have_secure_state(&self) -> bool {
         Cpu::is_feature_implemented(Feature::SECURE)
     }
 
+    /// EffectiveSCR_EL3_NS()
+    /// =====================
+    /// Returns the Effective value of SCR_EL3().NS.
     pub fn effective_scr_el3_ns(&self) -> bool {
         if !self.have_secure_state() {
             return true;
@@ -839,6 +658,9 @@ impl Cpu {
         }
     }
 
+    /// EffectiveSCR_EL3_NSE()
+    /// ======================
+    /// Returns the Effective value of SCR_EL3().NSE.
     pub fn effective_scr_el3_nse(&self) -> bool {
         if !Cpu::is_feature_implemented(Feature::RME) {
             return false;
@@ -847,6 +669,9 @@ impl Cpu {
         SCR_EL3Field::NSE.fetch_bit(self.scr_el3)
     }
 
+    /// EffectiveSCR_EL3_RW()
+    /// =====================
+    /// Returns the Effective value of SCR_EL3().RW.
     pub fn effective_scr_el3_rw(&self) -> bool {
         if !self.have_aarch64() {
             return false;
@@ -872,10 +697,16 @@ impl Cpu {
         SCR_EL3Field::RW.fetch_bit(self.scr_el3)
     }
 
+    /// SecureOnlyImplementation()
+    /// ==========================
+    /// Returns TRUE if the security state is always Secure for this implementation.
     pub fn secure_only_implementation(&self) -> bool {
         return Cpu::is_feature_implemented(Feature::SECURE) && !self.have_el(EL3);
     }
 
+    /// IsSecureEL2Enabled()
+    /// ====================
+    /// Returns TRUE if Secure EL2 is enabled, FALSE otherwise.
     pub fn is_secure_el2_enabled(&self) -> bool {
         if self.have_el(EL2) && Cpu::is_feature_implemented(Feature::SEL2) {
             if self.have_el(EL3) {
@@ -888,6 +719,13 @@ impl Cpu {
         }
     }
 
+    /// EL2Enabled()
+    /// ============
+    /// Returns TRUE if EL2 is present and executing
+    /// - with the PE in Non-secure state when Non-secure EL2 is implemented, or
+    /// - with the PE in Realm state when Realm EL2 is implemented, or
+    /// - with the PE in Secure state when Secure EL2 is implemented and enabled, or
+    /// - when EL3 is not implemented.
     pub fn el2_enabled(&self) -> bool {
         let scr_ns = if self.have_el(EL3) {
             if self.have_aarch32_el(EL3) {
@@ -903,6 +741,9 @@ impl Cpu {
             && (!self.have_el(EL3) || scr_ns == Some(true) || self.is_secure_el2_enabled())
     }
 
+    /// EffectiveHCR_EL2_E2H()
+    /// ======================
+    /// Returns the Effective value of HCR_EL2().E2H.
     pub fn effective_hcr_el2_e2h(&self) -> bool {
         if !Cpu::is_feature_implemented(Feature::VHE) {
             return false;
@@ -915,6 +756,8 @@ impl Cpu {
         HCR_EL2Field::E2H.fetch_bit(self.hcr_el2)
     }
 
+    /// ELIsInHost()
+    /// ============
     pub fn el_is_in_host(&self, el: EL) -> bool {
         if !Cpu::is_feature_implemented(Feature::VHE) || self.el_using_aarch32(EL2) {
             return false;
@@ -933,6 +776,12 @@ impl Cpu {
         }
     }
 
+    /// ELStateUsingAArch32K()
+    /// ======================
+    /// Returns (known, aarch32):
+    ///   'known' is FALSE for EL0 if the current Exception level is not EL0 and EL1 is
+    ///           using AArch64, since it cannot determine the state of EL0; TRUE otherwise.
+    ///   'aarch32' is TRUE if the specified Exception level is using AArch32; FALSE otherwise.
     pub fn el_state_using_aarch32k(&self, el: EL, secure: bool) -> (bool, bool) {
         if !self.have_aarch32_el(el) {
             return (true, false);
@@ -980,12 +829,21 @@ impl Cpu {
         }
     }
 
+    /// ELStateUsingAArch32()
+    /// =====================
     pub fn el_state_using_aarch32(&self, el: EL, secure: bool) -> bool {
         let (_, aarch32) = self.el_state_using_aarch32k(el, secure);
 
         aarch32
     }
 
+    /// IsSecureBelowEL3()
+    /// ==================
+    /// Return TRUE if an Exception level below EL3 is in Secure state
+    /// or would be following an exception return to that level.
+    ///
+    /// That is, if at AArch64 EL3 or in AArch32 Monitor mode, whether an
+    /// exception return would pass to Secure or Non-secure state.
     pub fn is_secure_below_el3(&self) -> bool {
         if self.have_el(EL3) {
             if !self.have_aarch64() {
@@ -1002,10 +860,16 @@ impl Cpu {
         }
     }
 
+    /// ELUsingAArch32()
+    /// ================
     pub fn el_using_aarch32(&self, el: EL) -> bool {
         self.el_state_using_aarch32(el, self.is_secure_below_el3())
     }
 
+    /// AddrTop()
+    /// =========
+    /// Return the MSB number of a virtual address in the stage 1 translation regime for "el".
+    /// If EL1 is using AArch64 then addresses from EL0 using AArch32 are zero-extended to 64 bits.
     pub fn addrtop(&self, address: u64, isinstr: bool, el: EL) -> usize {
         let regime = self.s1translationregime(el);
 
@@ -1020,6 +884,9 @@ impl Cpu {
         }
     }
 
+    /// EffectiveTBI()
+    /// ==============
+    /// Returns the effective TBI in the AArch64 stage 1 translation regime for "el".
     pub fn effective_tbi(&self, address: u64, isinstr: bool, el: EL) -> bool {
         let regime = self.s1translationregime(el);
 
@@ -1049,6 +916,9 @@ impl Cpu {
         tbi && (!Cpu::is_feature_implemented(Feature::PAuth) || tbid == Some(false) || !isinstr)
     }
 
+    /// S1TranslationRegime()
+    /// =====================
+    /// Stage 1 translation regime for the given Exception level
     pub fn s1translationregime(&self, el: EL) -> u8 {
         if el != EL0 {
             return el;
@@ -1064,6 +934,9 @@ impl Cpu {
         }
     }
 
+    /// HighestEL()
+    /// ===========
+    /// Returns the highest implemented Exception level.
     pub fn highest_el(&self) -> EL {
         if self.have_el(EL3) {
             return EL3;
@@ -1074,6 +947,9 @@ impl Cpu {
         }
     }
 
+    /// MPAMIsEnabled()
+    /// ===============
+    /// Returns TRUE if MPAM is enabled.
     pub fn mpam_is_enabled(&self) -> bool {
         let el = self.highest_el();
         match el {
@@ -1084,6 +960,11 @@ impl Cpu {
         }
     }
 
+    /// UsePrimarySpaceEL2()
+    /// ====================
+    /// Checks whether Primary space is configured in the
+    /// MPAM3_EL3 and MPAM2_EL2 ALTSP control bits that affect
+    /// MPAM ALTSP use at EL2.
     pub fn use_primary_space_el2(&self) -> bool {
         if !MPAM3_EL3Field::ALTSP_HEN.fetch_bit(self.mpam3_el3) {
             return !MPAM3_EL3Field::ALTSP_HFC.fetch_bit(self.mpam3_el3);
@@ -1092,6 +973,11 @@ impl Cpu {
         return !self.mpam_is_enabled() || !MPAM2_EL2Field::ALTSP_EL2.fetch_bit(self.mpam2_el2);
     }
 
+    /// UsePrimarySpaceEL10()
+    /// =====================
+    /// Checks whether Primary space is configured in the
+    /// MPAM3_EL3 and MPAM2_EL2 ALTSP control bits that affect
+    /// MPAM ALTSP use at EL1 and EL0.
     pub fn use_primary_space_el10(&self) -> bool {
         if !MPAM3_EL3Field::ALTSP_HEN.fetch_bit(self.mpam3_el3) {
             return !MPAM3_EL3Field::ALTSP_HFC.fetch_bit(self.mpam3_el3);
@@ -1102,6 +988,11 @@ impl Cpu {
             || !MPAM2_EL2Field::ALTSP_EL2.fetch_bit(self.mpam2_el2);
     }
 
+    /// AltPIDSecure()
+    /// ==============
+    /// Compute PARTID space as either the primary PARTID space or
+    /// alternative PARTID space in the Secure Security state.
+    /// Helper for AltPARTIDSpace.
     pub fn alt_pid_secure(&self, el: EL, primary_pid_space: PARTIDSpaceType) -> PARTIDSpaceType {
         let mut pidspace = primary_pid_space;
         match el {
@@ -1142,6 +1033,12 @@ impl Cpu {
         pidspace
     }
 
+    /// AltPARTIDSpace()
+    /// ================
+    /// From the Security state, EL and ALTSP configuration, determine
+    /// whether to primary space or the alt space is selected and which
+    /// PARTID space is the alternative space. Return that alternative
+    /// PARTID space if selected or the primary space if not.
     pub fn alt_partid_space(
         &self,
         el: EL,
@@ -1181,14 +1078,11 @@ impl Cpu {
         }
     }
 
-    pub fn get_mpam_partid_max(&self) -> PARTIDType {
-        return MPAMIDR_EL1Field::PARTID_MAX.fetch_range(self.mpamidr_el1);
-    }
-
-    pub fn get_mpam_pmg_max(&self) -> PMGType {
-        return MPAMIDR_EL1Field::PMG_MAX.fetch_range(self.mpamidr_el1);
-    }
-
+    /// GetMPAM_PARTID()
+    /// ================
+    /// Returns a PARTID
+    /// If mpamdata.sm is TRUE then PARTID is from MPAMSM_EL1.
+    /// Otherwise, the PARTID is from MPAMn_ELx.
     pub fn get_mpam_partid(&self, mpamn: EL, mpamdata: &MPAMData) -> PARTIDType {
         if mpamdata.sm {
             return MPAMSM_EL1Field::PARTID_D.fetch_range(self.mpamsm_el1);
@@ -1225,6 +1119,64 @@ impl Cpu {
         }
     }
 
+    /// GetMPAM_PARTID_MAX()
+    /// ====================
+    /// Returns the maximum supported PARTID value for the implemented MPAM version.
+    pub fn get_mpam_partid_max(&self) -> PARTIDType {
+        return MPAMIDR_EL1Field::PARTID_MAX.fetch_range(self.mpamidr_el1);
+    }
+
+    /// GetMPAM_PMG()
+    /// =============
+    /// Returns a PMG.
+    /// if mpamdata.sm is TRUE then PMG is from MPAMSM_EL1.
+    /// Otherwise, PMG is from MPAMn_ELx.
+    pub fn get_mpam_pmg(&self, mpamn: EL, mpamdata: &MPAMData) -> PMGType {
+        if mpamdata.sm {
+            return MPAMSM_EL1Field::PMG_D.fetch_range(self.mpamsm_el1);
+        }
+
+        if mpamdata.ind {
+            match mpamn {
+                0b11 => MPAM3_EL3Field::PARTID_I.fetch_range(self.mpam3_el3),
+                0b10 => {
+                    if self.el2_enabled() {
+                        MPAM2_EL2Field::PARTID_I.fetch_range(self.mpam2_el2)
+                    } else {
+                        DEFAULT_PMG
+                    }
+                }
+                0b01 => MPAM1_EL1Field::PARTID_I.fetch_range(self.mpam1_el1),
+                0b00 => MPAM0_EL1Field::PARTID_I.fetch_range(self.mpam0_el1),
+                _ => unreachable!(),
+            }
+        } else {
+            match mpamn {
+                0b11 => MPAM3_EL3Field::PARTID_D.fetch_range(self.mpam3_el3),
+                0b10 => {
+                    if self.el2_enabled() {
+                        MPAM2_EL2Field::PARTID_D.fetch_range(self.mpam2_el2)
+                    } else {
+                        DEFAULT_PMG
+                    }
+                }
+                0b01 => MPAM1_EL1Field::PARTID_D.fetch_range(self.mpam1_el1),
+                0b00 => MPAM0_EL1Field::PARTID_D.fetch_range(self.mpam0_el1),
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    /// GetMPAM_PMG_MAX()
+    /// =================
+    /// Returns the maximum supported PMG value for the implemented MPAM version.
+    pub fn get_mpam_pmg_max(&self) -> PMGType {
+        return MPAMIDR_EL1Field::PMG_MAX.fetch_range(self.mpamidr_el1);
+    }
+
+    /// MPAMIsVirtual()
+    /// ===============
+    /// Returns TRUE if MPAM is configured to be virtual at the given el.
     pub fn mpam_is_virtual(&self, el: EL) -> bool {
         MPAMIDR_EL1Field::HAS_HCR.fetch_bit(self.mpamidr_el1)
             && self.el2_enabled()
@@ -1234,6 +1186,12 @@ impl Cpu {
                 || (el == EL1 && MPAMHCR_EL2Field::EL1_VPMEN.fetch_bit(self.mpamhcr_el2)))
     }
 
+    /// mapvpmw()
+    /// =========
+    /// Map a virtual PARTID into a physical PARTID using
+    /// the MPAMVPMn_EL2 registers.
+    /// vpartid is now assumed in-range and valid (checked by caller)
+    /// returns physical PARTID from mapping entry.
     pub fn mapvpmw(&self, vpartid: PARTIDType) -> PARTIDType {
         let wd = vpartid / 4;
         let vpmw = if wd < 8 {
@@ -1246,6 +1204,11 @@ impl Cpu {
         return ((vpmw >> vpme_lsb) & 0xFFFF) as u16;
     }
 
+    /// MAP_vPARTID()
+    /// =============
+    /// Performs conversion of virtual PARTID into physical PARTID
+    /// Contains all of the error checking and implementation
+    /// choices for the conversion.
     pub fn map_vpartid(&self, vpartid: PARTIDType, partid_err: bool) -> (PARTIDType, bool) {
         let vpartid_max_raw: u8 = MPAMIDR_EL1Field::VPMR_MAX.fetch_range(self.mpamidr_el1);
         let vpartid_max = ((vpartid_max_raw << 2) + 3) as u16;
@@ -1283,6 +1246,11 @@ impl Cpu {
         (ret, err)
     }
 
+    /// GenPARTID()
+    /// ===========
+    /// Returns physical PARTID and error boolean for Exception level el.
+    /// If mpamdata.sm is TRUE then PARTID is from MPAMSM_EL1.
+    /// Otherwise, the PARTID is from MPAMn_ELx.
     pub fn gen_partid(&self, el: EL, mpamdata: &MPAMData) -> (PARTIDType, bool) {
         let mut partidel = self.get_mpam_partid(el, mpamdata);
         let mut partid_err = false;
@@ -1307,42 +1275,13 @@ impl Cpu {
         }
     }
 
-    pub fn get_mpam_pmg(&self, mpamn: EL, mpamdata: &MPAMData) -> PMGType {
-        if mpamdata.sm {
-            return MPAMSM_EL1Field::PMG_D.fetch_range(self.mpamsm_el1);
-        }
-
-        if mpamdata.ind {
-            match mpamn {
-                0b11 => MPAM3_EL3Field::PARTID_I.fetch_range(self.mpam3_el3),
-                0b10 => {
-                    if self.el2_enabled() {
-                        MPAM2_EL2Field::PARTID_I.fetch_range(self.mpam2_el2)
-                    } else {
-                        DEFAULT_PMG
-                    }
-                }
-                0b01 => MPAM1_EL1Field::PARTID_I.fetch_range(self.mpam1_el1),
-                0b00 => MPAM0_EL1Field::PARTID_I.fetch_range(self.mpam0_el1),
-                _ => unreachable!(),
-            }
-        } else {
-            match mpamn {
-                0b11 => MPAM3_EL3Field::PARTID_D.fetch_range(self.mpam3_el3),
-                0b10 => {
-                    if self.el2_enabled() {
-                        MPAM2_EL2Field::PARTID_D.fetch_range(self.mpam2_el2)
-                    } else {
-                        DEFAULT_PMG
-                    }
-                }
-                0b01 => MPAM1_EL1Field::PARTID_D.fetch_range(self.mpam1_el1),
-                0b00 => MPAM0_EL1Field::PARTID_D.fetch_range(self.mpam0_el1),
-                _ => unreachable!(),
-            }
-        }
-    }
-
+    /// GenPMG()
+    /// ========
+    /// Returns PMG for Exception level el.
+    /// if mpamdata.sm is TRUE then PMG is from MPAMSM_EL1.
+    /// Otherwise, PMG is from MPAMn_ELx.
+    /// If PARTID generation (GenPARTID) encountered an error, GenPMG() should be
+    /// called with partid_err as TRUE.
     pub fn gen_pmg(&self, el: EL, mpamdata: &MPAMData, partid_err: bool) -> PMGType {
         if partid_err && Unpredictable::USE_DEFAULT_PMG.constrain_bool() {
             return DEFAULT_PMG;
@@ -1358,6 +1297,11 @@ impl Cpu {
         return DEFAULT_PMG;
     }
 
+    /// GenMPAM()
+    /// =========
+    /// Returns MPAMinfo for Exception level el.
+    /// If mpamdata.sm is TRUE returns MPAM information using MPAMSM_EL1.
+    /// Otherwise returns MPAM information using MPAMn_ELx.
     pub fn gen_mpam(&self, el_in: EL, mpamdata: &MPAMData) -> MPAMinfo {
         let mut el = el_in;
 
@@ -1379,6 +1323,14 @@ impl Cpu {
         }
     }
 
+    /// GenMPAMAtEL()
+    /// =============
+    /// Returns MPAMinfo for the specified EL.
+    /// May be called if MPAM is not implemented (but in an version that supports
+    /// MPAM), MPAM is disabled, or in AArch32_ In AArch32, convert the mode to
+    /// EL if can and use that to drive MPAM information generation. If mode
+    /// cannot be converted, MPAM is not implemented, or MPAM is disabled return
+    /// default MPAM information for the current security state.
     pub fn gen_mpam_at_el(&self, acctype: &AccessType, el: EL) -> MPAMinfo {
         let mpam_el = if acctype == &AccessType::NV2 { EL2 } else { el };
         let security = self.security_state_at_el(el);
@@ -1443,15 +1395,29 @@ impl Cpu {
         mpaminfo
     }
 
+    /// GenMPAMCurEL()
+    /// ==============
+    /// Returns MPAMinfo for the current EL and security state.
+    /// May be called if MPAM is not implemented (but in an version that supports
+    /// MPAM), MPAM is disabled, or in AArch32_ In AArch32, convert the mode to
+    /// EL if can and use that to drive MPAM information generation. If mode
+    /// cannot be converted, MPAM is not implemented, or MPAM is disabled return
+    /// default MPAM information for the current security state.
     pub fn gen_mpam_cur_el(&self, acctype: &AccessType) -> MPAMinfo {
         self.gen_mpam_at_el(acctype, self.pstate.EL())
     }
 
+    /// NewAccDesc()
+    /// ============
+    /// Create a new AccessDescriptor with initialized fields
     pub fn new_accdesc_from_acctype(&self, acctype: AccessType) -> AccessDescriptor {
         let mpam = self.gen_mpam_cur_el(&acctype);
         self.new_accdesc(acctype, mpam)
     }
 
+    /// NewAccDesc()
+    /// ============
+    /// Create a new AccessDescriptor with initialized fields
     pub fn new_accdesc(&self, acctype: AccessType, mpam: MPAMinfo) -> AccessDescriptor {
         AccessDescriptor {
             acctype,
@@ -1500,6 +1466,10 @@ impl Cpu {
         }
     }
 
+    /// CreateAccDescGPR()
+    /// ==================
+    /// Access descriptor for general purpose register loads/stores
+    /// without exclusive or ordering semantics
     pub fn create_accdesc_gpr_pair(
         &self,
         memop: MemOp,
@@ -1525,6 +1495,10 @@ impl Cpu {
         accdesc
     }
 
+    /// CreateAccDescGPR()
+    /// ==================
+    /// Access descriptor for general purpose register loads/stores
+    /// without exclusive or ordering semantics
     pub fn create_accdesc_gpr_rt(
         &self,
         memop: MemOp,
@@ -1538,6 +1512,10 @@ impl Cpu {
         self.create_accdesc_gpr_pair(memop, nontemporal, privileged, tagchecked, ispair, Rt, Rt2)
     }
 
+    /// CreateAccDescGPR()
+    /// ==================
+    /// Access descriptor for general purpose register loads/stores
+    /// without exclusive or ordering semantics
     pub fn create_accdesc_gpr(
         &self,
         memop: MemOp,
@@ -1549,15 +1527,25 @@ impl Cpu {
         self.create_accdesc_gpr_rt(memop, nontemporal, privileged, tagchecked, Rt)
     }
 
+    /// PointerAddCheckAtEL()
+    /// =====================
+    /// Apply Checked Pointer Arithmetic for addition at the specified EL.
     #[allow(unused_variables)]
     pub fn pointer_add_check_at_el(&self, el: EL, result: u64, base: u64) -> u64 {
         todo!("bro")
     }
 
+    /// AddressAdd()
+    /// ============
+    /// Add an address with an offset and return the result.
+    /// If FEAT_CPA2 is implemented, the pointer arithmetic is checked.
     pub fn address_add(&self, base: u64, offset: u64, accdesc: &AccessDescriptor) -> u64 {
         self.pointer_add_check_at_el(accdesc.el, base + offset, base)
     }
 
+    /// TranslationRegime()
+    /// ===================
+    /// Select the translation regime given the target EL and PE state
     pub fn translation_regime(&self, el: EL) -> Regime {
         if el == EL3 {
             if self.el_using_aarch32(EL3) {

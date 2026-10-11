@@ -1,6 +1,6 @@
 use crate::cpu::{
     Cpu, DecodeType, REG_SP, Register,
-    common::{nth_bit, ones},
+    common::*,
     constraint::{Constraint, Unpredictable},
     fault::MemOp,
     shared::{self, EL0},
@@ -13,7 +13,7 @@ impl Cpu {
 
         let postindex = true;
         let scale = size;
-        let offset = shared::sint::<9, u16>(imm9);
+        let offset = shared::sign_extend::<9, u16>(imm9);
 
         let (wback, wb_unknown) = self._ldr_imm_decode(wback, n, t);
 
