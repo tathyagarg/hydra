@@ -16,7 +16,6 @@ fn main() {
     );
 
     loop {
-        println!("PC: {:?}", cpu.get_PC64());
         if cpu.step(&mut memory).is_err() {
             break;
         }
