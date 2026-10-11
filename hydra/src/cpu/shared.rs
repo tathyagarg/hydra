@@ -1,19 +1,16 @@
 use crate::cpu::{
     BranchType, Cpu, DecodeType, EndOfInstructionReason, ExtendType, Feature, HIGH, Register,
     ShiftType,
-    brbe::{BRBSRC_EL1_Type, BRBTGT_EL1_Type},
     common::*,
     constraint::{Constraint, Unpredictable},
-    exeception::{Exception, ExceptionRecord},
     fault::{
         AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, FaultRecord, MPAMData, MPAMinfo,
         MemOp, PARTIDSpaceType, PARTIDType, PMGType,
     },
     regs::{
-        BRBCR_EL1Field, BRBCR_EL2Field, BRBFCR_EL0Field, BRBFCR_EL1Field, EDSCRField, HCR_EL2Field,
-        MDCR_EL3Field, MPAM0_EL1Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field,
+        EDSCRField, HCR_EL2Field, MPAM0_EL1Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field,
         MPAMHCR_EL2Field, MPAMIDR_EL1Field, MPAMSM_EL1Field, MPAMVPMV_EL2Field, RegisterField,
-        RegisterFieldRange, SCR_EL3Field, SCRField, SCTLRField, TCR_EL1Field,
+        RegisterFieldRange, SCR_EL3Field, SCRField, TCR_EL1Field,
     },
 };
 
