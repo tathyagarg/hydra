@@ -886,6 +886,10 @@ impl Cpu {
             shared::add_with_carry::<32>(operand1, !imm, true)
         };
 
+        println!(
+            "SUBS: operand1 = {}, imm = {}, result = {}, nzcv = {:?}",
+            operand1, imm, result, nzcv
+        );
         self.pstate.set_nzcv(&nzcv);
         self._set_reg_or_sp(d, result, sf);
     }

@@ -683,6 +683,7 @@ impl Cpu {
                 rn,
                 rd,
             } => self.add_sr(sf, shift, rm, imm6, rn, rd),
+            Instruction::BCond { imm19, cond } => self.b_cond(imm19, cond),
             Instruction::Movz { sf, rd, imm16, hw } => self.movz(sf, hw, imm16, rd),
             Instruction::SubEr {
                 sf,
@@ -707,6 +708,21 @@ impl Cpu {
                 rn,
                 rd,
             } => self.sub_sr(sf, shift, rm, imm6, rn, rd),
+            Instruction::SubsEr {
+                sf,
+                rm,
+                option,
+                imm3,
+                rn,
+                rd,
+            } => self.subs_er(sf, rm, option, imm3, rn, rd),
+            Instruction::SubsImm {
+                sf,
+                sh,
+                imm12,
+                rn,
+                rd,
+            } => self.subs_imm(sf, sh, imm12, rn, rd),
         }
     }
 

@@ -62,6 +62,7 @@ impl Cpu {
     pub fn b_cond(&mut self, imm19: u32, cond: u8) {
         let offset = shared::sint::<21, u32>(imm19 << 2) as u64;
         if self.condition_holds(cond) {
+            println!("Condition holds, branching to offset: {:#x}", offset);
             self.branch_to::<64>(self.get_PC64().wrapping_add(offset), BranchType::DIR, true);
         } else {
             self.branch_not_taken(BranchType::DIR, true);

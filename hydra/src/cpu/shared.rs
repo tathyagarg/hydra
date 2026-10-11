@@ -1044,9 +1044,16 @@ impl Cpu {
     pub fn s1translationregime(&self, el: EL) -> u8 {
         if el != EL0 {
             return el;
+        } else if self.have_el(EL3)
+            && self.el_using_aarch32(EL3)
+            && SCRField::NS.fetch_bit(self.scr)
+        {
+            return EL3;
+        } else if Cpu::is_feature_implemented(Feature::VHE) && self.el_is_in_host(el) {
+            return EL2;
+        } else {
+            return EL1;
         }
-
-        todo!("uhhh");
     }
 
     pub fn highest_el(&self) -> EL {
