@@ -6,5 +6,5 @@
 loop:
   ADD X0, X0, X1
   ADD X1, X1, #1
-  CMP X1, #5
+  CMP X1, #101
   B.LT loop

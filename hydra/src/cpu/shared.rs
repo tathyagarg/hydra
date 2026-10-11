@@ -32,6 +32,14 @@ pub enum SecurityState {
     Secure,
 }
 
+pub enum Regime {
+    EL3,
+    EL30,
+    EL2,
+    EL20,
+    EL10,
+}
+
 pub fn replicate(val: u64, elem_bits: u32, total_bits: u32) -> u64 {
     println!("repl: {} {} {}", val, elem_bits, total_bits);
     let elem = val & ones(elem_bits);
@@ -1548,6 +1556,35 @@ impl Cpu {
 
     pub fn address_add(&self, base: u64, offset: u64, accdesc: &AccessDescriptor) -> u64 {
         self.pointer_add_check_at_el(accdesc.el, base + offset, base)
+    }
+
+    pub fn translation_regime(&self, el: EL) -> Regime {
+        if el == EL3 {
+            if self.el_using_aarch32(EL3) {
+                Regime::EL30
+            } else {
+                Regime::EL3
+            }
+        } else if el == EL2 {
+            if self.el_is_in_host(EL2) {
+                Regime::EL20
+            } else {
+                Regime::EL2
+            }
+        } else if el == EL1 {
+            Regime::EL10
+        } else if el == EL0 {
+            if self.current_security_state() == SecurityState::Secure && self.el_using_aarch32(EL3)
+            {
+                Regime::EL30
+            } else if self.el_is_in_host(EL0) {
+                Regime::EL20
+            } else {
+                Regime::EL10
+            }
+        } else {
+            unreachable!()
+        }
     }
 }
 

@@ -19,6 +19,7 @@ pub mod decode;
 mod exeception;
 mod fault;
 mod instructions;
+mod memory_acc;
 mod pmu;
 mod pstate;
 mod regs;
@@ -510,6 +511,8 @@ pub enum Feature {
     GCS,
     HBC,
     IESB,
+    LS64WB,
+    LSE2,
     MPAMv0p1,
     MPAMv1p1,
     PAuth,
@@ -554,6 +557,8 @@ impl Cpu {
             Feature::GCS => false,
             Feature::HBC => true,
             Feature::IESB => false,
+            Feature::LS64WB => false,
+            Feature::LSE2 => false,
             Feature::MPAMv0p1 => false,
             Feature::MPAMv1p1 => false,
             Feature::PAuth => false,

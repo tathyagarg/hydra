@@ -1,3 +1,8 @@
+use crate::cpu::{
+    fault::Fault,
+    memory_acc::{AddressDescriptor, PhysMemRetStatus},
+};
+
 #[derive(PartialEq, Debug)]
 pub struct NZCV(bool, bool, bool, bool);
 
@@ -58,4 +63,20 @@ pub fn count_leading_sign_bits<const N: usize>(value: u64) -> u32 {
 
 pub fn count_leading_zero_bits<const N: usize>(value: u64) -> u32 {
     value.leading_zeros() as u32 - (64 - N as u32)
+}
+
+pub fn is_aligned_size(address: u64, size: u64) -> bool {
+    address % size == 0
+}
+
+pub fn is_fault_addrdesc(addrdesc: &AddressDescriptor) -> bool {
+    addrdesc.fault.statuscode != Fault::None
+}
+
+pub fn is_fault_fault(fault: &Fault) -> bool {
+    *fault != Fault::None
+}
+
+pub fn is_fault_retstatus(retstatus: &PhysMemRetStatus) -> bool {
+    retstatus.statuscode != Fault::None
 }

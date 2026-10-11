@@ -4,6 +4,7 @@ use crate::cpu::{
     shared::{EL, EL1, SecurityState},
 };
 
+#[derive(PartialEq)]
 pub enum Fault {
     None,
     AccessFlag,
@@ -31,7 +32,7 @@ pub enum Fault {
     ICacheMaint,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum AccessType {
     IFETCH, // Instruction FETCH
     GPR,    // Software load/store to a General Purpose Register
@@ -53,6 +54,7 @@ pub enum AccessType {
     TTW,    // Translation Table Walk
 }
 
+#[derive(Clone)]
 pub enum MemAtomicOp {
     GCSSS1,
     ADD,
@@ -84,12 +86,14 @@ pub enum MemOp {
     PREFETCH,
 }
 
+#[derive(Clone)]
 pub enum CacheOp {
     Clean,
     Invalidate,
     CleanInvalidate,
 }
 
+#[derive(Clone)]
 pub enum CacheOpScope {
     SetWay,
     PoU,
@@ -104,6 +108,7 @@ pub enum CacheOpScope {
     ALLUIS,
 }
 
+#[derive(Clone)]
 pub enum CacheType {
     Data,
     Tag,
@@ -111,12 +116,13 @@ pub enum CacheType {
     Instruction,
 }
 
+#[derive(Clone)]
 pub enum VARange {
     LOWER,
     UPPER,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum PARTIDSpaceType {
     Secure,
     Root,
@@ -138,6 +144,7 @@ impl From<SecurityState> for PARTIDSpaceType {
 pub type PARTIDType = u16;
 pub type PMGType = u8;
 
+#[derive(Clone)]
 pub struct MPAMinfo {
     pub mpam_sp: PARTIDSpaceType,
     pub partid: PARTIDType,
@@ -181,6 +188,7 @@ impl MPAMData {
     }
 }
 
+#[derive(Clone)]
 pub struct AccessDescriptor {
     pub(crate) acctype: AccessType,
     pub(crate) el: EL,
@@ -332,32 +340,32 @@ pub struct WatchpointInfo {
 }
 
 pub struct FaultRecord {
-    statuscode: Fault,
-    accessdesc: AccessDescriptor,
+    pub statuscode: Fault,
+    pub accessdesc: AccessDescriptor,
 
-    vaddress: u64,
-    ipaddress: FullAddress,
-    paddress: FullAddress,
-    gpcf: GPCFRecord,
+    pub vaddress: u64,
+    pub ipaddress: FullAddress,
+    pub paddress: FullAddress,
+    pub gpcf: GPCFRecord,
 
-    gpcfs2walk: bool,
-    s2fs1walk: bool,
-    write: bool,
-    s1tagnotdata: bool,
-    tagaccess: bool,
-    level: u8,
-    extflag: bool,
-    secondstage: bool,
-    assuredonly: bool,
-    toplevel: bool,
-    overlay: bool,
-    dirtybit: bool,
+    pub gpcfs2walk: bool,
+    pub s2fs1walk: bool,
+    pub write: bool,
+    pub s1tagnotdata: bool,
+    pub tagaccess: bool,
+    pub level: u8,
+    pub extflag: bool,
+    pub secondstage: bool,
+    pub assuredonly: bool,
+    pub toplevel: bool,
+    pub overlay: bool,
+    pub dirtybit: bool,
 
-    domain: u8,
-    merrorstate: ErrorState,
-    hdbssf: bool,
-    watchptinfo: WatchpointInfo,
-    debugmoe: u8,
+    pub domain: u8,
+    pub merrorstate: ErrorState,
+    pub hdbssf: bool,
+    pub watchptinfo: WatchpointInfo,
+    pub debugmoe: u8,
 }
 
 impl FaultRecord {
@@ -399,5 +407,54 @@ impl FaultRecord {
             },
             write: false,
         }
+    }
+
+    pub fn no_fault_accdesc(accdesc: &AccessDescriptor) -> Self {
+        Self {
+            statuscode: Fault::None,
+            accessdesc: accdesc.clone(),
+            secondstage: false,
+            s2fs1walk: false,
+            dirtybit: false,
+            overlay: false,
+            toplevel: false,
+            assuredonly: false,
+            s1tagnotdata: false,
+            tagaccess: false,
+            gpcfs2walk: false,
+            gpcf: GPCFRecord::no_fault(),
+            hdbssf: false,
+            vaddress: 0,
+            paddress: FullAddress {
+                paspace: PASpace::NonSecure,
+                address: 0,
+            },
+            ipaddress: FullAddress {
+                paspace: PASpace::NonSecure,
+                address: 0,
+            },
+            debugmoe: 0,
+            domain: 0,
+            extflag: false,
+            level: 0,
+            merrorstate: ErrorState::CE,
+            watchptinfo: WatchpointInfo {
+                wptype: WatchpointType::Inactive,
+                maybe_false_match: false,
+                watchpt_num: 0,
+                value_match: false,
+                vaddress: 0,
+            },
+            write: !accdesc.read && accdesc.write,
+        }
+    }
+
+    pub fn no_fault_accdecs_va(accdesc: &AccessDescriptor, va: u64) -> Self {
+        let mut fault = Self::no_fault();
+        fault.accessdesc = accdesc.clone();
+        fault.write = !accdesc.read && accdesc.write;
+        fault.vaddress = va;
+
+        fault
     }
 }
