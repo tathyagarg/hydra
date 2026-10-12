@@ -395,357 +395,390 @@
 <a href=#395 id=395 data-nosnippet>395</a>
 <a href=#396 id=396 data-nosnippet>396</a>    mdcr_el3: u64,
 <a href=#397 id=397 data-nosnippet>397</a>
-<a href=#398 id=398 data-nosnippet>398</a>    mpamidr_el1: u64,
-<a href=#399 id=399 data-nosnippet>399</a>    mpam0_el1: u64,
-<a href=#400 id=400 data-nosnippet>400</a>    mpam1_el1: u64,
-<a href=#401 id=401 data-nosnippet>401</a>    mpam2_el2: u64,
-<a href=#402 id=402 data-nosnippet>402</a>    mpam3_el3: u64,
-<a href=#403 id=403 data-nosnippet>403</a>    mpamsm_el1: u64,
-<a href=#404 id=404 data-nosnippet>404</a>    mpamhcr_el2: u64,
-<a href=#405 id=405 data-nosnippet>405</a>    mpamvpmv_el2: u64,
-<a href=#406 id=406 data-nosnippet>406</a>
-<a href=#407 id=407 data-nosnippet>407</a>    mpamvpmn_el2: [MPAMVPMnEL2Type; <span class="number">8</span>],
-<a href=#408 id=408 data-nosnippet>408</a>
-<a href=#409 id=409 data-nosnippet>409</a>    brbe: Brbe,
-<a href=#410 id=410 data-nosnippet>410</a>    pmu: Pmu,
-<a href=#411 id=411 data-nosnippet>411</a>
-<a href=#412 id=412 data-nosnippet>412</a>    dbgen: Signal,
-<a href=#413 id=413 data-nosnippet>413</a>    niden: Signal,
-<a href=#414 id=414 data-nosnippet>414</a>    spiden: Signal,
-<a href=#415 id=415 data-nosnippet>415</a>    spniden: Signal,
-<a href=#416 id=416 data-nosnippet>416</a>    rlpiden: Signal,
-<a href=#417 id=417 data-nosnippet>417</a>    rtpiden: Signal,
-<a href=#418 id=418 data-nosnippet>418</a>
-<a href=#419 id=419 data-nosnippet>419</a>    pstate: pstate::PState,
-<a href=#420 id=420 data-nosnippet>420</a>
-<a href=#421 id=421 data-nosnippet>421</a>    btype_next: u8,
-<a href=#422 id=422 data-nosnippet>422</a>}
-<a href=#423 id=423 data-nosnippet>423</a>
-<a href=#424 id=424 data-nosnippet>424</a><span class="kw">impl </span>Default <span class="kw">for </span>Cpu {
-<a href=#425 id=425 data-nosnippet>425</a>    <span class="doccomment">/// WARN: Use for testing only!!
-<a href=#426 id=426 data-nosnippet>426</a>    </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-<a href=#427 id=427 data-nosnippet>427</a>        <span class="self">Self </span>{
-<a href=#428 id=428 data-nosnippet>428</a>            x: [<span class="number">0</span>; <span class="number">31</span>],
-<a href=#429 id=429 data-nosnippet>429</a>            sp: <span class="number">0</span>,
-<a href=#430 id=430 data-nosnippet>430</a>            _pc: <span class="number">0</span>,
-<a href=#431 id=431 data-nosnippet>431</a>            v: [<span class="number">0</span>; <span class="number">32</span>],
-<a href=#432 id=432 data-nosnippet>432</a>            fcpr: <span class="number">0</span>,
-<a href=#433 id=433 data-nosnippet>433</a>            fpsr: <span class="number">0</span>,
-<a href=#434 id=434 data-nosnippet>434</a>            tcr_el1: <span class="number">0</span>,
-<a href=#435 id=435 data-nosnippet>435</a>            tcr_el2: <span class="number">0</span>,
-<a href=#436 id=436 data-nosnippet>436</a>            tcr_el3: <span class="number">0</span>,
-<a href=#437 id=437 data-nosnippet>437</a>            scr: <span class="number">0</span>,
-<a href=#438 id=438 data-nosnippet>438</a>            scr_el3: <span class="number">0</span>,
-<a href=#439 id=439 data-nosnippet>439</a>            sctlr_el1: <span class="number">0</span>,
-<a href=#440 id=440 data-nosnippet>440</a>            sctlr_el2: <span class="number">0</span>,
-<a href=#441 id=441 data-nosnippet>441</a>            sctlr_el3: <span class="number">0</span>,
-<a href=#442 id=442 data-nosnippet>442</a>            edscr: <span class="number">0</span>,
-<a href=#443 id=443 data-nosnippet>443</a>            hcr_el2: <span class="number">0</span>,
-<a href=#444 id=444 data-nosnippet>444</a>            brbfcr_el0: <span class="number">0</span>,
-<a href=#445 id=445 data-nosnippet>445</a>            brbfcr_el1: <span class="number">0</span>,
-<a href=#446 id=446 data-nosnippet>446</a>            brbcr_el1: <span class="number">0</span>,
-<a href=#447 id=447 data-nosnippet>447</a>            brbcr_el2: <span class="number">0</span>,
-<a href=#448 id=448 data-nosnippet>448</a>            mdcr_el3: <span class="number">0</span>,
-<a href=#449 id=449 data-nosnippet>449</a>            mpamidr_el1: <span class="number">0</span>,
-<a href=#450 id=450 data-nosnippet>450</a>            mpam0_el1: <span class="number">0</span>,
-<a href=#451 id=451 data-nosnippet>451</a>            mpam1_el1: <span class="number">0</span>,
-<a href=#452 id=452 data-nosnippet>452</a>            mpam2_el2: <span class="number">0</span>,
-<a href=#453 id=453 data-nosnippet>453</a>            mpam3_el3: <span class="number">0</span>,
-<a href=#454 id=454 data-nosnippet>454</a>            mpamsm_el1: <span class="number">0</span>,
-<a href=#455 id=455 data-nosnippet>455</a>            mpamhcr_el2: <span class="number">0</span>,
-<a href=#456 id=456 data-nosnippet>456</a>            mpamvpmv_el2: <span class="number">0</span>,
-<a href=#457 id=457 data-nosnippet>457</a>            mpamvpmn_el2: [<span class="number">0</span>; <span class="number">8</span>],
-<a href=#458 id=458 data-nosnippet>458</a>            brbe: Brbe {
-<a href=#459 id=459 data-nosnippet>459</a>                records_src: [BRBSRC_EL1_Type(<span class="number">0</span>); <span class="number">64</span>],
-<a href=#460 id=460 data-nosnippet>460</a>                records_tgt: [BRBTGT_EL1_Type(<span class="number">0</span>); <span class="number">64</span>],
-<a href=#461 id=461 data-nosnippet>461</a>                records_inf: [BRBINF_EL1_Type {
-<a href=#462 id=462 data-nosnippet>462</a>                    ccu: <span class="bool-val">false</span>,
-<a href=#463 id=463 data-nosnippet>463</a>                    cc: <span class="number">0</span>,
-<a href=#464 id=464 data-nosnippet>464</a>                    type_: <span class="number">0</span>,
-<a href=#465 id=465 data-nosnippet>465</a>                    el: <span class="number">0</span>,
-<a href=#466 id=466 data-nosnippet>466</a>                    mpred: <span class="bool-val">false</span>,
-<a href=#467 id=467 data-nosnippet>467</a>                    valid: <span class="number">0</span>,
-<a href=#468 id=468 data-nosnippet>468</a>                }; <span class="number">64</span>],
-<a href=#469 id=469 data-nosnippet>469</a>            },
-<a href=#470 id=470 data-nosnippet>470</a>            pmu: Pmu {
-<a href=#471 id=471 data-nosnippet>471</a>                pmcr_el0: <span class="number">0</span>,
-<a href=#472 id=472 data-nosnippet>472</a>                pmcntenset_el0: <span class="number">0</span>,
-<a href=#473 id=473 data-nosnippet>473</a>                pmcntenclr_el0: <span class="number">0</span>,
-<a href=#474 id=474 data-nosnippet>474</a>                pmccntr_el0: <span class="number">0</span>,
-<a href=#475 id=475 data-nosnippet>475</a>                counters: <span class="macro">vec!</span>[],
-<a href=#476 id=476 data-nosnippet>476</a>                event_types: <span class="macro">vec!</span>[],
-<a href=#477 id=477 data-nosnippet>477</a>            },
-<a href=#478 id=478 data-nosnippet>478</a>            pstate: pstate::PState::default(),
-<a href=#479 id=479 data-nosnippet>479</a>            dbgen: LOW,
-<a href=#480 id=480 data-nosnippet>480</a>            niden: LOW,
-<a href=#481 id=481 data-nosnippet>481</a>            spiden: LOW,
-<a href=#482 id=482 data-nosnippet>482</a>            spniden: LOW,
-<a href=#483 id=483 data-nosnippet>483</a>            rlpiden: LOW,
-<a href=#484 id=484 data-nosnippet>484</a>            rtpiden: LOW,
-<a href=#485 id=485 data-nosnippet>485</a>
-<a href=#486 id=486 data-nosnippet>486</a>            btype_next: <span class="number">0</span>,
-<a href=#487 id=487 data-nosnippet>487</a>        }
-<a href=#488 id=488 data-nosnippet>488</a>    }
-<a href=#489 id=489 data-nosnippet>489</a>}
-<a href=#490 id=490 data-nosnippet>490</a>
-<a href=#491 id=491 data-nosnippet>491</a><span class="attr">#[derive(Hash, Eq, PartialEq)]
-<a href=#492 id=492 data-nosnippet>492</a></span><span class="kw">pub enum </span>Feature {
-<a href=#493 id=493 data-nosnippet>493</a>    AA32,
-<a href=#494 id=494 data-nosnippet>494</a>    AA32EL0,
-<a href=#495 id=495 data-nosnippet>495</a>    AA32EL1,
-<a href=#496 id=496 data-nosnippet>496</a>    AA32EL2,
-<a href=#497 id=497 data-nosnippet>497</a>    AA32EL3,
-<a href=#498 id=498 data-nosnippet>498</a>    AA64,
-<a href=#499 id=499 data-nosnippet>499</a>    AA64EL0,
-<a href=#500 id=500 data-nosnippet>500</a>    AA64EL1,
-<a href=#501 id=501 data-nosnippet>501</a>    AA64EL2,
-<a href=#502 id=502 data-nosnippet>502</a>    AA64EL3,
-<a href=#503 id=503 data-nosnippet>503</a>    BRBE,
-<a href=#504 id=504 data-nosnippet>504</a>    BRBEv1p1,
-<a href=#505 id=505 data-nosnippet>505</a>    BTI,
-<a href=#506 id=506 data-nosnippet>506</a>    CMPBR,
-<a href=#507 id=507 data-nosnippet>507</a>    CSSC,
-<a href=#508 id=508 data-nosnippet>508</a>    DoubleLock,
-<a href=#509 id=509 data-nosnippet>509</a>    E2H0,
-<a href=#510 id=510 data-nosnippet>510</a>    ExS,
-<a href=#511 id=511 data-nosnippet>511</a>    FlagM,
-<a href=#512 id=512 data-nosnippet>512</a>    FlagM2,
-<a href=#513 id=513 data-nosnippet>513</a>    GCS,
-<a href=#514 id=514 data-nosnippet>514</a>    HBC,
-<a href=#515 id=515 data-nosnippet>515</a>    IESB,
-<a href=#516 id=516 data-nosnippet>516</a>    LS64WB,
-<a href=#517 id=517 data-nosnippet>517</a>    LSE2,
-<a href=#518 id=518 data-nosnippet>518</a>    MPAMv0p1,
-<a href=#519 id=519 data-nosnippet>519</a>    MPAMv1p1,
-<a href=#520 id=520 data-nosnippet>520</a>    PAuth,
-<a href=#521 id=521 data-nosnippet>521</a>    PMUv3,
-<a href=#522 id=522 data-nosnippet>522</a>    <span class="attr">#[allow(non_camel_case_types)]
-<a href=#523 id=523 data-nosnippet>523</a>    </span>PMUv3_ICNTR,
-<a href=#524 id=524 data-nosnippet>524</a>    RME,
-<a href=#525 id=525 data-nosnippet>525</a>    SECURE,
-<a href=#526 id=526 data-nosnippet>526</a>    SEL2,
-<a href=#527 id=527 data-nosnippet>527</a>    SME,
-<a href=#528 id=528 data-nosnippet>528</a>    SPE,
-<a href=#529 id=529 data-nosnippet>529</a>    VHE,
-<a href=#530 id=530 data-nosnippet>530</a>}
-<a href=#531 id=531 data-nosnippet>531</a>
-<a href=#532 id=532 data-nosnippet>532</a><span class="kw">impl </span>Cpu {
-<a href=#533 id=533 data-nosnippet>533</a>    <span class="kw">pub const </span>NUM_PMU_COUNTERS: usize = <span class="number">0</span>;
-<a href=#534 id=534 data-nosnippet>534</a>    <span class="kw">pub const </span>PMU_EVENT_INST_RETIRED: u16 = <span class="number">0x08</span>;
-<a href=#535 id=535 data-nosnippet>535</a>    <span class="kw">pub const </span>PMU_EVENT_BRB_FILTRATE: u16 = <span class="number">0x811F</span>;
-<a href=#536 id=536 data-nosnippet>536</a>
-<a href=#537 id=537 data-nosnippet>537</a>    <span class="kw">pub const fn </span>is_feature_implemented(feat: Feature) -&gt; bool {
-<a href=#538 id=538 data-nosnippet>538</a>        <span class="kw">match </span>feat {
-<a href=#539 id=539 data-nosnippet>539</a>            Feature::AA32 =&gt; <span class="bool-val">false</span>,
-<a href=#540 id=540 data-nosnippet>540</a>            Feature::AA32EL0 =&gt; <span class="bool-val">false</span>,
-<a href=#541 id=541 data-nosnippet>541</a>            Feature::AA32EL1 =&gt; <span class="bool-val">false</span>,
-<a href=#542 id=542 data-nosnippet>542</a>            Feature::AA32EL2 =&gt; <span class="bool-val">false</span>,
-<a href=#543 id=543 data-nosnippet>543</a>            Feature::AA32EL3 =&gt; <span class="bool-val">false</span>,
-<a href=#544 id=544 data-nosnippet>544</a>            Feature::AA64 =&gt; <span class="bool-val">true</span>,
-<a href=#545 id=545 data-nosnippet>545</a>            Feature::AA64EL0 =&gt; <span class="bool-val">false</span>,
-<a href=#546 id=546 data-nosnippet>546</a>            Feature::AA64EL1 =&gt; <span class="bool-val">false</span>,
-<a href=#547 id=547 data-nosnippet>547</a>            Feature::AA64EL2 =&gt; <span class="bool-val">false</span>,
-<a href=#548 id=548 data-nosnippet>548</a>            Feature::AA64EL3 =&gt; <span class="bool-val">false</span>,
-<a href=#549 id=549 data-nosnippet>549</a>            Feature::BRBE =&gt; <span class="bool-val">false</span>,
-<a href=#550 id=550 data-nosnippet>550</a>            Feature::BRBEv1p1 =&gt; <span class="bool-val">false</span>,
-<a href=#551 id=551 data-nosnippet>551</a>            Feature::BTI =&gt; <span class="bool-val">false</span>,
-<a href=#552 id=552 data-nosnippet>552</a>            Feature::CMPBR =&gt; <span class="bool-val">true</span>,
-<a href=#553 id=553 data-nosnippet>553</a>            Feature::CSSC =&gt; <span class="bool-val">true</span>,
-<a href=#554 id=554 data-nosnippet>554</a>            Feature::DoubleLock =&gt; <span class="bool-val">false</span>,
-<a href=#555 id=555 data-nosnippet>555</a>            Feature::E2H0 =&gt; <span class="bool-val">false</span>,
-<a href=#556 id=556 data-nosnippet>556</a>            Feature::ExS =&gt; <span class="bool-val">false</span>,
-<a href=#557 id=557 data-nosnippet>557</a>            Feature::FlagM =&gt; <span class="bool-val">false</span>,
-<a href=#558 id=558 data-nosnippet>558</a>            Feature::FlagM2 =&gt; <span class="bool-val">false</span>,
-<a href=#559 id=559 data-nosnippet>559</a>            Feature::GCS =&gt; <span class="bool-val">false</span>,
-<a href=#560 id=560 data-nosnippet>560</a>            Feature::HBC =&gt; <span class="bool-val">true</span>,
-<a href=#561 id=561 data-nosnippet>561</a>            Feature::IESB =&gt; <span class="bool-val">false</span>,
-<a href=#562 id=562 data-nosnippet>562</a>            Feature::LS64WB =&gt; <span class="bool-val">false</span>,
-<a href=#563 id=563 data-nosnippet>563</a>            Feature::LSE2 =&gt; <span class="bool-val">false</span>,
-<a href=#564 id=564 data-nosnippet>564</a>            Feature::MPAMv0p1 =&gt; <span class="bool-val">false</span>,
-<a href=#565 id=565 data-nosnippet>565</a>            Feature::MPAMv1p1 =&gt; <span class="bool-val">false</span>,
-<a href=#566 id=566 data-nosnippet>566</a>            Feature::PAuth =&gt; <span class="bool-val">false</span>,
-<a href=#567 id=567 data-nosnippet>567</a>            Feature::PMUv3 =&gt; <span class="bool-val">false</span>,
-<a href=#568 id=568 data-nosnippet>568</a>            Feature::PMUv3_ICNTR =&gt; <span class="bool-val">false</span>,
-<a href=#569 id=569 data-nosnippet>569</a>            Feature::RME =&gt; <span class="bool-val">false</span>,
-<a href=#570 id=570 data-nosnippet>570</a>            Feature::SECURE =&gt; <span class="bool-val">false</span>,
-<a href=#571 id=571 data-nosnippet>571</a>            Feature::SEL2 =&gt; <span class="bool-val">false</span>,
-<a href=#572 id=572 data-nosnippet>572</a>            Feature::SME =&gt; <span class="bool-val">false</span>,
-<a href=#573 id=573 data-nosnippet>573</a>            Feature::SPE =&gt; <span class="bool-val">false</span>,
-<a href=#574 id=574 data-nosnippet>574</a>            Feature::VHE =&gt; <span class="bool-val">false</span>,
-<a href=#575 id=575 data-nosnippet>575</a>        }
-<a href=#576 id=576 data-nosnippet>576</a>    }
-<a href=#577 id=577 data-nosnippet>577</a>
-<a href=#578 id=578 data-nosnippet>578</a>    <span class="kw">pub fn </span>_get_op(<span class="kw-2">&amp;</span><span class="self">self</span>, n: Register, cond: bool) -&gt; u64 {
-<a href=#579 id=579 data-nosnippet>579</a>        <span class="kw">if </span>cond {
-<a href=#580 id=580 data-nosnippet>580</a>            <span class="self">self</span>.x[n <span class="kw">as </span>usize]
-<a href=#581 id=581 data-nosnippet>581</a>        } <span class="kw">else </span>{
-<a href=#582 id=582 data-nosnippet>582</a>            <span class="self">self</span>.x[n <span class="kw">as </span>usize] <span class="kw">as </span>u32 <span class="kw">as </span>u64
-<a href=#583 id=583 data-nosnippet>583</a>        }
-<a href=#584 id=584 data-nosnippet>584</a>    }
-<a href=#585 id=585 data-nosnippet>585</a>
-<a href=#586 id=586 data-nosnippet>586</a>    <span class="kw">pub fn </span>_set_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: Register, v: u64, cond: bool) {
-<a href=#587 id=587 data-nosnippet>587</a>        <span class="kw">if </span>cond {
-<a href=#588 id=588 data-nosnippet>588</a>            <span class="self">self</span>.x[n <span class="kw">as </span>usize] = v;
-<a href=#589 id=589 data-nosnippet>589</a>        } <span class="kw">else </span>{
-<a href=#590 id=590 data-nosnippet>590</a>            <span class="self">self</span>.x[n <span class="kw">as </span>usize] = to_uint::&lt;<span class="number">32</span>&gt;(v);
-<a href=#591 id=591 data-nosnippet>591</a>        }
-<a href=#592 id=592 data-nosnippet>592</a>    }
-<a href=#593 id=593 data-nosnippet>593</a>
-<a href=#594 id=594 data-nosnippet>594</a>    <span class="kw">pub fn </span>_get_reg_or_sp(<span class="kw-2">&amp;</span><span class="self">self</span>, n: Register, cond: bool) -&gt; u64 {
-<a href=#595 id=595 data-nosnippet>595</a>        <span class="kw">if </span>n == REG_SP {
-<a href=#596 id=596 data-nosnippet>596</a>            <span class="self">self</span>.sp
-<a href=#597 id=597 data-nosnippet>597</a>        } <span class="kw">else </span>{
-<a href=#598 id=598 data-nosnippet>598</a>            <span class="self">self</span>._get_op(n, cond)
-<a href=#599 id=599 data-nosnippet>599</a>        }
-<a href=#600 id=600 data-nosnippet>600</a>    }
-<a href=#601 id=601 data-nosnippet>601</a>
-<a href=#602 id=602 data-nosnippet>602</a>    <span class="kw">pub fn </span>_set_reg_or_sp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: Register, value: u64, cond: bool) {
-<a href=#603 id=603 data-nosnippet>603</a>        <span class="kw">if </span>n == REG_SP {
-<a href=#604 id=604 data-nosnippet>604</a>            <span class="self">self</span>.sp = value;
-<a href=#605 id=605 data-nosnippet>605</a>        } <span class="kw">else </span>{
-<a href=#606 id=606 data-nosnippet>606</a>            <span class="self">self</span>._set_op(n, value, cond);
-<a href=#607 id=607 data-nosnippet>607</a>        }
-<a href=#608 id=608 data-nosnippet>608</a>    }
-<a href=#609 id=609 data-nosnippet>609</a>
-<a href=#610 id=610 data-nosnippet>610</a>    <span class="doccomment">/// A function for purely debug/testing purposes to arbitrarily set the value
-<a href=#611 id=611 data-nosnippet>611</a>    /// of a X register to a provided v value
-<a href=#612 id=612 data-nosnippet>612</a>    </span><span class="kw">pub fn </span>__dbg_set_x(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: usize, v: u64) {
-<a href=#613 id=613 data-nosnippet>613</a>        <span class="self">self</span>.x[n] = v;
-<a href=#614 id=614 data-nosnippet>614</a>    }
-<a href=#615 id=615 data-nosnippet>615</a>
-<a href=#616 id=616 data-nosnippet>616</a>    <span class="doccomment">/// A function for purely debug/testing purposes to arbitrarily fetch the value
-<a href=#617 id=617 data-nosnippet>617</a>    /// of a X register
-<a href=#618 id=618 data-nosnippet>618</a>    </span><span class="kw">pub fn </span>__dbg_get_x(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize) -&gt; u64 {
-<a href=#619 id=619 data-nosnippet>619</a>        <span class="self">self</span>.x[n]
-<a href=#620 id=620 data-nosnippet>620</a>    }
-<a href=#621 id=621 data-nosnippet>621</a>
-<a href=#622 id=622 data-nosnippet>622</a>    <span class="doccomment">/// A function for purely debug/testing purposes to get a mutable reference
-<a href=#623 id=623 data-nosnippet>623</a>    /// to the CPU's PSTATE
-<a href=#624 id=624 data-nosnippet>624</a>    </span><span class="kw">pub fn </span>__dbg_get_pstate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>pstate::PState {
-<a href=#625 id=625 data-nosnippet>625</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.pstate
-<a href=#626 id=626 data-nosnippet>626</a>    }
-<a href=#627 id=627 data-nosnippet>627</a>
-<a href=#628 id=628 data-nosnippet>628</a>    <span class="doccomment">/// **ADR**: Form PC-relative address
-<a href=#629 id=629 data-nosnippet>629</a>    ///
-<a href=#630 id=630 data-nosnippet>630</a>    /// This instruction adds an immediate value to the PC value to form a PC-relative address, and writes the result to the
-<a href=#631 id=631 data-nosnippet>631</a>    /// destination register.
-<a href=#632 id=632 data-nosnippet>632</a>    </span><span class="kw">pub fn </span>adr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, immlo: u8, immhi: u32, d: Register) {
-<a href=#633 id=633 data-nosnippet>633</a>        <span class="kw">let </span>immlo = to_uint::&lt;<span class="number">2</span>&gt;(immlo <span class="kw">as </span>u64);
-<a href=#634 id=634 data-nosnippet>634</a>        <span class="kw">let </span>immhi = to_uint::&lt;<span class="number">19</span>&gt;(immhi <span class="kw">as </span>u64);
-<a href=#635 id=635 data-nosnippet>635</a>
-<a href=#636 id=636 data-nosnippet>636</a>        <span class="kw">let </span>imm = (immhi &lt;&lt; <span class="number">2</span>) | immlo;
-<a href=#637 id=637 data-nosnippet>637</a>        <span class="self">self</span>._set_op(d, <span class="self">self</span>.get_PC64().wrapping_add(imm), <span class="bool-val">true</span>);
-<a href=#638 id=638 data-nosnippet>638</a>    }
-<a href=#639 id=639 data-nosnippet>639</a>
-<a href=#640 id=640 data-nosnippet>640</a>    <span class="doccomment">/// **ADRP**: Form PC-relative address to 4KB page
-<a href=#641 id=641 data-nosnippet>641</a>    ///
-<a href=#642 id=642 data-nosnippet>642</a>    /// This instruction adds an immediate value that is shifted left by 12 bits, to the PC value to form a PC-relative address, with
-<a href=#643 id=643 data-nosnippet>643</a>    /// the bottom 12 bits masked out, and writes the result to the destination register.
-<a href=#644 id=644 data-nosnippet>644</a>    </span><span class="kw">pub fn </span>adrp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, immlo: u8, immhi: u32, d: Register) {
-<a href=#645 id=645 data-nosnippet>645</a>        <span class="kw">let </span>immlo = to_uint::&lt;<span class="number">2</span>&gt;(immlo <span class="kw">as </span>u64);
-<a href=#646 id=646 data-nosnippet>646</a>        <span class="kw">let </span>immhi = to_uint::&lt;<span class="number">19</span>&gt;(immhi <span class="kw">as </span>u64);
-<a href=#647 id=647 data-nosnippet>647</a>
-<a href=#648 id=648 data-nosnippet>648</a>        <span class="kw">let </span>imm = ((immhi &lt;&lt; <span class="number">2</span>) | immlo) &lt;&lt; <span class="number">12</span>;
-<a href=#649 id=649 data-nosnippet>649</a>        <span class="kw">let </span>base = <span class="self">self</span>.get_PC64() &amp; (!<span class="number">0u64 </span>&lt;&lt; <span class="number">12</span>);
-<a href=#650 id=650 data-nosnippet>650</a>
-<a href=#651 id=651 data-nosnippet>651</a>        <span class="self">self</span>._set_op(d, base.wrapping_add(imm), <span class="bool-val">true</span>);
-<a href=#652 id=652 data-nosnippet>652</a>    }
-<a href=#653 id=653 data-nosnippet>653</a>
-<a href=#654 id=654 data-nosnippet>654</a>    <span class="doccomment">/// **AXFLAG**: Convert floating-point condition flags from Arm to external format
-<a href=#655 id=655 data-nosnippet>655</a>    ///
-<a href=#656 id=656 data-nosnippet>656</a>    /// This instruction converts the state of the PSTATE.{N,Z,C,V} flags from a form representing the result of an Arm
-<a href=#657 id=657 data-nosnippet>657</a>    /// floating-point scalar compare instruction to an alternative representation required by some software.
-<a href=#658 id=658 data-nosnippet>658</a>    </span><span class="kw">pub fn </span>axflag(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#659 id=659 data-nosnippet>659</a>        <span class="kw">let </span>z = <span class="self">self</span>.pstate.Z() || <span class="self">self</span>.pstate.V();
-<a href=#660 id=660 data-nosnippet>660</a>        <span class="kw">let </span>c = <span class="self">self</span>.pstate.C() &amp;&amp; !<span class="self">self</span>.pstate.V();
-<a href=#661 id=661 data-nosnippet>661</a>
-<a href=#662 id=662 data-nosnippet>662</a>        <span class="self">self</span>.pstate.set_nzcv(<span class="kw-2">&amp;</span>NZCV::init(<span class="bool-val">false</span>, z, c, <span class="bool-val">false</span>));
-<a href=#663 id=663 data-nosnippet>663</a>    }
-<a href=#664 id=664 data-nosnippet>664</a>
-<a href=#665 id=665 data-nosnippet>665</a>    <span class="kw">fn </span>execute_instruction(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instr: Instruction) {
-<a href=#666 id=666 data-nosnippet>666</a>        <span class="kw">match </span>instr {
-<a href=#667 id=667 data-nosnippet>667</a>            Instruction::Abs { sf, rn, rd } =&gt; <span class="self">self</span>.abs(sf, rn, rd),
-<a href=#668 id=668 data-nosnippet>668</a>            Instruction::Adc { sf, rm, rn, rd } =&gt; <span class="self">self</span>.adc(sf, rm, rn, rd),
-<a href=#669 id=669 data-nosnippet>669</a>            Instruction::Adcs { sf, rm, rn, rd } =&gt; <span class="self">self</span>.adcs(sf, rm, rn, rd),
-<a href=#670 id=670 data-nosnippet>670</a>            Instruction::AddEr {
-<a href=#671 id=671 data-nosnippet>671</a>                sf,
-<a href=#672 id=672 data-nosnippet>672</a>                rm,
-<a href=#673 id=673 data-nosnippet>673</a>                option,
-<a href=#674 id=674 data-nosnippet>674</a>                imm3,
-<a href=#675 id=675 data-nosnippet>675</a>                rn,
-<a href=#676 id=676 data-nosnippet>676</a>                rd,
-<a href=#677 id=677 data-nosnippet>677</a>            } =&gt; <span class="self">self</span>.add_er(sf, rm, option, imm3, rn, rd),
-<a href=#678 id=678 data-nosnippet>678</a>            Instruction::AddImm {
-<a href=#679 id=679 data-nosnippet>679</a>                sf,
-<a href=#680 id=680 data-nosnippet>680</a>                sh,
-<a href=#681 id=681 data-nosnippet>681</a>                imm12,
-<a href=#682 id=682 data-nosnippet>682</a>                rn,
-<a href=#683 id=683 data-nosnippet>683</a>                rd,
-<a href=#684 id=684 data-nosnippet>684</a>            } =&gt; <span class="self">self</span>.add_imm(sf, sh, imm12, rn, rd),
-<a href=#685 id=685 data-nosnippet>685</a>            Instruction::AddSr {
-<a href=#686 id=686 data-nosnippet>686</a>                sf,
-<a href=#687 id=687 data-nosnippet>687</a>                shift,
-<a href=#688 id=688 data-nosnippet>688</a>                rm,
-<a href=#689 id=689 data-nosnippet>689</a>                imm6,
-<a href=#690 id=690 data-nosnippet>690</a>                rn,
-<a href=#691 id=691 data-nosnippet>691</a>                rd,
-<a href=#692 id=692 data-nosnippet>692</a>            } =&gt; <span class="self">self</span>.add_sr(sf, shift, rm, imm6, rn, rd),
-<a href=#693 id=693 data-nosnippet>693</a>            Instruction::BCond { imm19, cond } =&gt; <span class="self">self</span>.b_cond(imm19, cond),
-<a href=#694 id=694 data-nosnippet>694</a>            Instruction::Movz { sf, rd, imm16, hw } =&gt; <span class="self">self</span>.movz(sf, hw, imm16, rd),
-<a href=#695 id=695 data-nosnippet>695</a>            Instruction::SubEr {
-<a href=#696 id=696 data-nosnippet>696</a>                sf,
-<a href=#697 id=697 data-nosnippet>697</a>                rm,
-<a href=#698 id=698 data-nosnippet>698</a>                option,
-<a href=#699 id=699 data-nosnippet>699</a>                imm3,
-<a href=#700 id=700 data-nosnippet>700</a>                rn,
-<a href=#701 id=701 data-nosnippet>701</a>                rd,
-<a href=#702 id=702 data-nosnippet>702</a>            } =&gt; <span class="self">self</span>.sub_er(sf, rm, option, imm3, rn, rd),
-<a href=#703 id=703 data-nosnippet>703</a>            Instruction::SubImm {
+<a href=#398 id=398 data-nosnippet>398</a>    mair_el1: u64,
+<a href=#399 id=399 data-nosnippet>399</a>    mair_el2: u64,
+<a href=#400 id=400 data-nosnippet>400</a>    mair_el3: u64,
+<a href=#401 id=401 data-nosnippet>401</a>
+<a href=#402 id=402 data-nosnippet>402</a>    mpamidr_el1: u64,
+<a href=#403 id=403 data-nosnippet>403</a>    mpam0_el1: u64,
+<a href=#404 id=404 data-nosnippet>404</a>    mpam1_el1: u64,
+<a href=#405 id=405 data-nosnippet>405</a>    mpam2_el2: u64,
+<a href=#406 id=406 data-nosnippet>406</a>    mpam3_el3: u64,
+<a href=#407 id=407 data-nosnippet>407</a>    mpamsm_el1: u64,
+<a href=#408 id=408 data-nosnippet>408</a>    mpamhcr_el2: u64,
+<a href=#409 id=409 data-nosnippet>409</a>    mpamvpmv_el2: u64,
+<a href=#410 id=410 data-nosnippet>410</a>
+<a href=#411 id=411 data-nosnippet>411</a>    mpamvpmn_el2: [MPAMVPMnEL2Type; <span class="number">8</span>],
+<a href=#412 id=412 data-nosnippet>412</a>
+<a href=#413 id=413 data-nosnippet>413</a>    brbe: Brbe,
+<a href=#414 id=414 data-nosnippet>414</a>    pmu: Pmu,
+<a href=#415 id=415 data-nosnippet>415</a>
+<a href=#416 id=416 data-nosnippet>416</a>    dbgen: Signal,
+<a href=#417 id=417 data-nosnippet>417</a>    niden: Signal,
+<a href=#418 id=418 data-nosnippet>418</a>    spiden: Signal,
+<a href=#419 id=419 data-nosnippet>419</a>    spniden: Signal,
+<a href=#420 id=420 data-nosnippet>420</a>    rlpiden: Signal,
+<a href=#421 id=421 data-nosnippet>421</a>    rtpiden: Signal,
+<a href=#422 id=422 data-nosnippet>422</a>
+<a href=#423 id=423 data-nosnippet>423</a>    pstate: pstate::PState,
+<a href=#424 id=424 data-nosnippet>424</a>
+<a href=#425 id=425 data-nosnippet>425</a>    btype_next: u8,
+<a href=#426 id=426 data-nosnippet>426</a>}
+<a href=#427 id=427 data-nosnippet>427</a>
+<a href=#428 id=428 data-nosnippet>428</a><span class="kw">impl </span>Default <span class="kw">for </span>Cpu {
+<a href=#429 id=429 data-nosnippet>429</a>    <span class="doccomment">/// WARN: Use for testing only!!
+<a href=#430 id=430 data-nosnippet>430</a>    </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#431 id=431 data-nosnippet>431</a>        <span class="self">Self </span>{
+<a href=#432 id=432 data-nosnippet>432</a>            x: [<span class="number">0</span>; <span class="number">31</span>],
+<a href=#433 id=433 data-nosnippet>433</a>            sp: <span class="number">0</span>,
+<a href=#434 id=434 data-nosnippet>434</a>            _pc: <span class="number">0</span>,
+<a href=#435 id=435 data-nosnippet>435</a>            v: [<span class="number">0</span>; <span class="number">32</span>],
+<a href=#436 id=436 data-nosnippet>436</a>            fcpr: <span class="number">0</span>,
+<a href=#437 id=437 data-nosnippet>437</a>            fpsr: <span class="number">0</span>,
+<a href=#438 id=438 data-nosnippet>438</a>            tcr_el1: <span class="number">0</span>,
+<a href=#439 id=439 data-nosnippet>439</a>            tcr_el2: <span class="number">0</span>,
+<a href=#440 id=440 data-nosnippet>440</a>            tcr_el3: <span class="number">0</span>,
+<a href=#441 id=441 data-nosnippet>441</a>            scr: <span class="number">0</span>,
+<a href=#442 id=442 data-nosnippet>442</a>            scr_el3: <span class="number">0</span>,
+<a href=#443 id=443 data-nosnippet>443</a>            sctlr_el1: <span class="number">0</span>,
+<a href=#444 id=444 data-nosnippet>444</a>            sctlr_el2: <span class="number">0</span>,
+<a href=#445 id=445 data-nosnippet>445</a>            sctlr_el3: <span class="number">0</span>,
+<a href=#446 id=446 data-nosnippet>446</a>            edscr: <span class="number">0</span>,
+<a href=#447 id=447 data-nosnippet>447</a>            hcr_el2: <span class="number">0</span>,
+<a href=#448 id=448 data-nosnippet>448</a>            brbfcr_el0: <span class="number">0</span>,
+<a href=#449 id=449 data-nosnippet>449</a>            brbfcr_el1: <span class="number">0</span>,
+<a href=#450 id=450 data-nosnippet>450</a>            brbcr_el1: <span class="number">0</span>,
+<a href=#451 id=451 data-nosnippet>451</a>            brbcr_el2: <span class="number">0</span>,
+<a href=#452 id=452 data-nosnippet>452</a>            mdcr_el3: <span class="number">0</span>,
+<a href=#453 id=453 data-nosnippet>453</a>            mpamidr_el1: <span class="number">0</span>,
+<a href=#454 id=454 data-nosnippet>454</a>            mair_el1: <span class="number">0</span>,
+<a href=#455 id=455 data-nosnippet>455</a>            mair_el2: <span class="number">0</span>,
+<a href=#456 id=456 data-nosnippet>456</a>            mair_el3: <span class="number">0</span>,
+<a href=#457 id=457 data-nosnippet>457</a>            mpam0_el1: <span class="number">0</span>,
+<a href=#458 id=458 data-nosnippet>458</a>            mpam1_el1: <span class="number">0</span>,
+<a href=#459 id=459 data-nosnippet>459</a>            mpam2_el2: <span class="number">0</span>,
+<a href=#460 id=460 data-nosnippet>460</a>            mpam3_el3: <span class="number">0</span>,
+<a href=#461 id=461 data-nosnippet>461</a>            mpamsm_el1: <span class="number">0</span>,
+<a href=#462 id=462 data-nosnippet>462</a>            mpamhcr_el2: <span class="number">0</span>,
+<a href=#463 id=463 data-nosnippet>463</a>            mpamvpmv_el2: <span class="number">0</span>,
+<a href=#464 id=464 data-nosnippet>464</a>            mpamvpmn_el2: [<span class="number">0</span>; <span class="number">8</span>],
+<a href=#465 id=465 data-nosnippet>465</a>            brbe: Brbe {
+<a href=#466 id=466 data-nosnippet>466</a>                records_src: [BRBSRC_EL1_Type(<span class="number">0</span>); <span class="number">64</span>],
+<a href=#467 id=467 data-nosnippet>467</a>                records_tgt: [BRBTGT_EL1_Type(<span class="number">0</span>); <span class="number">64</span>],
+<a href=#468 id=468 data-nosnippet>468</a>                records_inf: [BRBINF_EL1_Type {
+<a href=#469 id=469 data-nosnippet>469</a>                    ccu: <span class="bool-val">false</span>,
+<a href=#470 id=470 data-nosnippet>470</a>                    cc: <span class="number">0</span>,
+<a href=#471 id=471 data-nosnippet>471</a>                    type_: <span class="number">0</span>,
+<a href=#472 id=472 data-nosnippet>472</a>                    el: <span class="number">0</span>,
+<a href=#473 id=473 data-nosnippet>473</a>                    mpred: <span class="bool-val">false</span>,
+<a href=#474 id=474 data-nosnippet>474</a>                    valid: <span class="number">0</span>,
+<a href=#475 id=475 data-nosnippet>475</a>                }; <span class="number">64</span>],
+<a href=#476 id=476 data-nosnippet>476</a>            },
+<a href=#477 id=477 data-nosnippet>477</a>            pmu: Pmu {
+<a href=#478 id=478 data-nosnippet>478</a>                pmcr_el0: <span class="number">0</span>,
+<a href=#479 id=479 data-nosnippet>479</a>                pmcntenset_el0: <span class="number">0</span>,
+<a href=#480 id=480 data-nosnippet>480</a>                pmcntenclr_el0: <span class="number">0</span>,
+<a href=#481 id=481 data-nosnippet>481</a>                pmccntr_el0: <span class="number">0</span>,
+<a href=#482 id=482 data-nosnippet>482</a>                counters: <span class="macro">vec!</span>[],
+<a href=#483 id=483 data-nosnippet>483</a>                event_types: <span class="macro">vec!</span>[],
+<a href=#484 id=484 data-nosnippet>484</a>            },
+<a href=#485 id=485 data-nosnippet>485</a>            pstate: pstate::PState::default(),
+<a href=#486 id=486 data-nosnippet>486</a>            dbgen: LOW,
+<a href=#487 id=487 data-nosnippet>487</a>            niden: LOW,
+<a href=#488 id=488 data-nosnippet>488</a>            spiden: LOW,
+<a href=#489 id=489 data-nosnippet>489</a>            spniden: LOW,
+<a href=#490 id=490 data-nosnippet>490</a>            rlpiden: LOW,
+<a href=#491 id=491 data-nosnippet>491</a>            rtpiden: LOW,
+<a href=#492 id=492 data-nosnippet>492</a>
+<a href=#493 id=493 data-nosnippet>493</a>            btype_next: <span class="number">0</span>,
+<a href=#494 id=494 data-nosnippet>494</a>        }
+<a href=#495 id=495 data-nosnippet>495</a>    }
+<a href=#496 id=496 data-nosnippet>496</a>}
+<a href=#497 id=497 data-nosnippet>497</a>
+<a href=#498 id=498 data-nosnippet>498</a><span class="attr">#[derive(Hash, Eq, PartialEq)]
+<a href=#499 id=499 data-nosnippet>499</a></span><span class="kw">pub enum </span>Feature {
+<a href=#500 id=500 data-nosnippet>500</a>    AA32,
+<a href=#501 id=501 data-nosnippet>501</a>    AA32EL0,
+<a href=#502 id=502 data-nosnippet>502</a>    AA32EL1,
+<a href=#503 id=503 data-nosnippet>503</a>    AA32EL2,
+<a href=#504 id=504 data-nosnippet>504</a>    AA32EL3,
+<a href=#505 id=505 data-nosnippet>505</a>    AA64,
+<a href=#506 id=506 data-nosnippet>506</a>    AA64EL0,
+<a href=#507 id=507 data-nosnippet>507</a>    AA64EL1,
+<a href=#508 id=508 data-nosnippet>508</a>    AA64EL2,
+<a href=#509 id=509 data-nosnippet>509</a>    AA64EL3,
+<a href=#510 id=510 data-nosnippet>510</a>    AIE,
+<a href=#511 id=511 data-nosnippet>511</a>    BRBE,
+<a href=#512 id=512 data-nosnippet>512</a>    BRBEv1p1,
+<a href=#513 id=513 data-nosnippet>513</a>    BTI,
+<a href=#514 id=514 data-nosnippet>514</a>    CMPBR,
+<a href=#515 id=515 data-nosnippet>515</a>    CSSC,
+<a href=#516 id=516 data-nosnippet>516</a>    D128,
+<a href=#517 id=517 data-nosnippet>517</a>    DoubleLock,
+<a href=#518 id=518 data-nosnippet>518</a>    E2H0,
+<a href=#519 id=519 data-nosnippet>519</a>    ExS,
+<a href=#520 id=520 data-nosnippet>520</a>    FlagM,
+<a href=#521 id=521 data-nosnippet>521</a>    FlagM2,
+<a href=#522 id=522 data-nosnippet>522</a>    GCS,
+<a href=#523 id=523 data-nosnippet>523</a>    HAF,
+<a href=#524 id=524 data-nosnippet>524</a>    HAFT,
+<a href=#525 id=525 data-nosnippet>525</a>    HAFDBS,
+<a href=#526 id=526 data-nosnippet>526</a>    HBC,
+<a href=#527 id=527 data-nosnippet>527</a>    HPDS,
+<a href=#528 id=528 data-nosnippet>528</a>    IESB,
+<a href=#529 id=529 data-nosnippet>529</a>    LPA2,
+<a href=#530 id=530 data-nosnippet>530</a>    LS64WB,
+<a href=#531 id=531 data-nosnippet>531</a>    LSE2,
+<a href=#532 id=532 data-nosnippet>532</a>    MEC,
+<a href=#533 id=533 data-nosnippet>533</a>    MPAMv0p1,
+<a href=#534 id=534 data-nosnippet>534</a>    MPAMv1p1,
+<a href=#535 id=535 data-nosnippet>535</a>    <span class="attr">#[allow(non_camel_case_types)]
+<a href=#536 id=536 data-nosnippet>536</a>    </span>MTE_CANONICAL_TAGS,
+<a href=#537 id=537 data-nosnippet>537</a>    <span class="attr">#[allow(non_camel_case_types)]
+<a href=#538 id=538 data-nosnippet>538</a>    </span>MTE_NO_ADDRESS_TAGS,
+<a href=#539 id=539 data-nosnippet>539</a>    PAuth,
+<a href=#540 id=540 data-nosnippet>540</a>    PMUv3,
+<a href=#541 id=541 data-nosnippet>541</a>    <span class="attr">#[allow(non_camel_case_types)]
+<a href=#542 id=542 data-nosnippet>542</a>    </span>PMUv3_ICNTR,
+<a href=#543 id=543 data-nosnippet>543</a>    RME,
+<a href=#544 id=544 data-nosnippet>544</a>    S1PIE,
+<a href=#545 id=545 data-nosnippet>545</a>    SECURE,
+<a href=#546 id=546 data-nosnippet>546</a>    SEL2,
+<a href=#547 id=547 data-nosnippet>547</a>    SME,
+<a href=#548 id=548 data-nosnippet>548</a>    SPE,
+<a href=#549 id=549 data-nosnippet>549</a>    THE,
+<a href=#550 id=550 data-nosnippet>550</a>    VHE,
+<a href=#551 id=551 data-nosnippet>551</a>}
+<a href=#552 id=552 data-nosnippet>552</a>
+<a href=#553 id=553 data-nosnippet>553</a><span class="kw">impl </span>Cpu {
+<a href=#554 id=554 data-nosnippet>554</a>    <span class="kw">pub const </span>NUM_PMU_COUNTERS: usize = <span class="number">0</span>;
+<a href=#555 id=555 data-nosnippet>555</a>    <span class="kw">pub const </span>PMU_EVENT_INST_RETIRED: u16 = <span class="number">0x08</span>;
+<a href=#556 id=556 data-nosnippet>556</a>    <span class="kw">pub const </span>PMU_EVENT_BRB_FILTRATE: u16 = <span class="number">0x811F</span>;
+<a href=#557 id=557 data-nosnippet>557</a>
+<a href=#558 id=558 data-nosnippet>558</a>    <span class="kw">pub const fn </span>is_feature_implemented(feat: Feature) -&gt; bool {
+<a href=#559 id=559 data-nosnippet>559</a>        <span class="kw">match </span>feat {
+<a href=#560 id=560 data-nosnippet>560</a>            Feature::AA32 =&gt; <span class="bool-val">false</span>,
+<a href=#561 id=561 data-nosnippet>561</a>            Feature::AA32EL0 =&gt; <span class="bool-val">false</span>,
+<a href=#562 id=562 data-nosnippet>562</a>            Feature::AA32EL1 =&gt; <span class="bool-val">false</span>,
+<a href=#563 id=563 data-nosnippet>563</a>            Feature::AA32EL2 =&gt; <span class="bool-val">false</span>,
+<a href=#564 id=564 data-nosnippet>564</a>            Feature::AA32EL3 =&gt; <span class="bool-val">false</span>,
+<a href=#565 id=565 data-nosnippet>565</a>            Feature::AA64 =&gt; <span class="bool-val">true</span>,
+<a href=#566 id=566 data-nosnippet>566</a>            Feature::AA64EL0 =&gt; <span class="bool-val">false</span>,
+<a href=#567 id=567 data-nosnippet>567</a>            Feature::AA64EL1 =&gt; <span class="bool-val">false</span>,
+<a href=#568 id=568 data-nosnippet>568</a>            Feature::AA64EL2 =&gt; <span class="bool-val">false</span>,
+<a href=#569 id=569 data-nosnippet>569</a>            Feature::AA64EL3 =&gt; <span class="bool-val">false</span>,
+<a href=#570 id=570 data-nosnippet>570</a>            Feature::AIE =&gt; <span class="bool-val">false</span>,
+<a href=#571 id=571 data-nosnippet>571</a>            Feature::BRBE =&gt; <span class="bool-val">false</span>,
+<a href=#572 id=572 data-nosnippet>572</a>            Feature::BRBEv1p1 =&gt; <span class="bool-val">false</span>,
+<a href=#573 id=573 data-nosnippet>573</a>            Feature::BTI =&gt; <span class="bool-val">false</span>,
+<a href=#574 id=574 data-nosnippet>574</a>            Feature::CMPBR =&gt; <span class="bool-val">true</span>,
+<a href=#575 id=575 data-nosnippet>575</a>            Feature::CSSC =&gt; <span class="bool-val">true</span>,
+<a href=#576 id=576 data-nosnippet>576</a>            Feature::D128 =&gt; <span class="bool-val">false</span>,
+<a href=#577 id=577 data-nosnippet>577</a>            Feature::DoubleLock =&gt; <span class="bool-val">false</span>,
+<a href=#578 id=578 data-nosnippet>578</a>            Feature::E2H0 =&gt; <span class="bool-val">false</span>,
+<a href=#579 id=579 data-nosnippet>579</a>            Feature::ExS =&gt; <span class="bool-val">false</span>,
+<a href=#580 id=580 data-nosnippet>580</a>            Feature::FlagM =&gt; <span class="bool-val">false</span>,
+<a href=#581 id=581 data-nosnippet>581</a>            Feature::FlagM2 =&gt; <span class="bool-val">false</span>,
+<a href=#582 id=582 data-nosnippet>582</a>            Feature::GCS =&gt; <span class="bool-val">false</span>,
+<a href=#583 id=583 data-nosnippet>583</a>            Feature::HAF =&gt; <span class="bool-val">false</span>,
+<a href=#584 id=584 data-nosnippet>584</a>            Feature::HAFT =&gt; <span class="bool-val">false</span>,
+<a href=#585 id=585 data-nosnippet>585</a>            Feature::HAFDBS =&gt; <span class="bool-val">false</span>,
+<a href=#586 id=586 data-nosnippet>586</a>            Feature::HBC =&gt; <span class="bool-val">true</span>,
+<a href=#587 id=587 data-nosnippet>587</a>            Feature::HPDS =&gt; <span class="bool-val">false</span>,
+<a href=#588 id=588 data-nosnippet>588</a>            Feature::IESB =&gt; <span class="bool-val">false</span>,
+<a href=#589 id=589 data-nosnippet>589</a>            Feature::LPA2 =&gt; <span class="bool-val">false</span>,
+<a href=#590 id=590 data-nosnippet>590</a>            Feature::LS64WB =&gt; <span class="bool-val">false</span>,
+<a href=#591 id=591 data-nosnippet>591</a>            Feature::LSE2 =&gt; <span class="bool-val">false</span>,
+<a href=#592 id=592 data-nosnippet>592</a>            Feature::MEC =&gt; <span class="bool-val">false</span>,
+<a href=#593 id=593 data-nosnippet>593</a>            Feature::MPAMv0p1 =&gt; <span class="bool-val">false</span>,
+<a href=#594 id=594 data-nosnippet>594</a>            Feature::MPAMv1p1 =&gt; <span class="bool-val">false</span>,
+<a href=#595 id=595 data-nosnippet>595</a>            Feature::MTE_CANONICAL_TAGS =&gt; <span class="bool-val">false</span>,
+<a href=#596 id=596 data-nosnippet>596</a>            Feature::MTE_NO_ADDRESS_TAGS =&gt; <span class="bool-val">false</span>,
+<a href=#597 id=597 data-nosnippet>597</a>            Feature::PAuth =&gt; <span class="bool-val">false</span>,
+<a href=#598 id=598 data-nosnippet>598</a>            Feature::PMUv3 =&gt; <span class="bool-val">false</span>,
+<a href=#599 id=599 data-nosnippet>599</a>            Feature::PMUv3_ICNTR =&gt; <span class="bool-val">false</span>,
+<a href=#600 id=600 data-nosnippet>600</a>            Feature::RME =&gt; <span class="bool-val">false</span>,
+<a href=#601 id=601 data-nosnippet>601</a>            Feature::S1PIE =&gt; <span class="bool-val">false</span>,
+<a href=#602 id=602 data-nosnippet>602</a>            Feature::SECURE =&gt; <span class="bool-val">false</span>,
+<a href=#603 id=603 data-nosnippet>603</a>            Feature::SEL2 =&gt; <span class="bool-val">false</span>,
+<a href=#604 id=604 data-nosnippet>604</a>            Feature::SME =&gt; <span class="bool-val">false</span>,
+<a href=#605 id=605 data-nosnippet>605</a>            Feature::SPE =&gt; <span class="bool-val">false</span>,
+<a href=#606 id=606 data-nosnippet>606</a>            Feature::THE =&gt; <span class="bool-val">false</span>,
+<a href=#607 id=607 data-nosnippet>607</a>            Feature::VHE =&gt; <span class="bool-val">false</span>,
+<a href=#608 id=608 data-nosnippet>608</a>        }
+<a href=#609 id=609 data-nosnippet>609</a>    }
+<a href=#610 id=610 data-nosnippet>610</a>
+<a href=#611 id=611 data-nosnippet>611</a>    <span class="kw">pub fn </span>_get_op(<span class="kw-2">&amp;</span><span class="self">self</span>, n: Register, cond: bool) -&gt; u64 {
+<a href=#612 id=612 data-nosnippet>612</a>        <span class="kw">if </span>cond {
+<a href=#613 id=613 data-nosnippet>613</a>            <span class="self">self</span>.x[n <span class="kw">as </span>usize]
+<a href=#614 id=614 data-nosnippet>614</a>        } <span class="kw">else </span>{
+<a href=#615 id=615 data-nosnippet>615</a>            <span class="self">self</span>.x[n <span class="kw">as </span>usize] <span class="kw">as </span>u32 <span class="kw">as </span>u64
+<a href=#616 id=616 data-nosnippet>616</a>        }
+<a href=#617 id=617 data-nosnippet>617</a>    }
+<a href=#618 id=618 data-nosnippet>618</a>
+<a href=#619 id=619 data-nosnippet>619</a>    <span class="kw">pub fn </span>_set_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: Register, v: u64, cond: bool) {
+<a href=#620 id=620 data-nosnippet>620</a>        <span class="kw">if </span>cond {
+<a href=#621 id=621 data-nosnippet>621</a>            <span class="self">self</span>.x[n <span class="kw">as </span>usize] = v;
+<a href=#622 id=622 data-nosnippet>622</a>        } <span class="kw">else </span>{
+<a href=#623 id=623 data-nosnippet>623</a>            <span class="self">self</span>.x[n <span class="kw">as </span>usize] = to_uint::&lt;<span class="number">32</span>&gt;(v);
+<a href=#624 id=624 data-nosnippet>624</a>        }
+<a href=#625 id=625 data-nosnippet>625</a>    }
+<a href=#626 id=626 data-nosnippet>626</a>
+<a href=#627 id=627 data-nosnippet>627</a>    <span class="kw">pub fn </span>_get_reg_or_sp(<span class="kw-2">&amp;</span><span class="self">self</span>, n: Register, cond: bool) -&gt; u64 {
+<a href=#628 id=628 data-nosnippet>628</a>        <span class="kw">if </span>n == REG_SP {
+<a href=#629 id=629 data-nosnippet>629</a>            <span class="self">self</span>.sp
+<a href=#630 id=630 data-nosnippet>630</a>        } <span class="kw">else </span>{
+<a href=#631 id=631 data-nosnippet>631</a>            <span class="self">self</span>._get_op(n, cond)
+<a href=#632 id=632 data-nosnippet>632</a>        }
+<a href=#633 id=633 data-nosnippet>633</a>    }
+<a href=#634 id=634 data-nosnippet>634</a>
+<a href=#635 id=635 data-nosnippet>635</a>    <span class="kw">pub fn </span>_set_reg_or_sp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: Register, value: u64, cond: bool) {
+<a href=#636 id=636 data-nosnippet>636</a>        <span class="kw">if </span>n == REG_SP {
+<a href=#637 id=637 data-nosnippet>637</a>            <span class="self">self</span>.sp = value;
+<a href=#638 id=638 data-nosnippet>638</a>        } <span class="kw">else </span>{
+<a href=#639 id=639 data-nosnippet>639</a>            <span class="self">self</span>._set_op(n, value, cond);
+<a href=#640 id=640 data-nosnippet>640</a>        }
+<a href=#641 id=641 data-nosnippet>641</a>    }
+<a href=#642 id=642 data-nosnippet>642</a>
+<a href=#643 id=643 data-nosnippet>643</a>    <span class="doccomment">/// A function for purely debug/testing purposes to arbitrarily set the value
+<a href=#644 id=644 data-nosnippet>644</a>    /// of a X register to a provided v value
+<a href=#645 id=645 data-nosnippet>645</a>    </span><span class="kw">pub fn </span>__dbg_set_x(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: usize, v: u64) {
+<a href=#646 id=646 data-nosnippet>646</a>        <span class="self">self</span>.x[n] = v;
+<a href=#647 id=647 data-nosnippet>647</a>    }
+<a href=#648 id=648 data-nosnippet>648</a>
+<a href=#649 id=649 data-nosnippet>649</a>    <span class="doccomment">/// A function for purely debug/testing purposes to arbitrarily fetch the value
+<a href=#650 id=650 data-nosnippet>650</a>    /// of a X register
+<a href=#651 id=651 data-nosnippet>651</a>    </span><span class="kw">pub fn </span>__dbg_get_x(<span class="kw-2">&amp;</span><span class="self">self</span>, n: usize) -&gt; u64 {
+<a href=#652 id=652 data-nosnippet>652</a>        <span class="self">self</span>.x[n]
+<a href=#653 id=653 data-nosnippet>653</a>    }
+<a href=#654 id=654 data-nosnippet>654</a>
+<a href=#655 id=655 data-nosnippet>655</a>    <span class="doccomment">/// A function for purely debug/testing purposes to get a mutable reference
+<a href=#656 id=656 data-nosnippet>656</a>    /// to the CPU's PSTATE
+<a href=#657 id=657 data-nosnippet>657</a>    </span><span class="kw">pub fn </span>__dbg_get_pstate(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>pstate::PState {
+<a href=#658 id=658 data-nosnippet>658</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.pstate
+<a href=#659 id=659 data-nosnippet>659</a>    }
+<a href=#660 id=660 data-nosnippet>660</a>
+<a href=#661 id=661 data-nosnippet>661</a>    <span class="doccomment">/// **ADR**: Form PC-relative address
+<a href=#662 id=662 data-nosnippet>662</a>    ///
+<a href=#663 id=663 data-nosnippet>663</a>    /// This instruction adds an immediate value to the PC value to form a PC-relative address, and writes the result to the
+<a href=#664 id=664 data-nosnippet>664</a>    /// destination register.
+<a href=#665 id=665 data-nosnippet>665</a>    </span><span class="kw">pub fn </span>adr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, immlo: u8, immhi: u32, d: Register) {
+<a href=#666 id=666 data-nosnippet>666</a>        <span class="kw">let </span>immlo = to_uint::&lt;<span class="number">2</span>&gt;(immlo <span class="kw">as </span>u64);
+<a href=#667 id=667 data-nosnippet>667</a>        <span class="kw">let </span>immhi = to_uint::&lt;<span class="number">19</span>&gt;(immhi <span class="kw">as </span>u64);
+<a href=#668 id=668 data-nosnippet>668</a>
+<a href=#669 id=669 data-nosnippet>669</a>        <span class="kw">let </span>imm = (immhi &lt;&lt; <span class="number">2</span>) | immlo;
+<a href=#670 id=670 data-nosnippet>670</a>        <span class="self">self</span>._set_op(d, <span class="self">self</span>.get_PC64().wrapping_add(imm), <span class="bool-val">true</span>);
+<a href=#671 id=671 data-nosnippet>671</a>    }
+<a href=#672 id=672 data-nosnippet>672</a>
+<a href=#673 id=673 data-nosnippet>673</a>    <span class="doccomment">/// **ADRP**: Form PC-relative address to 4KB page
+<a href=#674 id=674 data-nosnippet>674</a>    ///
+<a href=#675 id=675 data-nosnippet>675</a>    /// This instruction adds an immediate value that is shifted left by 12 bits, to the PC value to form a PC-relative address, with
+<a href=#676 id=676 data-nosnippet>676</a>    /// the bottom 12 bits masked out, and writes the result to the destination register.
+<a href=#677 id=677 data-nosnippet>677</a>    </span><span class="kw">pub fn </span>adrp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, immlo: u8, immhi: u32, d: Register) {
+<a href=#678 id=678 data-nosnippet>678</a>        <span class="kw">let </span>immlo = to_uint::&lt;<span class="number">2</span>&gt;(immlo <span class="kw">as </span>u64);
+<a href=#679 id=679 data-nosnippet>679</a>        <span class="kw">let </span>immhi = to_uint::&lt;<span class="number">19</span>&gt;(immhi <span class="kw">as </span>u64);
+<a href=#680 id=680 data-nosnippet>680</a>
+<a href=#681 id=681 data-nosnippet>681</a>        <span class="kw">let </span>imm = ((immhi &lt;&lt; <span class="number">2</span>) | immlo) &lt;&lt; <span class="number">12</span>;
+<a href=#682 id=682 data-nosnippet>682</a>        <span class="kw">let </span>base = <span class="self">self</span>.get_PC64() &amp; (!<span class="number">0u64 </span>&lt;&lt; <span class="number">12</span>);
+<a href=#683 id=683 data-nosnippet>683</a>
+<a href=#684 id=684 data-nosnippet>684</a>        <span class="self">self</span>._set_op(d, base.wrapping_add(imm), <span class="bool-val">true</span>);
+<a href=#685 id=685 data-nosnippet>685</a>    }
+<a href=#686 id=686 data-nosnippet>686</a>
+<a href=#687 id=687 data-nosnippet>687</a>    <span class="doccomment">/// **AXFLAG**: Convert floating-point condition flags from Arm to external format
+<a href=#688 id=688 data-nosnippet>688</a>    ///
+<a href=#689 id=689 data-nosnippet>689</a>    /// This instruction converts the state of the PSTATE.{N,Z,C,V} flags from a form representing the result of an Arm
+<a href=#690 id=690 data-nosnippet>690</a>    /// floating-point scalar compare instruction to an alternative representation required by some software.
+<a href=#691 id=691 data-nosnippet>691</a>    </span><span class="kw">pub fn </span>axflag(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#692 id=692 data-nosnippet>692</a>        <span class="kw">let </span>z = <span class="self">self</span>.pstate.Z() || <span class="self">self</span>.pstate.V();
+<a href=#693 id=693 data-nosnippet>693</a>        <span class="kw">let </span>c = <span class="self">self</span>.pstate.C() &amp;&amp; !<span class="self">self</span>.pstate.V();
+<a href=#694 id=694 data-nosnippet>694</a>
+<a href=#695 id=695 data-nosnippet>695</a>        <span class="self">self</span>.pstate.set_nzcv(<span class="kw-2">&amp;</span>NZCV::init(<span class="bool-val">false</span>, z, c, <span class="bool-val">false</span>));
+<a href=#696 id=696 data-nosnippet>696</a>    }
+<a href=#697 id=697 data-nosnippet>697</a>
+<a href=#698 id=698 data-nosnippet>698</a>    <span class="kw">fn </span>execute_instruction(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instr: Instruction) {
+<a href=#699 id=699 data-nosnippet>699</a>        <span class="kw">match </span>instr {
+<a href=#700 id=700 data-nosnippet>700</a>            Instruction::Abs { sf, rn, rd } =&gt; <span class="self">self</span>.abs(sf, rn, rd),
+<a href=#701 id=701 data-nosnippet>701</a>            Instruction::Adc { sf, rm, rn, rd } =&gt; <span class="self">self</span>.adc(sf, rm, rn, rd),
+<a href=#702 id=702 data-nosnippet>702</a>            Instruction::Adcs { sf, rm, rn, rd } =&gt; <span class="self">self</span>.adcs(sf, rm, rn, rd),
+<a href=#703 id=703 data-nosnippet>703</a>            Instruction::AddEr {
 <a href=#704 id=704 data-nosnippet>704</a>                sf,
-<a href=#705 id=705 data-nosnippet>705</a>                sh,
-<a href=#706 id=706 data-nosnippet>706</a>                imm12,
-<a href=#707 id=707 data-nosnippet>707</a>                rn,
-<a href=#708 id=708 data-nosnippet>708</a>                rd,
-<a href=#709 id=709 data-nosnippet>709</a>            } =&gt; <span class="self">self</span>.sub_imm(sf, sh, imm12, rn, rd),
-<a href=#710 id=710 data-nosnippet>710</a>            Instruction::SubSr {
-<a href=#711 id=711 data-nosnippet>711</a>                sf,
-<a href=#712 id=712 data-nosnippet>712</a>                shift,
-<a href=#713 id=713 data-nosnippet>713</a>                rm,
-<a href=#714 id=714 data-nosnippet>714</a>                imm6,
+<a href=#705 id=705 data-nosnippet>705</a>                rm,
+<a href=#706 id=706 data-nosnippet>706</a>                option,
+<a href=#707 id=707 data-nosnippet>707</a>                imm3,
+<a href=#708 id=708 data-nosnippet>708</a>                rn,
+<a href=#709 id=709 data-nosnippet>709</a>                rd,
+<a href=#710 id=710 data-nosnippet>710</a>            } =&gt; <span class="self">self</span>.add_er(sf, rm, option, imm3, rn, rd),
+<a href=#711 id=711 data-nosnippet>711</a>            Instruction::AddImm {
+<a href=#712 id=712 data-nosnippet>712</a>                sf,
+<a href=#713 id=713 data-nosnippet>713</a>                sh,
+<a href=#714 id=714 data-nosnippet>714</a>                imm12,
 <a href=#715 id=715 data-nosnippet>715</a>                rn,
 <a href=#716 id=716 data-nosnippet>716</a>                rd,
-<a href=#717 id=717 data-nosnippet>717</a>            } =&gt; <span class="self">self</span>.sub_sr(sf, shift, rm, imm6, rn, rd),
-<a href=#718 id=718 data-nosnippet>718</a>            Instruction::SubsEr {
+<a href=#717 id=717 data-nosnippet>717</a>            } =&gt; <span class="self">self</span>.add_imm(sf, sh, imm12, rn, rd),
+<a href=#718 id=718 data-nosnippet>718</a>            Instruction::AddSr {
 <a href=#719 id=719 data-nosnippet>719</a>                sf,
-<a href=#720 id=720 data-nosnippet>720</a>                rm,
-<a href=#721 id=721 data-nosnippet>721</a>                option,
-<a href=#722 id=722 data-nosnippet>722</a>                imm3,
+<a href=#720 id=720 data-nosnippet>720</a>                shift,
+<a href=#721 id=721 data-nosnippet>721</a>                rm,
+<a href=#722 id=722 data-nosnippet>722</a>                imm6,
 <a href=#723 id=723 data-nosnippet>723</a>                rn,
 <a href=#724 id=724 data-nosnippet>724</a>                rd,
-<a href=#725 id=725 data-nosnippet>725</a>            } =&gt; <span class="self">self</span>.subs_er(sf, rm, option, imm3, rn, rd),
-<a href=#726 id=726 data-nosnippet>726</a>            Instruction::SubsImm {
-<a href=#727 id=727 data-nosnippet>727</a>                sf,
-<a href=#728 id=728 data-nosnippet>728</a>                sh,
-<a href=#729 id=729 data-nosnippet>729</a>                imm12,
-<a href=#730 id=730 data-nosnippet>730</a>                rn,
-<a href=#731 id=731 data-nosnippet>731</a>                rd,
-<a href=#732 id=732 data-nosnippet>732</a>            } =&gt; <span class="self">self</span>.subs_imm(sf, sh, imm12, rn, rd),
-<a href=#733 id=733 data-nosnippet>733</a>        }
-<a href=#734 id=734 data-nosnippet>734</a>    }
-<a href=#735 id=735 data-nosnippet>735</a>
-<a href=#736 id=736 data-nosnippet>736</a>    <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>, memory: <span class="kw-2">&amp;mut </span>Memory) -&gt; <span class="prelude-ty">Result</span>&lt;(), CpuError&gt; {
-<a href=#737 id=737 data-nosnippet>737</a>        <span class="kw">let </span>instruction_word = memory
-<a href=#738 id=738 data-nosnippet>738</a>            .read::&lt;u32&gt;(<span class="self">self</span>.get_PC64() <span class="kw">as </span>usize)
-<a href=#739 id=739 data-nosnippet>739</a>            .ok_or(CpuError::InstructionReadError)<span class="question-mark">?</span>;
-<a href=#740 id=740 data-nosnippet>740</a>
-<a href=#741 id=741 data-nosnippet>741</a>        <span class="kw">let </span>decoded = decode::decode(instruction_word);
-<a href=#742 id=742 data-nosnippet>742</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(instr) = decoded {
-<a href=#743 id=743 data-nosnippet>743</a>            <span class="macro">println!</span>(<span class="string">"Executing instruction: {:?}"</span>, instr);
-<a href=#744 id=744 data-nosnippet>744</a>            <span class="self">self</span>.execute_instruction(instr);
-<a href=#745 id=745 data-nosnippet>745</a>        }
-<a href=#746 id=746 data-nosnippet>746</a>
-<a href=#747 id=747 data-nosnippet>747</a>        <span class="self">self</span>._pc += <span class="number">4</span>;
-<a href=#748 id=748 data-nosnippet>748</a>
-<a href=#749 id=749 data-nosnippet>749</a>        <span class="prelude-val">Ok</span>(())
-<a href=#750 id=750 data-nosnippet>750</a>    }
-<a href=#751 id=751 data-nosnippet>751</a>}</code></pre></div></section></main></body></html>
+<a href=#725 id=725 data-nosnippet>725</a>            } =&gt; <span class="self">self</span>.add_sr(sf, shift, rm, imm6, rn, rd),
+<a href=#726 id=726 data-nosnippet>726</a>            Instruction::BCond { imm19, cond } =&gt; <span class="self">self</span>.b_cond(imm19, cond),
+<a href=#727 id=727 data-nosnippet>727</a>            Instruction::Movz { sf, rd, imm16, hw } =&gt; <span class="self">self</span>.movz(sf, hw, imm16, rd),
+<a href=#728 id=728 data-nosnippet>728</a>            Instruction::SubEr {
+<a href=#729 id=729 data-nosnippet>729</a>                sf,
+<a href=#730 id=730 data-nosnippet>730</a>                rm,
+<a href=#731 id=731 data-nosnippet>731</a>                option,
+<a href=#732 id=732 data-nosnippet>732</a>                imm3,
+<a href=#733 id=733 data-nosnippet>733</a>                rn,
+<a href=#734 id=734 data-nosnippet>734</a>                rd,
+<a href=#735 id=735 data-nosnippet>735</a>            } =&gt; <span class="self">self</span>.sub_er(sf, rm, option, imm3, rn, rd),
+<a href=#736 id=736 data-nosnippet>736</a>            Instruction::SubImm {
+<a href=#737 id=737 data-nosnippet>737</a>                sf,
+<a href=#738 id=738 data-nosnippet>738</a>                sh,
+<a href=#739 id=739 data-nosnippet>739</a>                imm12,
+<a href=#740 id=740 data-nosnippet>740</a>                rn,
+<a href=#741 id=741 data-nosnippet>741</a>                rd,
+<a href=#742 id=742 data-nosnippet>742</a>            } =&gt; <span class="self">self</span>.sub_imm(sf, sh, imm12, rn, rd),
+<a href=#743 id=743 data-nosnippet>743</a>            Instruction::SubSr {
+<a href=#744 id=744 data-nosnippet>744</a>                sf,
+<a href=#745 id=745 data-nosnippet>745</a>                shift,
+<a href=#746 id=746 data-nosnippet>746</a>                rm,
+<a href=#747 id=747 data-nosnippet>747</a>                imm6,
+<a href=#748 id=748 data-nosnippet>748</a>                rn,
+<a href=#749 id=749 data-nosnippet>749</a>                rd,
+<a href=#750 id=750 data-nosnippet>750</a>            } =&gt; <span class="self">self</span>.sub_sr(sf, shift, rm, imm6, rn, rd),
+<a href=#751 id=751 data-nosnippet>751</a>            Instruction::SubsEr {
+<a href=#752 id=752 data-nosnippet>752</a>                sf,
+<a href=#753 id=753 data-nosnippet>753</a>                rm,
+<a href=#754 id=754 data-nosnippet>754</a>                option,
+<a href=#755 id=755 data-nosnippet>755</a>                imm3,
+<a href=#756 id=756 data-nosnippet>756</a>                rn,
+<a href=#757 id=757 data-nosnippet>757</a>                rd,
+<a href=#758 id=758 data-nosnippet>758</a>            } =&gt; <span class="self">self</span>.subs_er(sf, rm, option, imm3, rn, rd),
+<a href=#759 id=759 data-nosnippet>759</a>            Instruction::SubsImm {
+<a href=#760 id=760 data-nosnippet>760</a>                sf,
+<a href=#761 id=761 data-nosnippet>761</a>                sh,
+<a href=#762 id=762 data-nosnippet>762</a>                imm12,
+<a href=#763 id=763 data-nosnippet>763</a>                rn,
+<a href=#764 id=764 data-nosnippet>764</a>                rd,
+<a href=#765 id=765 data-nosnippet>765</a>            } =&gt; <span class="self">self</span>.subs_imm(sf, sh, imm12, rn, rd),
+<a href=#766 id=766 data-nosnippet>766</a>        }
+<a href=#767 id=767 data-nosnippet>767</a>    }
+<a href=#768 id=768 data-nosnippet>768</a>
+<a href=#769 id=769 data-nosnippet>769</a>    <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>, memory: <span class="kw-2">&amp;mut </span>Memory) -&gt; <span class="prelude-ty">Result</span>&lt;(), CpuError&gt; {
+<a href=#770 id=770 data-nosnippet>770</a>        <span class="kw">let </span>instruction_word = memory
+<a href=#771 id=771 data-nosnippet>771</a>            .read::&lt;u32&gt;(<span class="self">self</span>.get_PC64() <span class="kw">as </span>usize)
+<a href=#772 id=772 data-nosnippet>772</a>            .ok_or(CpuError::InstructionReadError)<span class="question-mark">?</span>;
+<a href=#773 id=773 data-nosnippet>773</a>
+<a href=#774 id=774 data-nosnippet>774</a>        <span class="kw">let </span>decoded = decode::decode(instruction_word);
+<a href=#775 id=775 data-nosnippet>775</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(instr) = decoded {
+<a href=#776 id=776 data-nosnippet>776</a>            <span class="macro">println!</span>(<span class="string">"Executing instruction: {:?}"</span>, instr);
+<a href=#777 id=777 data-nosnippet>777</a>            <span class="self">self</span>.execute_instruction(instr);
+<a href=#778 id=778 data-nosnippet>778</a>        }
+<a href=#779 id=779 data-nosnippet>779</a>
+<a href=#780 id=780 data-nosnippet>780</a>        <span class="self">self</span>._pc += <span class="number">4</span>;
+<a href=#781 id=781 data-nosnippet>781</a>
+<a href=#782 id=782 data-nosnippet>782</a>        <span class="prelude-val">Ok</span>(())
+<a href=#783 id=783 data-nosnippet>783</a>    }
+<a href=#784 id=784 data-nosnippet>784</a>}</code></pre></div></section></main></body></html>

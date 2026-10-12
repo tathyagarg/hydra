@@ -21,6 +21,5 @@ fn main() {
         }
     }
 
-    println!("X0: {:?}", cpu.__dbg_get_x(0));
-    println!("X1: {:?}", cpu.__dbg_get_x(1));
+    println!("Sum is: {:?}", cpu.__dbg_get_x(0));
 }

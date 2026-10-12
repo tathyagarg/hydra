@@ -17,10 +17,12 @@ mod mpamsm_el1;
 mod mpamvpmv_el2;
 mod scr;
 mod scr_el3;
+mod sctlr2_el1;
 mod sctlr_el1;
 mod sctlr_el2;
 mod sctlr_el3;
 mod tcr_el1;
+mod tcr_el3;
 
 pub use self::brbcr_el1::BRBCR_EL1Field;
 pub use self::brbcr_el2::BRBCR_EL2Field;
@@ -43,6 +45,7 @@ pub use self::scr_el3::SCR_EL3Field;
 // pub use self::sctlr_el2::SCTLR_EL2Field;
 // pub use self::sctlr_el3::SCTLR_EL3Field;
 pub use self::tcr_el1::TCR_EL1Field;
+pub use self::tcr_el3::TCR_EL3Field;
 
 pub trait RegisterField<T> {
     fn fetch_bit(self, v: T) -> bool;
@@ -79,6 +82,14 @@ pub enum SCTLRField {
     A = 1,
     M = 0,
 }
+
+pub type MAIRType = [u8; 8];
+
+pub fn mairtype_from_mair(mair: u64) -> MAIRType {
+    mair.to_be_bytes()
+}
+
+pub type S1PIRType = [u8; 16];
 
 impl RegisterField<u64> for SCTLRField {
     fn fetch_bit(self, sctlr_v: SCTLRType) -> bool {
