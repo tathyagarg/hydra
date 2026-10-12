@@ -1,5 +1,5 @@
 use crate::cpu::{
-    Cpu, DecodeType, ExtendType, Feature, Register, ShiftType,
+    Cpu, DecodeType, ExtendType, Feature, REG_ZR, Register, ShiftType,
     common::{n_bits, nth_bit, ones},
     shared,
 };
@@ -867,7 +867,10 @@ impl Cpu {
         };
 
         self.pstate.set_nzcv(&nzcv);
-        self._set_reg_or_sp(d, result, sf);
+
+        if d != REG_ZR {
+            self._set_op(d, result, sf);
+        }
     }
 
     /// **SUBS (immediate)**: Subtract immediate value, setting flags
@@ -891,7 +894,10 @@ impl Cpu {
             operand1, imm, result, nzcv
         );
         self.pstate.set_nzcv(&nzcv);
-        self._set_reg_or_sp(d, result, sf);
+
+        if d != REG_ZR {
+            self._set_op(d, result, sf);
+        }
     }
 
     /// **SUBS (shifted register)**: Subtract optionally-shifted register, setting flags
@@ -920,8 +926,12 @@ impl Cpu {
             shared::add_with_carry::<32>(operand1, operand2, true)
         };
 
+        println!("Result of subs: {} {:?}", result, nzcv);
         self.pstate.set_nzcv(&nzcv);
-        self._set_op(d, result, sf);
+
+        if d != REG_ZR {
+            self._set_op(d, result, sf);
+        }
     }
 
     /// **UBFM**: Unsigned bitfield move

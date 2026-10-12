@@ -5,7 +5,7 @@ use crate::cpu::{
     fault::{AccessDescriptor, AccessType, ErrorState, Fault, FaultRecord, VARange},
     regs::{
         HCR_EL2Field, MAIRType, RegisterField, RegisterFieldRange, S1PIRType, SCR_EL3Field,
-        SCTLRField, TCR_EL3Field, mairtype_from_mair,
+        SCTLR2_EL3Field, SCTLRField, TCR_EL3Field, mairtype_from_mair,
     },
     shared::{EL, Regime, SecurityState},
 };
@@ -421,11 +421,56 @@ impl Cpu {
         } else {
             false
         };
-        // let emec = if Cpu::is_feature_implemented(Feature::MEC) {
-        //     SCT
-        // }
+        let emec = if Cpu::is_feature_implemented(Feature::MEC) {
+            SCTLR2_EL3Field::EMEC.fetch_bit(self.sctlr2_el3)
+        } else {
+            false
+        };
 
-        todo!()
+        S1TTWParams {
+            tgx,
+            txsz,
+            ps,
+            irgn,
+            orgn,
+            sh,
+            tbi,
+            mair,
+            d128,
+            skl,
+            disch,
+            pie,
+            pir,
+            mair2,
+            aie,
+            wxn,
+            ee,
+            sif,
+            tbid,
+            hpd,
+            ha,
+            hd,
+            ds,
+            mtx,
+            pnch,
+            haft,
+            emec,
+            nfd: false,
+            amec: false,
+            cmow: false,
+            dc: false,
+            dct: false,
+            e0pd: false,
+            epan: false,
+            nv1: false,
+            fng: false,
+            fngna: false,
+            ntlsmd: false,
+            pire0: [0; 16],
+            t0sz: 0,
+            t1sz: 0,
+            uwxn: false,
+        }
     }
 
     pub fn aarch64_gets1ttw_params(

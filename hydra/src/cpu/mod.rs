@@ -379,9 +379,14 @@ pub struct Cpu {
 
     scr: u32,
     scr_el3: u64,
+
     sctlr_el1: u64,
     sctlr_el2: u64,
     sctlr_el3: u64,
+
+    sctlr2_el1: u64,
+    sctlr2_el2: u64,
+    sctlr2_el3: u64,
 
     edscr: u32,
 
@@ -443,6 +448,9 @@ impl Default for Cpu {
             sctlr_el1: 0,
             sctlr_el2: 0,
             sctlr_el3: 0,
+            sctlr2_el1: 0,
+            sctlr2_el2: 0,
+            sctlr2_el3: 0,
             edscr: 0,
             hcr_el2: 0,
             brbfcr_el0: 0,
@@ -763,6 +771,14 @@ impl Cpu {
                 rn,
                 rd,
             } => self.subs_imm(sf, sh, imm12, rn, rd),
+            Instruction::SubsSr {
+                sf,
+                shift,
+                rm,
+                imm6,
+                rn,
+                rd,
+            } => self.subs_sr(sf, shift, rm, imm6, rn, rd),
         }
     }
 

@@ -18,6 +18,8 @@ mod mpamvpmv_el2;
 mod scr;
 mod scr_el3;
 mod sctlr2_el1;
+mod sctlr2_el2;
+mod sctlr2_el3;
 mod sctlr_el1;
 mod sctlr_el2;
 mod sctlr_el3;
@@ -44,6 +46,9 @@ pub use self::scr_el3::SCR_EL3Field;
 // pub use self::sctlr_el1::SCTLR_EL1Field;
 // pub use self::sctlr_el2::SCTLR_EL2Field;
 // pub use self::sctlr_el3::SCTLR_EL3Field;
+pub use self::sctlr2_el1::SCTLR2_EL1Field;
+pub use self::sctlr2_el2::SCTLR2_EL2Field;
+pub use self::sctlr2_el3::SCTLR2_EL3Field;
 pub use self::tcr_el1::TCR_EL1Field;
 pub use self::tcr_el3::TCR_EL3Field;
 

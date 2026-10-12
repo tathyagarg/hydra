@@ -90,46 +90,15 @@ pub enum Instruction {
         rn: Register,
         rd: Register,
     },
+    SubsSr {
+        sf: bool,
+        shift: u8,
+        rm: Register,
+        imm6: u8,
+        rn: Register,
+        rd: Register,
+    },
 }
-
-const ABS_M: u32 = 0b01111111111111111111110000000000;
-const ABS_V: u32 = 0b01011010110000000010000000000000;
-
-const ADC_M: u32 = 0b01111111111000001111110000000000;
-const ADC_V: u32 = 0b00011010000000000000000000000000;
-
-const ADCS_M: u32 = 0b01111111111000001111110000000000;
-const ADCS_V: u32 = 0b00111010000000000000000000000000;
-
-const ADD_ER_M: u32 = 0b01111111111000000000000000000000;
-const ADD_ER_V: u32 = 0b00001011001000000000000000000000;
-
-const ADD_IMM_M: u32 = 0b01111111100000000000000000000000;
-const ADD_IMM_V: u32 = 0b00010001000000000000000000000000;
-
-const ADD_SR_M: u32 = 0b01111111001000000000000000000000;
-const ADD_SR_V: u32 = 0b00001011000000000000000000000000;
-
-const BCOND_M: u32 = 0b11111111000000000000000000010000;
-const BCOND_V: u32 = 0b01010100000000000000000000000000;
-
-const MOVZ_M: u32 = 0b01111111100000000000000000000000;
-const MOVZ_V: u32 = 0b01010010100000000000000000000000;
-
-const SUB_ER_M: u32 = 0b01111111111000000000000000000000;
-const SUB_ER_V: u32 = 0b01001011001000000000000000000000;
-
-const SUB_IMM_M: u32 = 0b01111111100000000000000000000000;
-const SUB_IMM_V: u32 = 0b01010001000000000000000000000000;
-
-const SUB_SR_M: u32 = 0b01111111001000000000000000000000;
-const SUB_SR_V: u32 = 0b01001011000000000000000000000000;
-
-const SUBS_ER_M: u32 = 0b01111111111000000000000000000000;
-const SUBS_ER_V: u32 = 0b01101011001000000000000000000000;
-
-const SUBS_IMM_M: u32 = 0b01111111100000000000000000000000;
-const SUBS_IMM_V: u32 = 0b01110001000000000000000000000000;
 
 fn sf_decode(word: u32) -> bool {
     (word >> 31) & 1 == 1
@@ -139,6 +108,9 @@ fn reg_decode(word: u32, pos: usize) -> Register {
     ((word >> pos) & 0b11111) as Register
 }
 
+const ABS_M: u32 = 0b01111111111111111111110000000000;
+const ABS_V: u32 = 0b01011010110000000010000000000000;
+
 fn decode_abs(word: u32) -> Instruction {
     let sf = sf_decode(word);
     let rn = reg_decode(word, 5);
@@ -146,6 +118,9 @@ fn decode_abs(word: u32) -> Instruction {
 
     Instruction::Abs { sf, rn, rd }
 }
+
+const ADC_M: u32 = 0b01111111111000001111110000000000;
+const ADC_V: u32 = 0b00011010000000000000000000000000;
 
 fn decode_adc(word: u32) -> Instruction {
     let sf = sf_decode(word);
@@ -156,6 +131,9 @@ fn decode_adc(word: u32) -> Instruction {
     Instruction::Adc { sf, rm, rn, rd }
 }
 
+const ADCS_M: u32 = 0b01111111111000001111110000000000;
+const ADCS_V: u32 = 0b00111010000000000000000000000000;
+
 fn decode_adcs(word: u32) -> Instruction {
     let sf = sf_decode(word);
     let rm = reg_decode(word, 16);
@@ -164,6 +142,9 @@ fn decode_adcs(word: u32) -> Instruction {
 
     Instruction::Adcs { sf, rm, rn, rd }
 }
+
+const ADD_ER_M: u32 = 0b01111111111000000000000000000000;
+const ADD_ER_V: u32 = 0b00001011001000000000000000000000;
 
 fn decode_add_er(word: u32) -> Instruction {
     let sf = sf_decode(word);
@@ -183,6 +164,9 @@ fn decode_add_er(word: u32) -> Instruction {
     }
 }
 
+const ADD_IMM_M: u32 = 0b01111111100000000000000000000000;
+const ADD_IMM_V: u32 = 0b00010001000000000000000000000000;
+
 fn decode_add_imm(word: u32) -> Instruction {
     let sf = sf_decode(word);
     let sh = ((word >> 22) & 1) == 1;
@@ -198,6 +182,9 @@ fn decode_add_imm(word: u32) -> Instruction {
         rd,
     }
 }
+
+const ADD_SR_M: u32 = 0b01111111001000000000000000000000;
+const ADD_SR_V: u32 = 0b00001011000000000000000000000000;
 
 fn decode_add_sr(word: u32) -> Instruction {
     let sf = sf_decode(word);
@@ -217,12 +204,18 @@ fn decode_add_sr(word: u32) -> Instruction {
     }
 }
 
+const BCOND_M: u32 = 0b11111111000000000000000000010000;
+const BCOND_V: u32 = 0b01010100000000000000000000000000;
+
 fn bcond_decode(word: u32) -> Instruction {
     let imm19 = ((word >> 5) & 0x7FFFF) as u32;
     let cond = ((word >> 0) & 0b1111) as u8;
 
     Instruction::BCond { imm19, cond }
 }
+
+const MOVZ_M: u32 = 0b01111111100000000000000000000000;
+const MOVZ_V: u32 = 0b01010010100000000000000000000000;
 
 fn decode_movz(word: u32) -> Instruction {
     let sf = sf_decode(word);
@@ -232,6 +225,9 @@ fn decode_movz(word: u32) -> Instruction {
 
     Instruction::Movz { sf, rd, imm16, hw }
 }
+
+const SUB_ER_M: u32 = 0b01111111111000000000000000000000;
+const SUB_ER_V: u32 = 0b01001011001000000000000000000000;
 
 fn decode_sub_er(word: u32) -> Instruction {
     let sf = sf_decode(word);
@@ -251,6 +247,9 @@ fn decode_sub_er(word: u32) -> Instruction {
     }
 }
 
+const SUB_IMM_M: u32 = 0b01111111100000000000000000000000;
+const SUB_IMM_V: u32 = 0b01010001000000000000000000000000;
+
 fn decode_sub_imm(word: u32) -> Instruction {
     let sf = sf_decode(word);
     let sh = ((word >> 22) & 1) == 1;
@@ -266,6 +265,9 @@ fn decode_sub_imm(word: u32) -> Instruction {
         rd,
     }
 }
+
+const SUB_SR_M: u32 = 0b01111111001000000000000000000000;
+const SUB_SR_V: u32 = 0b01001011000000000000000000000000;
 
 fn decode_sub_sr(word: u32) -> Instruction {
     let sf = sf_decode(word);
@@ -285,6 +287,9 @@ fn decode_sub_sr(word: u32) -> Instruction {
     }
 }
 
+const SUBS_ER_M: u32 = 0b01111111111000000000000000000000;
+const SUBS_ER_V: u32 = 0b01101011001000000000000000000000;
+
 fn decode_subs_er(word: u32) -> Instruction {
     let sf = sf_decode(word);
     let rm = reg_decode(word, 16);
@@ -303,6 +308,9 @@ fn decode_subs_er(word: u32) -> Instruction {
     }
 }
 
+const SUBS_IMM_M: u32 = 0b01111111100000000000000000000000;
+const SUBS_IMM_V: u32 = 0b01110001000000000000000000000000;
+
 fn decode_subs_imm(word: u32) -> Instruction {
     let sf = sf_decode(word);
     let sh = ((word >> 22) & 1) == 1;
@@ -319,7 +327,28 @@ fn decode_subs_imm(word: u32) -> Instruction {
     }
 }
 
-const IMPLEMENTED_INSTRUCTION_MAP: [(u32, u32, fn(u32) -> Instruction); 13] = [
+const SUBS_SR_M: u32 = 0b01111111001000000000000000000000;
+const SUBS_SR_V: u32 = 0b01101011000000000000000000000000;
+
+fn decode_subs_sr(word: u32) -> Instruction {
+    let sf = sf_decode(word);
+    let shift = ((word >> 22) & 0b11) as Register;
+    let rm = reg_decode(word, 16);
+    let imm6 = ((word >> 10) & 0b111111) as Register;
+    let rn = reg_decode(word, 5);
+    let rd = reg_decode(word, 0);
+
+    Instruction::SubsSr {
+        sf,
+        shift,
+        rm,
+        imm6,
+        rn,
+        rd,
+    }
+}
+
+const IMPLEMENTED_INSTRUCTION_MAP: [(u32, u32, fn(u32) -> Instruction); 14] = [
     (ABS_M, ABS_V, decode_abs),
     (ADC_M, ADC_V, decode_adc),
     (ADCS_M, ADCS_V, decode_adcs),
@@ -333,6 +362,7 @@ const IMPLEMENTED_INSTRUCTION_MAP: [(u32, u32, fn(u32) -> Instruction); 13] = [
     (SUB_SR_M, SUB_SR_V, decode_sub_sr),
     (SUBS_ER_M, SUBS_ER_V, decode_subs_er),
     (SUBS_IMM_M, SUBS_IMM_V, decode_subs_imm),
+    (SUBS_SR_M, SUBS_SR_V, decode_subs_sr),
 ];
 
 /// Decode an instruction word into respective instruction structure that contains serialized
