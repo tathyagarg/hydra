@@ -6,12 +6,15 @@ use crate::cpu::{
     regs::{
         E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType, RegisterField,
         RegisterFieldRange, S1PIRType, SCR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field, SCTLRField,
-        TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL2Field, mairtype_from_mair,
+        TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL2Field, VTCR_EL2Field,
+        mairtype_from_mair,
     },
     shared::{EL, EL0, EL3, Regime, SecurityState},
 };
 
 pub type AddressSize = u8;
+
+pub const DEFAULT_MECID: u16 = 0;
 
 pub trait ValidMemReadSize {}
 impl ValidMemReadSize for [(); 1] {}
@@ -51,6 +54,22 @@ pub enum DeviceType {
     nGnRE,
     nGnRnE,
 }
+
+#[allow(non_upper_case_globals)]
+pub const MemAttr_NC: u8 = 0b00;
+#[allow(non_upper_case_globals)]
+pub const MemAttr_WT: u8 = 0b10;
+#[allow(non_upper_case_globals)]
+pub const MemAttr_WB: u8 = 0b11;
+
+#[allow(non_upper_case_globals)]
+pub const MemHint_No: u8 = 0b00;
+#[allow(non_upper_case_globals)]
+pub const MemHint_WA: u8 = 0b01;
+#[allow(non_upper_case_globals)]
+pub const MemHint_RA: u8 = 0b10;
+#[allow(non_upper_case_globals)]
+pub const MemHint_RWA: u8 = 0b11;
 
 pub struct MemAttrHints {
     pub attrs: u8,
@@ -188,6 +207,7 @@ pub enum SDFType {
     SmallPage,
 }
 
+#[derive(Default)]
 pub struct Permissions {
     ap_table: u8,    // Stage 1 hierarchical access permissions
     xn_table: bool,  // Stage 1 hierarchical execute-never for single EL regimes
@@ -894,6 +914,84 @@ impl Cpu {
         }
     }
 
+    pub fn aarch64_s1ttbr(&self, regime: Regime, va: u64) -> u128 {
+        let varange = self.aarch64_get_varange(va);
+
+        match regime {
+            Regime::EL3 => self.ttbr0_el3 as u128,
+            Regime::EL2 => self.ttbr0_el2 as u128,
+            Regime::EL20 => {
+                if varange == VARange::LOWER {
+                    self.ttbr0_el2 as u128
+                } else {
+                    self.ttbr1_el2 as u128
+                }
+            }
+            Regime::EL10 => {
+                if varange == VARange::LOWER {
+                    self.ttbr0_el1 as u128
+                } else {
+                    self.ttbr1_el1 as u128
+                }
+            }
+            _ => todo!(),
+        }
+    }
+
+    pub fn aarch64_s1start_level(&self, walkparams: &S1TTWParams) -> u8 {
+        let iasize = self.aarch64_iasize(walkparams.txsz);
+        let granulebits = self.tgx_granulebits(walkparams.tgx);
+        let descsizelog2 = 3 + (walkparams.d128 as u8);
+        let stride = granulebits - descsizelog2;
+        let mut s1startlevel = FINAL_LEVEL - (((iasize - 1) - granulebits) / stride);
+        if walkparams.d128 {
+            s1startlevel += walkparams.skl;
+        }
+
+        s1startlevel
+    }
+
+    pub fn aarch64_s1ttb_base_address<T: Copy + Into<u128>>(
+        &self,
+        walkparams: &S1TTWParams,
+        regime: Regime,
+        ttbr: T,
+    ) -> u64 {
+        let tablebase: u64;
+
+        let iasize = self.aarch64_iasize(walkparams.txsz);
+        let granulebits = self.tgx_granulebits(walkparams.tgx);
+        let descsizelog2 = 3 + (walkparams.d128 as u8);
+        let stride = granulebits - descsizelog2;
+        let startlevel = self.aarch64_s1start_level(walkparams);
+        let levels = FINAL_LEVEL - startlevel;
+
+        let mut tsize = (iasize - (levels * stride + granulebits)) + descsizelog2;
+
+        if walkparams.d128 {
+            tsize = tsize.max(5);
+            tablebase = if regime == Regime::EL3 {
+                ((ttbr.into() >> 5) as u64) & ones(51)
+            } else {
+                let hi = ((ttbr.into() >> 80) & 0xFF) as u64;
+                let lo = ((ttbr.into() >> 5) as u64) & ones(43);
+                (hi << 43) | lo
+            };
+        } else if walkparams.ds
+            || (walkparams.tgx == TGx::_64KB
+                && walkparams.ps == 0b110
+                && Cpu::is_feature_implemented(Feature::LPA))
+        {
+            tsize = tsize.max(6);
+            tablebase = ((((ttbr.into() >> 2) & 0xF) << 42) as u64
+                | ((ttbr.into() >> 6) as u64 & ones(42))) as u64;
+        } else {
+            tablebase = ((ttbr.into() >> 1) as u64 & ones(47)) << 1;
+        }
+
+        align_down_p2::<56>(tablebase, tsize as u32)
+    }
+
     pub fn aarch64_s1initial_ttwstate(
         &self,
         walkparams: &S1TTWParams,
@@ -901,6 +999,89 @@ impl Cpu {
         regime: Regime,
         ss: SecurityState,
     ) -> TTWState {
+        let ttbr = self.aarch64_s1ttbr(regime, va);
+        let paspace = match ss {
+            SecurityState::Secure => PASpace::Secure,
+            SecurityState::NonSecure => PASpace::NonSecure,
+            SecurityState::Root => PASpace::Root,
+            SecurityState::Realm => PASpace::Realm,
+        };
+
+        let address = self.aarch64_s1ttb_base_address(walkparams, regime, ttbr);
+        let tablebase = FullAddress { paspace, address };
+        let perms = Permissions {
+            ap_table: 0b00,
+            uxn_table: if self.has_unprivileged(regime) {
+                false
+            } else {
+                Default::default()
+            },
+            pxn_table: if self.has_unprivileged(regime) {
+                false
+            } else {
+                Default::default()
+            },
+            xn_table: if !self.has_unprivileged(regime) {
+                false
+            } else {
+                Default::default()
+            },
+            ..Default::default()
+        };
+
+        let level = self.aarch64_s1start_level(walkparams);
+        let istable = true;
+        let nG = self.has_unprivileged(regime);
+        let memattrs = self.walk_mem_attrs(walkparams.sh, walkparams.irgn, walkparams.orgn);
+        let s1assured = if regime == Regime::EL10
+            && self.el2_enabled()
+            && HCR_EL2Field::VM.fetch_bit(self.hcr_el2)
+        {
+            if (self.aarch64_get_varange(va) == VARange::LOWER
+                && VTCR_EL2Field::TL0.fetch_bit(self.vtcr_el2))
+                || (self.aarch64_get_varange(va) == VARange::UPPER
+                    && VTCR_EL2Field::TL1.fetch_bit(self.vtcr_el2))
+            {
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        let disch = walkparams.disch;
+
+        TTWState {
+            baseaddress: tablebase,
+            level,
+            istable,
+            nG,
+            memattrs,
+            permissions: perms,
+            s1assured,
+            disch,
+            contiguous: false,
+            s2assuredonly: false,
+            guardedpage: false,
+            sdftype: SDFType::Table,
+            domain: 0,
+        }
+    }
+
+    pub fn aarch64_s1ttwalk_mecid(&self, emec: bool, regime: Regime, ss: SecurityState) -> u16 {
+        if !emec {
+            return DEFAULT_MECID;
+        }
+
+        if ss != SecurityState::Realm {
+            return DEFAULT_MECID;
+        }
+
+        if !self.effective_scr_el3_mecen() {
+            return DEFAULT_MECID;
+        }
+
         todo!()
     }
 
@@ -916,6 +1097,20 @@ impl Cpu {
         let mut aligned = false;
 
         if self.has_unprivileged(regime) && self.aarch64_s1epd(regime, va) {
+            fault.statuscode = Fault::Translation;
+            fault.level = 0;
+            return (
+                fault,
+                AddressDescriptor::arbitrary(),
+                TTWState::arbitrary(),
+                0,
+            );
+        }
+
+        let mut walkstate = self.aarch64_s1initial_ttwstate(walkparams, va, regime, accdesc.ss);
+        let startlevel = walkstate.level;
+
+        if startlevel > 3 {
             fault.statuscode = Fault::Translation;
             fault.level = 0;
             return (

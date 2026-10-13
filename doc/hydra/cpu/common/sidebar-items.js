@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["count_leading_sign_bits","count_leading_zero_bits","is_aligned_size","is_fault_addrdesc","is_fault_fault","is_fault_retstatus","n_bits","nth_bit","ones"],"struct":["NZCV"]};
+window.SIDEBAR_ITEMS = {"constant":["FINAL_LEVEL"],"fn":["align_down_p2","align_down_p2_as","count_leading_sign_bits","count_leading_zero_bits","is_aligned_size","is_fault_addrdesc","is_fault_fault","is_fault_retstatus","n_bits","nth_bit","ones","ones_as"],"struct":["NZCV"],"trait":["BitInteger"]};

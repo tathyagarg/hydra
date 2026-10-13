@@ -17,6 +17,9 @@ mod sctlr;
 mod sctlr2;
 mod tcr;
 mod tcr2;
+mod ttbr0;
+mod ttbr1;
+mod vtcr;
 
 pub use self::brbcr::{BRBCR_EL1Field, BRBCR_EL2Field};
 pub use self::brbfcr::{BRBFCR_EL0Field, BRBFCR_EL1Field};
@@ -45,6 +48,16 @@ pub use self::tcr::{
 };
 #[allow(unused_imports)]
 pub use self::tcr2::{TCR2_EL1Field, TCR2_EL2Field};
+#[allow(unused_imports)]
+pub use self::ttbr0::{
+    TTBR0_64_EL1Field, TTBR0_64_EL2Field, TTBR0_64_EL3Field, TTBR0_128_EL1Field,
+    TTBR0_128_EL2Field, TTBR0_128_EL3Field,
+};
+#[allow(unused_imports)]
+pub use self::ttbr1::{
+    TTBR1_64_EL1Field, TTBR1_64_EL2Field, TTBR1_128_EL1Field, TTBR1_128_EL2Field,
+};
+pub use self::vtcr::VTCR_EL2Field;
 
 pub trait RegisterField<T> {
     fn fetch_bit(self, v: T) -> bool;

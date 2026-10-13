@@ -7,6 +7,10 @@ use crate::cpu::{
         AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, FaultRecord, MPAMData, MPAMinfo,
         MemOp, PARTIDSpaceType, PARTIDType, PMGType,
     },
+    memory_acc::{
+        AddressSize, DeviceType, MemAttr_NC, MemAttr_WB, MemAttr_WT, MemAttrHints, MemHint_No,
+        MemHint_RA, MemHint_RWA, MemTagType, MemType, MemoryAttributes, Shareability, TGx,
+    },
     regs::{
         EDSCRField, HCR_EL2Field, MPAM0_EL1Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field,
         MPAMHCR_EL2Field, MPAMIDR_EL1Field, MPAMSM_EL1Field, MPAMVPMV_EL2Field, RegisterField,
@@ -1578,6 +1582,86 @@ impl Cpu {
     /// Returns whether a translation regime serves EL0 as well as a higher EL
     pub fn has_unprivileged(&self, regime: Regime) -> bool {
         matches!(regime, Regime::EL30 | Regime::EL20 | Regime::EL10)
+    }
+
+    /// TGxGranuleBits()
+    /// ================
+    /// Retrieve the address size, in bits, of a granule
+    pub fn tgx_granulebits(&self, tgx: TGx) -> AddressSize {
+        match tgx {
+            TGx::_4KB => 12,
+            TGx::_16KB => 14,
+            TGx::_64KB => 16,
+        }
+    }
+
+    /// DecodeShareability()
+    /// ====================
+    /// Decode shareability of target memory region
+    pub fn decode_shareability(&self, sh: u8) -> Shareability {
+        match sh {
+            0b10 => Shareability::OSH,
+            0b11 => Shareability::ISH,
+            0b00 => Shareability::NSH,
+            0b01 => match Unpredictable::Shareability.constrain() {
+                Constraint::OSH => Shareability::OSH,
+                Constraint::ISH => Shareability::ISH,
+                Constraint::NSH => Shareability::NSH,
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    /// DecodeSDFAttr()
+    /// ===============
+    /// Decode memory attributes using SDF (Short Descriptor Format) mapping
+    pub fn decode_sdf_attrs(&self, rgn: u8) -> MemAttrHints {
+        let (attrs, hints) = match rgn {
+            0b00 => (MemAttr_NC, MemHint_No),
+            0b01 => (MemAttr_WB, MemHint_RWA),
+            0b10 => (MemAttr_WT, MemHint_RA),
+            0b11 => (MemAttr_WB, MemHint_RA),
+            _ => unreachable!(),
+        };
+
+        MemAttrHints {
+            attrs,
+            hints,
+            transient: false,
+        }
+    }
+
+    /// WalkMemAttrs()
+    /// ==============
+    /// Retrieve memory attributes of translation table walk
+    pub fn walk_mem_attrs(&self, sh: u8, irgn: u8, orgn: u8) -> MemoryAttributes {
+        let inner = self.decode_sdf_attrs(irgn);
+        let outer = self.decode_sdf_attrs(orgn);
+        let xs = !(inner.attrs == MemAttr_WB && outer.attrs == MemAttr_WB);
+
+        MemoryAttributes {
+            memtype: MemType::Normal,
+            device: DeviceType::GRE,
+            shareability: self.decode_shareability(sh),
+            inner,
+            outer,
+            tags: MemTagType::Untagged,
+            xs,
+            notagaccess: false,
+        }
+    }
+
+    /// EffectiveSCR_EL3_MECEn()
+    /// ========================
+    /// Returns the Effective value of SCR_EL3().MECEn.
+    pub fn effective_scr_el3_mecen(&self) -> bool {
+        assert!(Cpu::is_feature_implemented(Feature::MEC));
+        if !self.have_el(EL3) {
+            return true;
+        }
+
+        SCR_EL3Field::MECEn.fetch_bit(self.scr_el3)
     }
 }
 

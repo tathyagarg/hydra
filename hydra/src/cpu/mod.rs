@@ -422,6 +422,17 @@ pub struct Cpu {
     tcr2_el1: u64,
     tcr2_el2: u64,
 
+    // NOTE: change to u128 when D128 feature is implemented
+    ttbr0_el1: u64,
+    ttbr0_el2: u64,
+    ttbr0_el3: u64,
+
+    // NOTE: change to u128 when D128 feature is implemented
+    ttbr1_el1: u64,
+    ttbr1_el2: u64,
+
+    vtcr_el2: u64,
+
     brbe: Brbe,
     pmu: Pmu,
 
@@ -482,6 +493,12 @@ impl Default for Cpu {
             pir_el3: [0; 16],
             tcr2_el1: 0,
             tcr2_el2: 0,
+            ttbr0_el1: 0,
+            ttbr0_el2: 0,
+            ttbr0_el3: 0,
+            ttbr1_el1: 0,
+            ttbr1_el2: 0,
+            vtcr_el2: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
@@ -546,6 +563,7 @@ pub enum Feature {
     HBC,
     HPDS,
     IESB,
+    LPA,
     LPA2,
     LS64WB,
     LSE2,
@@ -608,6 +626,7 @@ impl Cpu {
             Feature::HBC => true,
             Feature::HPDS => false,
             Feature::IESB => false,
+            Feature::LPA => false,
             Feature::LPA2 => false,
             Feature::LS64WB => false,
             Feature::LSE2 => false,

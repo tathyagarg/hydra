@@ -3,6 +3,8 @@ use crate::cpu::{
     memory_acc::{AddressDescriptor, PhysMemRetStatus},
 };
 
+pub const FINAL_LEVEL: u8 = 3;
+
 #[derive(PartialEq, Debug)]
 pub struct NZCV(bool, bool, bool, bool);
 
@@ -39,16 +41,47 @@ impl From<u8> for NZCV {
     }
 }
 
-pub fn nth_bit<T: Into<u64>>(v: T, n: usize) -> bool {
+pub fn nth_bit<T: Into<u128>>(v: T, n: usize) -> bool {
     return (v.into() >> n) & 1 == 1;
 }
 
-pub fn ones(w: u32) -> u64 {
-    match w {
-        0 => 0,
-        64 => u64::MAX,
-        w => (1u64 << w) - 1,
+pub trait BitInteger:
+    Copy + std::ops::Shl<u32, Output = Self> + std::ops::Sub<Output = Self>
+{
+    const BITS: u32;
+    const ZERO: Self;
+    const MAX: Self;
+    fn one() -> Self;
+}
+
+impl BitInteger for u64 {
+    const BITS: u32 = 64;
+    const ZERO: Self = 0;
+    const MAX: Self = u64::MAX;
+    fn one() -> Self {
+        1
     }
+}
+
+impl BitInteger for u128 {
+    const BITS: u32 = 128;
+    const ZERO: Self = 0;
+    const MAX: Self = u128::MAX;
+    fn one() -> Self {
+        1
+    }
+}
+
+pub fn ones_as<T: BitInteger>(w: u32) -> T {
+    match w {
+        0 => T::ZERO,
+        w if w >= T::BITS => T::MAX,
+        w => (T::one() << w) - T::one(),
+    }
+}
+
+pub fn ones(w: u32) -> u64 {
+    ones_as::<u64>(w)
 }
 
 pub fn n_bits<T: Into<u64>>(v: T, n: usize) -> u64 {
@@ -79,4 +112,26 @@ pub fn is_fault_fault(fault: &Fault) -> bool {
 
 pub fn is_fault_retstatus(retstatus: &PhysMemRetStatus) -> bool {
     retstatus.statuscode != Fault::None
+}
+
+pub fn align_down_p2<const N: u32>(x: u64, p2: u32) -> u64 {
+    assert!(N <= 64 && p2 <= N);
+    x & !ones_as::<u64>(p2) & ones_as::<u64>(N)
+}
+
+pub fn align_down_p2_as<T>(x: T, p2: u32) -> T
+where
+    T: BitInteger + std::ops::BitAnd<Output = T> + std::ops::Not<Output = T>,
+{
+    assert!(p2 <= T::BITS);
+
+    if p2 == 0 {
+        return x;
+    }
+
+    if p2 == T::BITS {
+        return T::ZERO;
+    }
+
+    x & !(ones_as::<T>(p2))
 }
