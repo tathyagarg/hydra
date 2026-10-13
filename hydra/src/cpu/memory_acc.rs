@@ -4,9 +4,9 @@ use crate::cpu::{
     exeception::{FullAddress, PASpace},
     fault::{AccessDescriptor, AccessType, ErrorState, Fault, FaultRecord, VARange},
     regs::{
-        HCR_EL2Field, MAIRType, RegisterField, RegisterFieldRange, S1PIRType, SCR_EL3Field,
-        SCTLR2_EL2Field, SCTLR2_EL3Field, SCTLRField, TCR_EL2Field, TCR_EL3Field, TCR2_EL2Field,
-        mairtype_from_mair,
+        E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType, RegisterField,
+        RegisterFieldRange, S1PIRType, SCR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field, SCTLRField,
+        TCR_EL2CommonField, TCR_EL3Field, TCR2_EL2Field, mairtype_from_mair,
     },
     shared::{EL, EL0, EL3, Regime, SecurityState},
 };
@@ -559,13 +559,13 @@ impl Cpu {
     }
 
     pub fn aarch64_s1ttw_params_el2(&self, ss: SecurityState) -> S1TTWParams {
-        let tgx = self.aarch64_s1decode_tg0(TCR_EL2Field::TG0.fetch_range(self.tcr_el2));
-        let txsz = TCR_EL2Field::T0SZ.fetch_range(self.tcr_el2);
-        let ps = TCR_EL2Field::PS.fetch_range(self.tcr_el2);
-        let irgn = TCR_EL2Field::IRGN0.fetch_range(self.tcr_el2);
-        let orgn = TCR_EL2Field::ORGN0.fetch_range(self.tcr_el2);
-        let sh = TCR_EL2Field::SH0.fetch_range(self.tcr_el2);
-        let tbi = TCR_EL2Field::TBI.fetch_bit(self.tcr_el2);
+        let tgx = self.aarch64_s1decode_tg0(TCR_EL2CommonField::TG0.fetch_range(self.tcr_el2));
+        let txsz = TCR_EL2CommonField::T0SZ.fetch_range(self.tcr_el2);
+        let ps = E2H0_TCR_EL2Field::PS.fetch_range(self.tcr_el2);
+        let irgn = TCR_EL2CommonField::IRGN0.fetch_range(self.tcr_el2);
+        let orgn = TCR_EL2CommonField::ORGN0.fetch_range(self.tcr_el2);
+        let sh = TCR_EL2CommonField::SH0.fetch_range(self.tcr_el2);
+        let tbi = E2H0_TCR_EL2Field::TBI.fetch_bit(self.tcr_el2);
         let mair = mairtype_from_mair(self.mair_el2);
         let pie = if Cpu::is_feature_implemented(Feature::S1PIE) && self.is_tcr2el2_enabled() {
             TCR2_EL2Field::PIE.fetch_bit(self.tcr_el2)
@@ -603,12 +603,12 @@ impl Cpu {
         };
 
         let tbid = if Cpu::is_feature_implemented(Feature::PAuth) {
-            TCR_EL2Field::TBID.fetch_bit(self.tcr_el2)
+            E2H0_TCR_EL2Field::TBID.fetch_bit(self.tcr_el2)
         } else {
             false
         };
         let mut hpd = if Cpu::is_feature_implemented(Feature::HPDS) {
-            TCR_EL2Field::HPD.fetch_bit(self.tcr_el2)
+            E2H0_TCR_EL2Field::HPD.fetch_bit(self.tcr_el2)
         } else {
             false
         };
@@ -624,12 +624,12 @@ impl Cpu {
         }
 
         let ha = if Cpu::is_feature_implemented(Feature::HAF) {
-            TCR_EL2Field::HA.fetch_bit(self.tcr_el2)
+            E2H0_TCR_EL2Field::HA.fetch_bit(self.tcr_el2)
         } else {
             false
         };
         let hd = if Cpu::is_feature_implemented(Feature::HAFDBS) && ha {
-            TCR_EL2Field::HD.fetch_bit(self.tcr_el2)
+            E2H0_TCR_EL2Field::HD.fetch_bit(self.tcr_el2)
         } else {
             false
         };
@@ -637,7 +637,7 @@ impl Cpu {
         let ds = if [TGx::_4KB, TGx::_16KB].contains(&tgx)
             && Cpu::is_feature_implemented(Feature::LPA2)
         {
-            TCR_EL2Field::DS.fetch_bit(self.tcr_el2)
+            E2H0_TCR_EL2Field::DS.fetch_bit(self.tcr_el2)
         } else {
             false
         };
@@ -645,7 +645,7 @@ impl Cpu {
         let mtx = if Cpu::is_feature_implemented(Feature::MTE_NO_ADDRESS_TAGS)
             || Cpu::is_feature_implemented(Feature::MTE_CANONICAL_TAGS)
         {
-            TCR_EL2Field::MTX.fetch_bit(self.tcr_el2)
+            E2H0_TCR_EL2Field::MTX.fetch_bit(self.tcr_el2)
         } else {
             false
         };
@@ -809,6 +809,37 @@ impl Cpu {
         } else {
             bits != 0
         }
+    }
+
+    pub fn aarch64_s1epd(&self, regime: Regime, va: u64) -> bool {
+        let varange = self.aarch64_get_varange(va);
+
+        match regime {
+            Regime::EL20 => {
+                return if varange == VARange::LOWER {
+                    E2H1_TCR_EL2Field::EPD0.fetch_bit(self.tcr_el2)
+                } else {
+                    E2H1_TCR_EL2Field::EPD1.fetch_bit(self.tcr_el2)
+                };
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn aarch64_s1walk<const N: usize>(
+        &self,
+        fault_in: FaultRecord,
+        walkparams: &S1TTWParams,
+        va: u64,
+        regime: Regime,
+        accdesc: &AccessDescriptor,
+    ) -> (FaultRecord, AddressDescriptor, TTWState, u128) {
+        let mut fault = fault_in;
+        let mut aligned = false;
+
+        // if self.has_unprivileged(regime) &&
+
+        todo!()
     }
 
     pub fn aarch64_s1translate(

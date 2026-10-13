@@ -53,9 +53,9 @@ pub use self::scr_el3::SCR_EL3Field;
 pub use self::sctlr2_el2::SCTLR2_EL2Field;
 pub use self::sctlr2_el3::SCTLR2_EL3Field;
 pub use self::tcr_el1::TCR_EL1Field;
-pub use self::tcr_el2::TCR_EL2Field;
+pub use self::tcr_el2::{E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, TCR_EL2CommonField};
 pub use self::tcr_el3::TCR_EL3Field;
-pub use self::tcr2_el1::TCR2_EL1Field;
+// pub use self::tcr2_el1::TCR2_EL1Field;
 pub use self::tcr2_el2::TCR2_EL2Field;
 
 pub trait RegisterField<T> {
