@@ -116,7 +116,7 @@ pub enum CacheType {
     Instruction,
 }
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum VARange {
     LOWER,
     UPPER,

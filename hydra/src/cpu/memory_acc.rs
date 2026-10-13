@@ -1,15 +1,17 @@
 use crate::cpu::{
     Cpu, Feature,
     common::*,
-    exeception::FullAddress,
+    exeception::{FullAddress, PASpace},
     fault::{AccessDescriptor, AccessType, ErrorState, Fault, FaultRecord, VARange},
     regs::{
         HCR_EL2Field, MAIRType, RegisterField, RegisterFieldRange, S1PIRType, SCR_EL3Field,
         SCTLR2_EL2Field, SCTLR2_EL3Field, SCTLRField, TCR_EL2Field, TCR_EL3Field, TCR2_EL2Field,
         mairtype_from_mair,
     },
-    shared::{EL, EL3, Regime, SecurityState},
+    shared::{EL, EL0, EL3, Regime, SecurityState},
 };
+
+pub type AddressSize = u8;
 
 pub trait ValidMemReadSize {}
 impl ValidMemReadSize for [(); 1] {}
@@ -89,7 +91,41 @@ pub struct AddressDescriptor {
     pub vaddress: u64,
 }
 
-#[derive(PartialEq)]
+impl AddressDescriptor {
+    pub fn arbitrary() -> AddressDescriptor {
+        AddressDescriptor {
+            fault: FaultRecord::no_fault(),
+            memattrs: MemoryAttributes {
+                memtype: MemType::Normal,
+                device: DeviceType::nGnRnE,
+                inner: MemAttrHints {
+                    attrs: 0,
+                    hints: 0,
+                    transient: false,
+                },
+                outer: MemAttrHints {
+                    attrs: 0,
+                    hints: 0,
+                    transient: false,
+                },
+                shareability: Shareability::NSH,
+                tags: MemTagType::Untagged,
+                notagaccess: false,
+                xs: false,
+            },
+            paddress: FullAddress {
+                paspace: PASpace::NonSecure,
+                address: 0,
+            },
+            s1assured: false,
+            s2fs1mro: false,
+            mecid: 0,
+            vaddress: 0,
+        }
+    }
+}
+
+#[derive(PartialEq, Clone, Copy)]
 pub enum TGx {
     _4KB,
     _16KB,
@@ -141,6 +177,54 @@ pub struct S1TTWParams {
     pub dc: bool,       // HCR_EL2.DC / HCR.DC
     pub sif: bool,      // SCR_EL3.SIF / SCR.SIF
     pub mair: MAIRType, // MAIR_ELx / MAIR1:MAIR0 or HMAIR1:HMAIR0
+}
+
+pub enum SDFType {
+    Table,
+    Invalid,
+    Supersection,
+    Section,
+    LargePage,
+    SmallPage,
+}
+
+pub struct Permissions {
+    ap_table: u8,    // Stage 1 hierarchical access permissions
+    xn_table: bool,  // Stage 1 hierarchical execute-never for single EL regimes
+    pxn_table: bool, // Stage 1 hierarchical privileged execute-never
+    uxn_table: bool, // Stage 1 hierarchical unprivileged execute-never
+    ap: u8,          // Stage 1 access permissions
+    xn: bool,        // Stage 1 execute-never for single EL regimes
+    uxn: bool,       // Stage 1 unprivileged execute-never
+    pxn: bool,       // Stage 1 privileged execute-never
+    ppi: u8,         // Stage 1 privileged indirect permissions
+    upi: u8,         // Stage 1 unprivileged indirect permissions
+    ndirty: bool,    // Stage 1 dirty state for indirect permissions scheme
+    s2pi: u8,        // Stage 2 indirect permissions
+    s2dirty: bool,   // Stage 2 dirty state
+    po_index: u8,    // Stage 1 overlay permissions index
+    s2po_index: u8,  // Stage 2 overlay permissions index
+    s2ap: u8,        // Stage 2 access permissions
+    s2tag_na: bool,  // Stage 2 tag access
+    s2xnx: bool,     // Stage 2 extended execute-never
+    dbm: bool,       // Dirty bit management
+    s2xn: bool,      // Stage 2 execute-never
+}
+
+pub struct TTWState {
+    pub istable: bool,
+    pub level: u8,
+    pub baseaddress: FullAddress,
+    contiguous: bool,
+    s1assured: bool,
+    s2assuredonly: bool,
+    disch: bool,
+    nG: bool,
+    guardedpage: bool,
+    sdftype: SDFType,
+    domain: u8,
+    memattrs: MemoryAttributes,
+    permissions: Permissions,
 }
 
 impl Cpu {
@@ -474,7 +558,7 @@ impl Cpu {
         }
     }
 
-    pub fn aarch4_s1ttw_params_el2(&self, ss: SecurityState) -> S1TTWParams {
+    pub fn aarch64_s1ttw_params_el2(&self, ss: SecurityState) -> S1TTWParams {
         let tgx = self.aarch64_s1decode_tg0(TCR_EL2Field::TG0.fetch_range(self.tcr_el2));
         let txsz = TCR_EL2Field::T0SZ.fetch_range(self.tcr_el2);
         let ps = TCR_EL2Field::PS.fetch_range(self.tcr_el2);
@@ -638,7 +722,7 @@ impl Cpu {
         }
     }
 
-    pub fn aarch64_gets1ttw_params(
+    pub fn aarch64_get_s1ttw_params(
         &self,
         regime: Regime,
         el: EL,
@@ -647,11 +731,84 @@ impl Cpu {
     ) -> S1TTWParams {
         let varange = self.aarch64_get_varange(va);
 
-        // match regime {
-        //     Regime::EL3 =>
-        // }
+        match regime {
+            Regime::EL3 => self.aarch64_s1ttw_params_el3(),
+            Regime::EL2 => self.aarch64_s1ttw_params_el2(ss),
+            _ => todo!("S1TTW Params for {:?}", regime),
+        }
+    }
 
-        todo!()
+    #[allow(unused_variables)]
+    pub fn aarch64_s1min_txsz(&self, regime: Regime, walkparams: &S1TTWParams) -> u8 {
+        // TODO: LVA3 and LVA features
+        return 16;
+    }
+
+    #[allow(unused_variables)]
+    pub fn aarch64_max_txsz(&self, tgx: TGx) -> u8 {
+        // TODO: TTST featuer
+        return 39;
+    }
+
+    #[allow(unused_variables)]
+    pub fn aarch64_s1txsz_faults(&self, regime: Regime, walkparams: &S1TTWParams) -> bool {
+        // TODO: boring stuff
+        return false;
+    }
+
+    pub fn aarch64_addrtop(&self, tbid: bool, acctype: AccessType, tbi: bool) -> AddressSize {
+        if tbid && acctype == AccessType::IFETCH {
+            return 63;
+        }
+
+        if tbi {
+            return 55;
+        } else {
+            return 63;
+        }
+    }
+
+    pub fn aarch64_iasize(&self, txsz: u8) -> AddressSize {
+        (64 - txsz) as AddressSize
+    }
+
+    pub fn aarch64_va_is_out_of_range(
+        &self,
+        va_in: u64,
+        acctype: AccessType,
+        regime: Regime,
+        walkparams: &S1TTWParams,
+    ) -> bool {
+        let mut va = va_in;
+
+        let addrtop = self.aarch64_addrtop(walkparams.tbid, acctype, walkparams.tbi);
+
+        if walkparams.mtx && acctype != AccessType::IFETCH {
+            if self.aarch64_get_varange(va) == VARange::UPPER {
+                va |= 0b1111 << 56;
+            } else {
+                va &= !(0b1111 << 56);
+            }
+        }
+
+        let iasize = self.aarch64_iasize(walkparams.txsz);
+
+        if addrtop < iasize {
+            return false;
+        }
+
+        let width = addrtop - iasize + 1;
+        let bits = (va >> iasize) & ((1u64 << width) - 1);
+
+        if self.has_unprivileged(regime) {
+            if self.aarch64_get_varange(va) == VARange::LOWER {
+                bits != 0
+            } else {
+                bits != ((1u64 << width) - 1)
+            }
+        } else {
+            bits != 0
+        }
     }
 
     pub fn aarch64_s1translate(
@@ -670,6 +827,34 @@ impl Cpu {
         if !self.aarch64_s1enabled(regime, accdesc.acctype) {
             todo!("Disabled output");
         }
+
+        let mut walkparams = self.aarch64_get_s1ttw_params(regime, accdesc.el, accdesc.ss, va);
+        let s1mintxsz = self.aarch64_s1min_txsz(regime, &walkparams);
+        let s1maxtxsz = self.aarch64_max_txsz(walkparams.tgx);
+
+        if self.aarch64_s1txsz_faults(regime, &walkparams) {
+            fault.statuscode = Fault::Translation;
+            fault.level = 0;
+            return (fault, AddressDescriptor::arbitrary());
+        } else if walkparams.txsz < s1mintxsz {
+            walkparams.txsz = s1mintxsz & 0b11111;
+        } else if walkparams.txsz > s1maxtxsz {
+            walkparams.txsz = s1maxtxsz & 0b11111;
+        }
+
+        if self.aarch64_va_is_out_of_range(va, accdesc.acctype, regime, &walkparams) {
+            fault.statuscode = Fault::Translation;
+            fault.level = 0;
+            return (fault, AddressDescriptor::arbitrary());
+        }
+
+        if accdesc.el == EL0 && walkparams.e0pd {
+            fault.statuscode = Fault::Translation;
+            fault.level = 0;
+            return (fault, AddressDescriptor::arbitrary());
+        }
+
+        // TODO: SVE feature
 
         todo!()
     }

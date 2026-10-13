@@ -29,6 +29,7 @@ pub enum SecurityState {
     Secure,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Regime {
     EL3,
     EL30,
@@ -1570,6 +1571,13 @@ impl Cpu {
         } else {
             unreachable!()
         }
+    }
+
+    /// HasUnprivileged()
+    /// =================
+    /// Returns whether a translation regime serves EL0 as well as a higher EL
+    pub fn has_unprivileged(&self, regime: Regime) -> bool {
+        matches!(regime, Regime::EL30 | Regime::EL20 | Regime::EL10)
     }
 }
 
