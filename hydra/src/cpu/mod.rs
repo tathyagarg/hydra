@@ -6,7 +6,7 @@ use crate::{
         common::NZCV,
         decode::Instruction,
         pmu::Pmu,
-        regs::MPAMVPMnEL2Type,
+        regs::{MPAMVPMnEL2Type, PIRType},
     },
     memory::Memory,
 };
@@ -415,6 +415,13 @@ pub struct Cpu {
 
     mpamvpmn_el2: [MPAMVPMnEL2Type; 8],
 
+    pir_el1: PIRType,
+    pir_el2: PIRType,
+    pir_el3: PIRType,
+
+    tcr2_el1: u64,
+    tcr2_el2: u64,
+
     brbe: Brbe,
     pmu: Pmu,
 
@@ -470,6 +477,11 @@ impl Default for Cpu {
             mpamhcr_el2: 0,
             mpamvpmv_el2: 0,
             mpamvpmn_el2: [0; 8],
+            pir_el1: [0; 16],
+            pir_el2: [0; 16],
+            pir_el3: [0; 16],
+            tcr2_el1: 0,
+            tcr2_el2: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
@@ -550,10 +562,12 @@ pub enum Feature {
     PMUv3_ICNTR,
     RME,
     S1PIE,
+    SCTLR2,
     SECURE,
     SEL2,
     SME,
     SPE,
+    TCR2,
     THE,
     VHE,
 }
@@ -607,10 +621,12 @@ impl Cpu {
             Feature::PMUv3_ICNTR => false,
             Feature::RME => false,
             Feature::S1PIE => false,
+            Feature::SCTLR2 => false,
             Feature::SECURE => false,
             Feature::SEL2 => false,
             Feature::SME => false,
             Feature::SPE => false,
+            Feature::TCR2 => false,
             Feature::THE => false,
             Feature::VHE => false,
         }

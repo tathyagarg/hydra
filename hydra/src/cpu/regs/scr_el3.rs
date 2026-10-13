@@ -23,7 +23,7 @@ pub enum SCR_EL3Field {
     AIEn = 46,
     PIEn = 45,
     SCTLR2En = 44,
-    TCREn = 43,
+    TCR2En = 43,
     RCWMASKEn = 42,
     EnTP2 = 41,
     TRNDR = 40,

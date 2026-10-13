@@ -5,7 +5,7 @@ use crate::cpu::{
     exeception::{Exception, ExceptionRecord},
     regs::{
         BRBCR_EL1Field, BRBCR_EL2Field, BRBFCR_EL0Field, BRBFCR_EL1Field, HCR_EL2Field,
-        MDCR_EL3Field, RegisterField, RegisterFieldRange, SCTLRField,
+        MDCR_EL3Field, RegisterField, RegisterFieldRange, SCR_EL3Field, SCTLRField,
     },
     shared::{EL, EL0, EL1, EL2, EL3, SecurityState},
 };
@@ -348,5 +348,33 @@ impl Cpu {
 
             self.pmu_event1(Cpu::PMU_EVENT_BRB_FILTRATE);
         }
+    }
+
+    /// IsTCR2EL2Enabled()
+    /// ==================
+    /// Returns TRUE if access to TCR2_EL2 register is enabled, and FALSE otherwise.
+    /// Indirect read of TCR2_EL2 returns 0 when access is not enabled.
+    pub fn is_tcr2el2_enabled(&self) -> bool {
+        if !Cpu::is_feature_implemented(Feature::TCR2) {
+            return false;
+        }
+
+        if self.have_el(EL3) && !SCR_EL3Field::TCR2En.fetch_bit(self.scr_el3) {
+            return false;
+        }
+
+        self.el2_enabled()
+    }
+
+    pub fn is_sctlr2el2_enabled(&self) -> bool {
+        if !Cpu::is_feature_implemented(Feature::SCTLR2) {
+            return false;
+        }
+
+        if self.have_el(EL3) && !SCR_EL3Field::SCTLR2En.fetch_bit(self.scr_el3) {
+            return false;
+        }
+
+        self.el2_enabled()
     }
 }

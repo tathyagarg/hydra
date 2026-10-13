@@ -23,7 +23,10 @@ mod sctlr2_el3;
 mod sctlr_el1;
 mod sctlr_el2;
 mod sctlr_el3;
+mod tcr2_el1;
+mod tcr2_el2;
 mod tcr_el1;
+mod tcr_el2;
 mod tcr_el3;
 
 pub use self::brbcr_el1::BRBCR_EL1Field;
@@ -46,11 +49,14 @@ pub use self::scr_el3::SCR_EL3Field;
 // pub use self::sctlr_el1::SCTLR_EL1Field;
 // pub use self::sctlr_el2::SCTLR_EL2Field;
 // pub use self::sctlr_el3::SCTLR_EL3Field;
-pub use self::sctlr2_el1::SCTLR2_EL1Field;
+// pub use self::sctlr2_el1::SCTLR2_EL1Field;
 pub use self::sctlr2_el2::SCTLR2_EL2Field;
 pub use self::sctlr2_el3::SCTLR2_EL3Field;
 pub use self::tcr_el1::TCR_EL1Field;
+pub use self::tcr_el2::TCR_EL2Field;
 pub use self::tcr_el3::TCR_EL3Field;
+pub use self::tcr2_el1::TCR2_EL1Field;
+pub use self::tcr2_el2::TCR2_EL2Field;
 
 pub trait RegisterField<T> {
     fn fetch_bit(self, v: T) -> bool;
@@ -113,3 +119,5 @@ impl RegisterFieldRange<u64, u8> for SCTLRField {
 }
 
 pub type MPAMVPMnEL2Type = u64;
+
+pub type PIRType = [u8; 16];

@@ -5,9 +5,10 @@ use crate::cpu::{
     fault::{AccessDescriptor, AccessType, ErrorState, Fault, FaultRecord, VARange},
     regs::{
         HCR_EL2Field, MAIRType, RegisterField, RegisterFieldRange, S1PIRType, SCR_EL3Field,
-        SCTLR2_EL3Field, SCTLRField, TCR_EL3Field, mairtype_from_mair,
+        SCTLR2_EL2Field, SCTLR2_EL3Field, SCTLRField, TCR_EL2Field, TCR_EL3Field, TCR2_EL2Field,
+        mairtype_from_mair,
     },
-    shared::{EL, Regime, SecurityState},
+    shared::{EL, EL3, Regime, SecurityState},
 };
 
 pub trait ValidMemReadSize {}
@@ -457,6 +458,170 @@ impl Cpu {
             emec,
             nfd: false,
             amec: false,
+            cmow: false,
+            dc: false,
+            dct: false,
+            e0pd: false,
+            epan: false,
+            nv1: false,
+            fng: false,
+            fngna: false,
+            ntlsmd: false,
+            pire0: [0; 16],
+            t0sz: 0,
+            t1sz: 0,
+            uwxn: false,
+        }
+    }
+
+    pub fn aarch4_s1ttw_params_el2(&self, ss: SecurityState) -> S1TTWParams {
+        let tgx = self.aarch64_s1decode_tg0(TCR_EL2Field::TG0.fetch_range(self.tcr_el2));
+        let txsz = TCR_EL2Field::T0SZ.fetch_range(self.tcr_el2);
+        let ps = TCR_EL2Field::PS.fetch_range(self.tcr_el2);
+        let irgn = TCR_EL2Field::IRGN0.fetch_range(self.tcr_el2);
+        let orgn = TCR_EL2Field::ORGN0.fetch_range(self.tcr_el2);
+        let sh = TCR_EL2Field::SH0.fetch_range(self.tcr_el2);
+        let tbi = TCR_EL2Field::TBI.fetch_bit(self.tcr_el2);
+        let mair = mairtype_from_mair(self.mair_el2);
+        let pie = if Cpu::is_feature_implemented(Feature::S1PIE) && self.is_tcr2el2_enabled() {
+            TCR2_EL2Field::PIE.fetch_bit(self.tcr_el2)
+        } else {
+            false
+        };
+
+        let mut pir = [0u8; 16] as S1PIRType;
+        if Cpu::is_feature_implemented(Feature::S1PIE) {
+            if !(self.have_el(EL3) && !SCR_EL3Field::PIEn.fetch_bit(self.scr_el3)) {
+                pir = self.pir_el2 as S1PIRType;
+            } else {
+                pir = [0u8; 16] as S1PIRType;
+            }
+        }
+
+        // TODO: MAIR2_EL2
+        let mair2 = [0; 8];
+
+        let aie = if Cpu::is_feature_implemented(Feature::AIE) && self.is_tcr2el2_enabled() {
+            TCR2_EL2Field::AIE.fetch_bit(self.tcr2_el2)
+        } else {
+            false
+        };
+
+        let wxn = SCTLRField::WXN.fetch_bit(self.sctlr_el2);
+        let ee = SCTLRField::EE.fetch_bit(self.sctlr_el2);
+        let sif = if self.have_el(EL3)
+            && (!Cpu::is_feature_implemented(Feature::RME)
+                || Cpu::is_feature_implemented(Feature::SEL2))
+        {
+            SCR_EL3Field::SIF.fetch_bit(self.scr_el3)
+        } else {
+            false
+        };
+
+        let tbid = if Cpu::is_feature_implemented(Feature::PAuth) {
+            TCR_EL2Field::TBID.fetch_bit(self.tcr_el2)
+        } else {
+            false
+        };
+        let mut hpd = if Cpu::is_feature_implemented(Feature::HPDS) {
+            TCR_EL2Field::HPD.fetch_bit(self.tcr_el2)
+        } else {
+            false
+        };
+
+        if !hpd {
+            if aie {
+                hpd = true;
+            }
+
+            if pie {
+                hpd = true;
+            }
+        }
+
+        let ha = if Cpu::is_feature_implemented(Feature::HAF) {
+            TCR_EL2Field::HA.fetch_bit(self.tcr_el2)
+        } else {
+            false
+        };
+        let hd = if Cpu::is_feature_implemented(Feature::HAFDBS) && ha {
+            TCR_EL2Field::HD.fetch_bit(self.tcr_el2)
+        } else {
+            false
+        };
+
+        let ds = if [TGx::_4KB, TGx::_16KB].contains(&tgx)
+            && Cpu::is_feature_implemented(Feature::LPA2)
+        {
+            TCR_EL2Field::DS.fetch_bit(self.tcr_el2)
+        } else {
+            false
+        };
+
+        let mtx = if Cpu::is_feature_implemented(Feature::MTE_NO_ADDRESS_TAGS)
+            || Cpu::is_feature_implemented(Feature::MTE_CANONICAL_TAGS)
+        {
+            TCR_EL2Field::MTX.fetch_bit(self.tcr_el2)
+        } else {
+            false
+        };
+        let pnch = if Cpu::is_feature_implemented(Feature::THE) && self.is_tcr2el2_enabled() {
+            TCR2_EL2Field::PnCH.fetch_bit(self.tcr2_el2)
+        } else {
+            false
+        };
+        let haft = if Cpu::is_feature_implemented(Feature::HAFT) && ha && self.is_tcr2el2_enabled()
+        {
+            TCR2_EL2Field::HAFT.fetch_bit(self.tcr_el2)
+        } else {
+            false
+        };
+
+        let emec = if Cpu::is_feature_implemented(Feature::MEC) && self.is_sctlr2el2_enabled() {
+            SCTLR2_EL2Field::EMEC.fetch_bit(self.sctlr2_el2)
+        } else {
+            false
+        };
+
+        let amec = if Cpu::is_feature_implemented(Feature::MEC)
+            && ss == SecurityState::Realm
+            && self.is_tcr2el2_enabled()
+        {
+            TCR2_EL2Field::AMEC0.fetch_bit(self.tcr2_el2)
+        } else {
+            false
+        };
+
+        S1TTWParams {
+            tgx,
+            txsz,
+            ps,
+            irgn,
+            orgn,
+            sh,
+            tbi,
+            mair,
+            d128: false,
+            skl: 0,
+            disch: false,
+            pie,
+            pir,
+            mair2,
+            aie,
+            wxn,
+            ee,
+            sif,
+            tbid,
+            hpd,
+            ha,
+            hd,
+            ds,
+            mtx,
+            pnch,
+            haft,
+            emec,
+            nfd: false,
+            amec,
             cmow: false,
             dc: false,
             dct: false,
