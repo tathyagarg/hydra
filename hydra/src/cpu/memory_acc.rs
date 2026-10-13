@@ -6,7 +6,7 @@ use crate::cpu::{
     regs::{
         E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType, RegisterField,
         RegisterFieldRange, S1PIRType, SCR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field, SCTLRField,
-        TCR_EL2CommonField, TCR_EL3Field, TCR2_EL2Field, mairtype_from_mair,
+        TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL2Field, mairtype_from_mair,
     },
     shared::{EL, EL0, EL3, Regime, SecurityState},
 };
@@ -215,16 +215,77 @@ pub struct TTWState {
     pub istable: bool,
     pub level: u8,
     pub baseaddress: FullAddress,
-    contiguous: bool,
-    s1assured: bool,
-    s2assuredonly: bool,
-    disch: bool,
-    nG: bool,
-    guardedpage: bool,
-    sdftype: SDFType,
-    domain: u8,
-    memattrs: MemoryAttributes,
-    permissions: Permissions,
+    pub contiguous: bool,
+    pub s1assured: bool,
+    pub s2assuredonly: bool,
+    pub disch: bool,
+    pub nG: bool,
+    pub guardedpage: bool,
+    pub sdftype: SDFType,
+    pub domain: u8,
+    pub memattrs: MemoryAttributes,
+    pub permissions: Permissions,
+}
+
+impl TTWState {
+    pub fn arbitrary() -> Self {
+        TTWState {
+            istable: false,
+            level: 0,
+            baseaddress: FullAddress {
+                paspace: PASpace::NonSecure,
+                address: 0,
+            },
+            contiguous: false,
+            s1assured: false,
+            s2assuredonly: false,
+            disch: false,
+            nG: false,
+            guardedpage: false,
+            sdftype: SDFType::Invalid,
+            domain: 0,
+            memattrs: MemoryAttributes {
+                memtype: MemType::Normal,
+                device: DeviceType::nGnRnE,
+                inner: MemAttrHints {
+                    attrs: 0,
+                    hints: 0,
+                    transient: false,
+                },
+                outer: MemAttrHints {
+                    attrs: 0,
+                    hints: 0,
+                    transient: false,
+                },
+                shareability: Shareability::NSH,
+                tags: MemTagType::Untagged,
+                notagaccess: false,
+                xs: false,
+            },
+            permissions: Permissions {
+                ap_table: 0,
+                xn_table: false,
+                pxn_table: false,
+                uxn_table: false,
+                ap: 0,
+                xn: false,
+                uxn: false,
+                pxn: false,
+                ppi: 0,
+                upi: 0,
+                ndirty: false,
+                s2pi: 0,
+                s2dirty: false,
+                po_index: 0,
+                s2po_index: 0,
+                s2ap: 0,
+                s2tag_na: false,
+                s2xnx: false,
+                dbm: false,
+                s2xn: false,
+            },
+        }
+    }
 }
 
 impl Cpu {
@@ -816,14 +877,31 @@ impl Cpu {
 
         match regime {
             Regime::EL20 => {
-                return if varange == VARange::LOWER {
+                if varange == VARange::LOWER {
                     E2H1_TCR_EL2Field::EPD0.fetch_bit(self.tcr_el2)
                 } else {
                     E2H1_TCR_EL2Field::EPD1.fetch_bit(self.tcr_el2)
-                };
+                }
+            }
+            Regime::EL10 => {
+                if varange == VARange::LOWER {
+                    TCR_EL1Field::EPD0.fetch_bit(self.tcr_el1)
+                } else {
+                    TCR_EL1Field::EPD1.fetch_bit(self.tcr_el1)
+                }
             }
             _ => unreachable!(),
         }
+    }
+
+    pub fn aarch64_s1initial_ttwstate(
+        &self,
+        walkparams: &S1TTWParams,
+        va: u64,
+        regime: Regime,
+        ss: SecurityState,
+    ) -> TTWState {
+        todo!()
     }
 
     pub fn aarch64_s1walk<const N: usize>(
@@ -837,7 +915,16 @@ impl Cpu {
         let mut fault = fault_in;
         let mut aligned = false;
 
-        // if self.has_unprivileged(regime) &&
+        if self.has_unprivileged(regime) && self.aarch64_s1epd(regime, va) {
+            fault.statuscode = Fault::Translation;
+            fault.level = 0;
+            return (
+                fault,
+                AddressDescriptor::arbitrary(),
+                TTWState::arbitrary(),
+                0,
+            );
+        }
 
         todo!()
     }
