@@ -1,4 +1,5 @@
 use crate::cpu::{
+    accessors::SCTLRType,
     common::nth_bit,
     regs::{RegisterField, RegisterFieldRange},
 };
@@ -235,4 +236,20 @@ pub enum SCTLRField {
     C = 2,
     A = 1,
     M = 0,
+}
+
+impl RegisterField<u64> for SCTLRField {
+    fn fetch_bit(self, sctlr_v: SCTLRType) -> bool {
+        nth_bit(sctlr_v, self as usize)
+    }
+}
+
+impl RegisterFieldRange<u64, u8> for SCTLRField {
+    fn fetch_range(self, sctlr_v: SCTLRType) -> u8 {
+        if let Self::TCF = self {
+            return ((sctlr_v >> 40) & 0b11) as u8;
+        }
+
+        unreachable!("??")
+    }
 }

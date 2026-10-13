@@ -1,5 +1,3 @@
-use crate::cpu::{accessors::SCTLRType, common::nth_bit};
-
 mod brbcr;
 mod brbfcr;
 mod edscr;
@@ -63,22 +61,6 @@ pub fn mairtype_from_mair(mair: u64) -> MAIRType {
 }
 
 pub type S1PIRType = [u8; 16];
-
-impl RegisterField<u64> for SCTLRField {
-    fn fetch_bit(self, sctlr_v: SCTLRType) -> bool {
-        nth_bit(sctlr_v, self as usize)
-    }
-}
-
-impl RegisterFieldRange<u64, u8> for SCTLRField {
-    fn fetch_range(self, sctlr_v: SCTLRType) -> u8 {
-        if let Self::TCF = self {
-            return ((sctlr_v >> 40) & 0b11) as u8;
-        }
-
-        unreachable!("??")
-    }
-}
 
 pub type MPAMVPMnEL2Type = u64;
 
