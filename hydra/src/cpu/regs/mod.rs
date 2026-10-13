@@ -1,9 +1,7 @@
 use crate::cpu::{accessors::SCTLRType, common::nth_bit};
 
-mod brbcr_el1;
-mod brbcr_el2;
-mod brbfcr_el0;
-mod brbfcr_el1;
+mod brbcr;
+mod brbfcr;
 mod edscr;
 mod hcr_el2;
 mod mdcr_el3;
@@ -17,22 +15,13 @@ mod mpamsm_el1;
 mod mpamvpmv_el2;
 mod scr;
 mod scr_el3;
-mod sctlr2_el1;
-mod sctlr2_el2;
-mod sctlr2_el3;
-mod sctlr_el1;
-mod sctlr_el2;
-mod sctlr_el3;
-mod tcr2_el1;
-mod tcr2_el2;
-mod tcr_el1;
-mod tcr_el2;
-mod tcr_el3;
+mod sctlr;
+mod sctlr2;
+mod tcr;
+mod tcr2;
 
-pub use self::brbcr_el1::BRBCR_EL1Field;
-pub use self::brbcr_el2::BRBCR_EL2Field;
-pub use self::brbfcr_el0::BRBFCR_EL0Field;
-pub use self::brbfcr_el1::BRBFCR_EL1Field;
+pub use self::brbcr::{BRBCR_EL1Field, BRBCR_EL2Field};
+pub use self::brbfcr::{BRBFCR_EL0Field, BRBFCR_EL1Field};
 pub use self::edscr::EDSCRField;
 pub use self::hcr_el2::HCR_EL2Field;
 pub use self::mdcr_el3::MDCR_EL3Field;
@@ -46,17 +35,18 @@ pub use self::mpamsm_el1::MPAMSM_EL1Field;
 pub use self::mpamvpmv_el2::MPAMVPMV_EL2Field;
 pub use self::scr::SCRField;
 pub use self::scr_el3::SCR_EL3Field;
+pub use self::sctlr::SCTLRField;
 // pub use self::sctlr_el1::SCTLR_EL1Field;
 // pub use self::sctlr_el2::SCTLR_EL2Field;
 // pub use self::sctlr_el3::SCTLR_EL3Field;
 // pub use self::sctlr2_el1::SCTLR2_EL1Field;
-pub use self::sctlr2_el2::SCTLR2_EL2Field;
-pub use self::sctlr2_el3::SCTLR2_EL3Field;
-pub use self::tcr_el1::TCR_EL1Field;
-pub use self::tcr_el2::{E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, TCR_EL2CommonField};
-pub use self::tcr_el3::TCR_EL3Field;
-// pub use self::tcr2_el1::TCR2_EL1Field;
-pub use self::tcr2_el2::TCR2_EL2Field;
+#[allow(unused_imports)]
+pub use self::sctlr2::{SCTLR2_EL1Field, SCTLR2_EL2Field, SCTLR2_EL3Field};
+pub use self::tcr::{
+    E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field,
+};
+#[allow(unused_imports)]
+pub use self::tcr2::{TCR2_EL1Field, TCR2_EL2Field};
 
 pub trait RegisterField<T> {
     fn fetch_bit(self, v: T) -> bool;
@@ -64,34 +54,6 @@ pub trait RegisterField<T> {
 
 pub trait RegisterFieldRange<T, S> {
     fn fetch_range(self, v: T) -> S;
-}
-
-/// Common fields in SCTLR registers
-#[allow(non_camel_case_types)]
-pub enum SCTLRField {
-    SPINTMASK = 62,
-    NMI = 61,
-    TCSO = 59,
-    DSSBS = 44,
-    ATA = 43,
-    TCF = -2, // 41-40
-    ITFSB = 37,
-    BT = 36,
-    EnIA = 31,
-    EnIB = 30,
-    EnDA = 27,
-    EE = 25,
-    EIS = 22,
-    IESB = 21,
-    WXN = 19,
-    EnDB = 13,
-    I = 12,
-    EOS = 11,
-    nAA = 6,
-    SA = 3,
-    C = 2,
-    A = 1,
-    M = 0,
 }
 
 pub type MAIRType = [u8; 8];
