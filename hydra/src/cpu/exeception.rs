@@ -50,6 +50,7 @@ pub struct IssType {
     iss2: u32,
 }
 
+#[derive(Clone, Copy)]
 pub enum PASpace {
     Root,
     SystemAgent,
@@ -61,6 +62,7 @@ pub enum PASpace {
     NonSecure,
 }
 
+#[derive(Clone, Copy)]
 pub struct FullAddress {
     pub paspace: PASpace,
     /// bits(NUM_PABITS) = u64

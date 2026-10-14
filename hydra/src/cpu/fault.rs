@@ -4,7 +4,7 @@ use crate::cpu::{
     shared::{EL, EL1, SecurityState},
 };
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Fault {
     None,
     AccessFlag,
@@ -295,6 +295,7 @@ impl Default for AccessDescriptor {
     }
 }
 
+#[derive(Clone)]
 pub enum GPCF {
     None,        // No fault
     AddressSize, // GPT address size fault
@@ -303,6 +304,7 @@ pub enum GPCF {
     Fail,        // Granule protection fault
 }
 
+#[derive(Clone)]
 pub struct GPCFRecord {
     gpf: GPCF,
     level: u8,
@@ -317,6 +319,7 @@ impl GPCFRecord {
     }
 }
 
+#[derive(Clone)]
 pub enum ErrorState {
     UC,  // Uncontainable
     UEU, // Unrecoverable state
@@ -325,12 +328,14 @@ pub enum ErrorState {
     CE,  // Corrected
 }
 
+#[derive(Clone)]
 pub enum WatchpointType {
     Inactive,     // Watchpoint inactive or disabled
     AddrMatch,    // Address Match watchpoint
     AddrMismatch, // Address Mismatch watchpoint
 }
 
+#[derive(Clone)]
 pub struct WatchpointInfo {
     wptype: WatchpointType,
     maybe_false_match: bool,
@@ -339,6 +344,7 @@ pub struct WatchpointInfo {
     vaddress: u64,
 }
 
+#[derive(Clone)]
 pub struct FaultRecord {
     pub statuscode: Fault,
     pub accessdesc: AccessDescriptor,

@@ -36,7 +36,8 @@ pub use self::mpamsm_el1::MPAMSM_EL1Field;
 pub use self::mpamvpmv_el2::MPAMVPMV_EL2Field;
 pub use self::scr::SCRField;
 pub use self::scr_el3::SCR_EL3Field;
-pub use self::sctlr::SCTLRField;
+#[allow(unused_imports)]
+pub use self::sctlr::{SCTLR_EL1Field, SCTLR_EL2Field, SCTLR_EL3Field, SCTLRField};
 // pub use self::sctlr_el1::SCTLR_EL1Field;
 // pub use self::sctlr_el2::SCTLR_EL2Field;
 // pub use self::sctlr_el3::SCTLR_EL3Field;
@@ -78,3 +79,36 @@ pub type S1PIRType = [u8; 16];
 pub type MPAMVPMnEL2Type = u64;
 
 pub type PIRType = [u8; 16];
+
+#[allow(non_camel_case_types)]
+pub enum MECID_P0_EL2 {
+    MECID = -1, // 15-0
+}
+
+impl RegisterFieldRange<u64, u16> for MECID_P0_EL2 {
+    fn fetch_range(self, v: u64) -> u16 {
+        (v & 0xFFFF) as u16
+    }
+}
+
+#[allow(non_camel_case_types)]
+pub enum MECID_P1_EL2 {
+    MECID = -1, // 15-0
+}
+
+impl RegisterFieldRange<u64, u16> for MECID_P1_EL2 {
+    fn fetch_range(self, v: u64) -> u16 {
+        (v & 0xFFFF) as u16
+    }
+}
+
+#[allow(non_camel_case_types)]
+pub enum VMECID_P_EL2 {
+    MECID = -1, // 15-0
+}
+
+impl RegisterFieldRange<u64, u16> for VMECID_P_EL2 {
+    fn fetch_range(self, v: u64) -> u16 {
+        (v & 0xFFFF) as u16
+    }
+}

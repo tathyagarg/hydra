@@ -4,9 +4,10 @@ use crate::cpu::{
     exeception::{FullAddress, PASpace},
     fault::{AccessDescriptor, AccessType, ErrorState, Fault, FaultRecord, VARange},
     regs::{
-        E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType, RegisterField,
-        RegisterFieldRange, S1PIRType, SCR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field, SCTLRField,
-        TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL2Field, VTCR_EL2Field,
+        E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType, MECID_P0_EL2, MECID_P1_EL2,
+        RegisterField, RegisterFieldRange, S1PIRType, SCR_EL3Field, SCTLR_EL1Field, SCTLR_EL2Field,
+        SCTLR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field, SCTLRField, TCR_EL1Field,
+        TCR_EL2CommonField, TCR_EL3Field, TCR2_EL2Field, VMECID_P_EL2, VTCR_EL2Field,
         mairtype_from_mair,
     },
     shared::{EL, EL0, EL3, Regime, SecurityState},
@@ -23,6 +24,20 @@ impl ValidMemReadSize for [(); 4] {}
 impl ValidMemReadSize for [(); 8] {}
 impl ValidMemReadSize for [(); 16] {}
 impl ValidMemReadSize for [(); 32] {}
+
+pub struct Bits<const N: usize> {
+    bytes: Vec<u8>,
+}
+
+pub trait ValidMemReadSizeBits {}
+pub struct Size<const N: usize>;
+impl ValidMemReadSizeBits for Size<8> {}
+impl ValidMemReadSizeBits for Size<16> {}
+impl ValidMemReadSizeBits for Size<32> {}
+impl ValidMemReadSizeBits for Size<64> {}
+impl ValidMemReadSizeBits for Size<128> {}
+impl ValidMemReadSizeBits for Size<256> {}
+impl ValidMemReadSizeBits for Size<512> {}
 
 pub struct PhysMemRetStatus {
     pub statuscode: Fault,
@@ -42,12 +57,14 @@ impl PhysMemRetStatus {
     }
 }
 
+#[derive(PartialEq, Clone)]
 pub enum MemType {
     Normal,
     Device,
 }
 
 #[allow(non_camel_case_types)]
+#[derive(Clone)]
 pub enum DeviceType {
     GRE,
     nGRE,
@@ -71,24 +88,28 @@ pub const MemHint_RA: u8 = 0b10;
 #[allow(non_upper_case_globals)]
 pub const MemHint_RWA: u8 = 0b11;
 
+#[derive(Clone)]
 pub struct MemAttrHints {
     pub attrs: u8,
     pub hints: u8,
     pub transient: bool,
 }
 
+#[derive(Clone, Copy)]
 pub enum Shareability {
     NSH,
     ISH,
     OSH,
 }
 
+#[derive(Clone)]
 pub enum MemTagType {
     AllocationTagged,
     CanonicallyTagged,
     Untagged,
 }
 
+#[derive(Clone)]
 pub struct MemoryAttributes {
     pub memtype: MemType,
     pub device: DeviceType,
@@ -1082,6 +1103,166 @@ impl Cpu {
             return DEFAULT_MECID;
         }
 
+        match regime {
+            Regime::EL2 => MECID_P0_EL2::MECID.fetch_range(self.mecid_p0_el2),
+            Regime::EL20 => {
+                if !E2H1_TCR_EL2Field::A1.fetch_bit(self.tcr_el2) {
+                    return MECID_P1_EL2::MECID.fetch_range(self.mecid_p1_el2);
+                } else {
+                    return MECID_P0_EL2::MECID.fetch_range(self.mecid_p0_el2);
+                }
+            }
+            Regime::EL10 => VMECID_P_EL2::MECID.fetch_range(self.vmecid_p_el2),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn aarch64_s1dcache_enabled(&self, regime: Regime) -> bool {
+        match regime {
+            Regime::EL3 => SCTLR_EL3Field::C.fetch_bit(self.sctlr_el3),
+            Regime::EL2 => SCTLR_EL2Field::C.fetch_bit(self.sctlr_el2),
+            Regime::EL20 => SCTLR_EL2Field::C.fetch_bit(self.sctlr_el2),
+            Regime::EL10 => SCTLR_EL1Field::C.fetch_bit(self.sctlr_el1),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn aarch64_ttentry_address_bounds(
+        &self,
+        level: u8,
+        txsz: u8,
+        tgx: TGx,
+        descsizelog2: u8,
+        start_level_lookup: bool,
+        nstride: u8,
+    ) -> (AddressSize, AddressSize) {
+        let iasize = self.aarch64_iasize(txsz);
+        let granulebits = self.tgx_granulebits(tgx);
+        let stride = granulebits - descsizelog2;
+        let level = FINAL_LEVEL - level;
+
+        let lsb = (level * stride + granulebits) as AddressSize;
+        let msb = if start_level_lookup {
+            (iasize - 1) as AddressSize
+        } else {
+            ((lsb + (stride * nstride)) - 1) as AddressSize
+        };
+
+        (lsb, msb)
+    }
+
+    pub fn aarch64_s1sltt_entry_address(
+        &self,
+        level: u8,
+        walkparams: &S1TTWParams,
+        ia: u64,
+        tablebase: &FullAddress,
+    ) -> FullAddress {
+        let descsizelog2 = 3 + (walkparams.d128 as u8);
+        let nstride = 1u8;
+        let start_level_lookup = true;
+
+        let (lsb, msb) = self.aarch64_ttentry_address_bounds(
+            level,
+            walkparams.txsz,
+            walkparams.tgx,
+            descsizelog2,
+            start_level_lookup,
+            nstride,
+        );
+        let index = ((ia >> lsb) & ((1u64 << (msb - lsb + 1)) - 1)) << descsizelog2;
+
+        FullAddress {
+            address: tablebase.address | index,
+            paspace: tablebase.paspace,
+        }
+    }
+
+    pub fn aarch64_pamax(&self) -> AddressSize {
+        self.imp_def_int("Maximum Physical Address Size") as AddressSize
+    }
+
+    pub fn aarch64_physical_address_size(
+        &self,
+        d128: bool,
+        ds: bool,
+        encoded_ps: u8,
+        tgx: TGx,
+    ) -> AddressSize {
+        let ps = match encoded_ps {
+            0b000 => 32,
+            0b001 => 36,
+            0b010 => 40,
+            0b011 => 42,
+            0b100 => 44,
+            0b101 => 48,
+            0b110 => 52,
+            0b111 => 56,
+            _ => unreachable!(),
+        } as u8;
+
+        let max_ps = if d128 {
+            self.aarch64_pamax()
+        } else if Cpu::is_feature_implemented(Feature::LPA) && (tgx == TGx::_64KB || ds) {
+            self.aarch64_pamax().min(52)
+        } else {
+            self.aarch64_pamax().min(48)
+        };
+
+        ps.max(max_ps) as AddressSize
+    }
+
+    pub fn aarch64_oaout_of_range(
+        &self,
+        address: u64,
+        d128: bool,
+        ds: bool,
+        ps: u8,
+        tgx: TGx,
+    ) -> bool {
+        let oasize = self.aarch64_physical_address_size(d128, ds, ps, tgx);
+
+        if oasize < NUM_PABITS {
+            ((address >> oasize) & ones((NUM_PABITS - oasize) as u32)) != 0
+        } else {
+            false
+        }
+    }
+
+    pub fn aarch64_s1oaout_of_range(&self, address: u64, walkparams: &S1TTWParams) -> bool {
+        self.aarch64_oaout_of_range(
+            address,
+            walkparams.d128,
+            walkparams.ds,
+            walkparams.ps,
+            walkparams.tgx,
+        )
+    }
+
+    #[allow(unused_variables)]
+    pub fn phys_mem_read<const N: usize>(
+        desc: &AddressDescriptor,
+        accdesc: &AccessDescriptor,
+    ) -> (PhysMemRetStatus, Bits<N>)
+    where
+        Size<N>: ValidMemReadSizeBits,
+    {
+        todo!("Read")
+    }
+
+    pub fn fetch_descriptor<const N: usize>(
+        &self,
+        ee: bool,
+        walkparams: &S1TTWParams,
+        walkaccess: &AccessDescriptor,
+        fault_in: &FaultRecord,
+    ) -> (FaultRecord, u128) {
+        let mut fault = fault_in.clone();
+
+        if Cpu::is_feature_implemented(Feature::RME) {
+            todo!("RME stuff");
+        }
+
         todo!()
     }
 
@@ -1119,6 +1300,61 @@ impl Cpu {
                 TTWState::arbitrary(),
                 0,
             );
+        }
+
+        let mecid = self.aarch64_s1ttwalk_mecid(walkparams.emec, regime, accdesc.ss);
+
+        let mut memattrs = if !self.aarch64_s1dcache_enabled(regime) {
+            let mut attrs = self.normal_nc_memattr();
+            attrs.xs = walkstate.memattrs.xs;
+            attrs
+        } else {
+            walkstate.memattrs.clone()
+        };
+
+        memattrs.shareability = if regime == Regime::EL10
+            && self.el2_enabled()
+            && HCR_EL2Field::VM.fetch_bit(self.hcr_el2)
+        {
+            walkstate.memattrs.shareability
+        } else {
+            self.effective_shareability(&memattrs)
+        };
+
+        let mut s2fs1mro = false;
+        let mut descaddress = self.aarch64_s1sltt_entry_address(
+            walkstate.level,
+            walkparams,
+            va,
+            &walkstate.baseaddress,
+        );
+
+        if self.aarch64_s1oaout_of_range(descaddress.address, walkparams) {
+            fault.statuscode = Fault::AddressSize;
+            fault.level = 0;
+            return (
+                fault,
+                AddressDescriptor::arbitrary(),
+                TTWState::arbitrary(),
+                0,
+            );
+        }
+
+        let mut paddress: FullAddress;
+        let mut s1assured: bool;
+
+        loop {
+            fault.level = walkstate.level;
+            paddress = descaddress;
+            s1assured = walkstate.s1assured;
+
+            let toplevel = walkstate.level == startlevel;
+            let varange = self.aarch64_get_varange(va);
+            let walkaccess = self.create_accdesc_s1ttw(toplevel, varange, &accdesc);
+
+            if regime == Regime::EL10 && self.el2_enabled() {
+                todo!("End it all bruh")
+            }
         }
 
         todo!()

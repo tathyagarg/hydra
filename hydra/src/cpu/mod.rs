@@ -433,6 +433,10 @@ pub struct Cpu {
 
     vtcr_el2: u64,
 
+    mecid_p0_el2: u64,
+    mecid_p1_el2: u64,
+    vmecid_p_el2: u64,
+
     brbe: Brbe,
     pmu: Pmu,
 
@@ -499,6 +503,9 @@ impl Default for Cpu {
             ttbr1_el1: 0,
             ttbr1_el2: 0,
             vtcr_el2: 0,
+            mecid_p0_el2: 0,
+            mecid_p1_el2: 0,
+            vmecid_p_el2: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],

@@ -4,6 +4,7 @@ use crate::cpu::{
 };
 
 pub const FINAL_LEVEL: u8 = 3;
+pub const NUM_PABITS: u8 = 56;
 
 #[derive(PartialEq, Debug)]
 pub struct NZCV(bool, bool, bool, bool);

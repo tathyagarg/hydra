@@ -5,7 +5,7 @@ use crate::cpu::{
     constraint::{Constraint, Unpredictable},
     fault::{
         AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, FaultRecord, MPAMData, MPAMinfo,
-        MemOp, PARTIDSpaceType, PARTIDType, PMGType,
+        MemOp, PARTIDSpaceType, PARTIDType, PMGType, VARange,
     },
     memory_acc::{
         AddressSize, DeviceType, MemAttr_NC, MemAttr_WB, MemAttr_WT, MemAttrHints, MemHint_No,
@@ -1662,6 +1662,63 @@ impl Cpu {
         }
 
         SCR_EL3Field::MECEn.fetch_bit(self.scr_el3)
+    }
+
+    /// NormalNCMemAttr()
+    /// =================
+    /// Normal Non-cacheable memory attributes
+    pub fn normal_nc_memattr(&self) -> MemoryAttributes {
+        MemoryAttributes {
+            memtype: MemType::Normal,
+            device: DeviceType::GRE,
+            outer: MemAttrHints {
+                attrs: MemAttr_NC,
+                hints: 0,
+                transient: false,
+            },
+            inner: MemAttrHints {
+                attrs: MemAttr_NC,
+                hints: 0,
+                transient: false,
+            },
+            shareability: Shareability::OSH,
+            tags: MemTagType::Untagged,
+            notagaccess: false,
+            xs: false,
+        }
+    }
+
+    /// EffectiveShareability()
+    /// =======================
+    /// Force Outer Shareability on Device and Normal iNCoNC memory
+    pub fn effective_shareability(&self, memattrs: &MemoryAttributes) -> Shareability {
+        if memattrs.memtype == MemType::Device
+            || (memattrs.inner.attrs == MemAttr_NC && memattrs.outer.attrs == MemAttr_NC)
+        {
+            Shareability::OSH
+        } else {
+            memattrs.shareability
+        }
+    }
+
+    /// CreateAccDescS1TTW()
+    /// ====================
+    /// Access descriptor for stage 1 translation table walks
+    pub fn create_accdesc_s1ttw(
+        &self,
+        toplevel: bool,
+        varange: VARange,
+        accdesc_in: &AccessDescriptor,
+    ) -> AccessDescriptor {
+        let mut accdesc = self.new_accdesc(AccessType::TTW, accdesc_in.mpam.clone());
+
+        accdesc.el = accdesc_in.el;
+        accdesc.ss = accdesc_in.ss;
+        accdesc.read = true;
+        accdesc.toplevel = Some(toplevel);
+        accdesc.varange = Some(varange);
+
+        accdesc
     }
 }
 
