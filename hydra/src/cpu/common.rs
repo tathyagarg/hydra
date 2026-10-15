@@ -46,6 +46,16 @@ pub fn nth_bit<T: Into<u128>>(v: T, n: usize) -> bool {
     return (v.into() >> n) & 1 == 1;
 }
 
+pub fn get_bits<T: Into<u128>>(v: T, x: usize, y: usize) -> u128 {
+    let mask = if y - x + 1 == 128 {
+        u128::MAX
+    } else {
+        (1u128 << (y - x + 1)) - 1
+    };
+
+    (v.into() >> x) & mask
+}
+
 pub trait BitInteger:
     Copy + std::ops::Shl<u32, Output = Self> + std::ops::Sub<Output = Self>
 {

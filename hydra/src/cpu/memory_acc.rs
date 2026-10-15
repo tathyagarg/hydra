@@ -60,6 +60,18 @@ impl<const N: usize> Bits<N> {
 
         result
     }
+
+    pub fn set_bit(&mut self, n: usize, v: bool) {
+        let byte_index = n / 8;
+        let bit_index = n % 8;
+        let mask = 1u8 << bit_index;
+
+        if v {
+            self.bytes[byte_index] |= mask;
+        } else {
+            self.bytes[byte_index] &= !mask;
+        }
+    }
 }
 
 pub trait ValidMemReadSizeBits {}
@@ -1519,6 +1531,43 @@ impl Cpu {
         }
     }
 
+    pub fn aarch64_s1ttentry_address(
+        &self,
+        level: u8,
+        walkparams: &S1TTWParams,
+        skl: u8,
+        ia: u64,
+        tablebase: &FullAddress,
+    ) -> FullAddress {
+        let nstride = if walkparams.d128 { skl + 1 } else { 1 };
+        let descsizelog2 = if walkparams.d128 { 4u8 } else { 3u8 };
+        let start_level_lookup = false;
+
+        let (lsb, msb) = self.aarch64_ttentry_address_bounds(
+            level,
+            walkparams.txsz,
+            walkparams.tgx,
+            descsizelog2,
+            start_level_lookup,
+            nstride,
+        );
+
+        let index = (get_bits(ia, msb as usize, lsb as usize) as u64) << descsizelog2;
+
+        FullAddress {
+            address: tablebase.address | index,
+            paspace: tablebase.paspace,
+        }
+    }
+
+    pub fn aarch64_ntfaults<const N: usize>(&self, d128: bool, desc: &Bits<N>) -> bool {
+        if d128 {
+            desc.nth_bit(6)
+        } else {
+            desc.nth_bit(16)
+        }
+    }
+
     pub fn aarch64_s1walk<const N: usize>(
         &self,
         fault_in: FaultRecord,
@@ -1530,6 +1579,7 @@ impl Cpu {
     where
         Size<N>: ValidWalkSize + ValidMemReadSizeBits,
     {
+        let mut skl: u8;
         let mut fault = fault_in;
         let mut aligned = false;
 
@@ -1641,10 +1691,8 @@ impl Cpu {
                 );
             }
 
-            let mut new_desc: Bits<N>;
-
             loop {
-                new_desc = descriptor.clone();
+                let mut new_desc = descriptor.clone();
                 desctype = self.aarch64_decode_descriptor_type(
                     &descriptor,
                     walkparams.d128,
@@ -1653,10 +1701,64 @@ impl Cpu {
                     walkstate.level,
                 );
 
-                // match desctype {
-                //     DescriptorType::Table => walkstate = todo!(),
-                // }
+                match desctype {
+                    DescriptorType::Table => {
+                        walkstate = self.aarch64_s1next_walk_state_table(
+                            &walkstate,
+                            s2fs1mro,
+                            regime,
+                            walkparams,
+                            &descriptor,
+                        );
+
+                        skl = if walkparams.d128 {
+                            descriptor.get_bits(110, 109) as u8
+                        } else {
+                            0
+                        };
+
+                        descaddress = self.aarch64_s1ttentry_address(
+                            walkstate.level,
+                            walkparams,
+                            skl,
+                            va,
+                            &walkstate.baseaddress,
+                        );
+
+                        if self.aarch64_s1oaout_of_range(descaddress.address, walkparams) {
+                            fault.statuscode = Fault::Translation;
+                            return (
+                                fault,
+                                AddressDescriptor::arbitrary(),
+                                TTWState::arbitrary(),
+                                0,
+                            );
+                        }
+
+                        if walkparams.haft {
+                            new_desc.set_bit(10, true);
+                        }
+
+                        if walkparams.d128
+                            && skl != 0b00
+                            && self.aarch64_ntfaults(walkparams.d128, &descriptor)
+                        {
+                            fault.statuscode = Fault::Translation;
+                            return (
+                                fault,
+                                AddressDescriptor::arbitrary(),
+                                TTWState::arbitrary(),
+                                0,
+                            );
+                        }
+                    }
+                    _ => todo!(),
+                }
+
+                break;
             }
+
+            todo!()
         }
 
         todo!()
