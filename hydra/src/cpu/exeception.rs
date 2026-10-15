@@ -50,7 +50,7 @@ pub struct IssType {
     iss2: u32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum PASpace {
     Root,
     SystemAgent,

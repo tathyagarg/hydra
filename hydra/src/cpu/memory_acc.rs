@@ -25,8 +25,41 @@ impl ValidMemReadSize for [(); 8] {}
 impl ValidMemReadSize for [(); 16] {}
 impl ValidMemReadSize for [(); 32] {}
 
+#[derive(Clone)]
 pub struct Bits<const N: usize> {
+    // bytes.len() == N / 8
     bytes: Vec<u8>,
+}
+
+impl<const N: usize> Bits<N> {
+    pub fn reverse(&self) -> Self {
+        Self {
+            bytes: self.bytes.iter().rev().copied().collect(),
+        }
+    }
+
+    pub fn nth_bit(&self, n: usize) -> bool {
+        let byte_index = n / 8;
+        if byte_index > self.bytes.len() {
+            panic!("Byte index out of range");
+        }
+
+        nth_bit(self.bytes[byte_index], n % 8)
+    }
+
+    pub fn get_bits(&self, x: usize, y: usize) -> u64 {
+        let mut result = 0u64;
+
+        for bit in x..=y {
+            let byte_index = bit / 8;
+            let bit_index = bit % 8;
+            let value = (self.bytes[byte_index] >> bit_index) & 1;
+
+            result |= (value as u64) << (bit - x);
+        }
+
+        result
+    }
 }
 
 pub trait ValidMemReadSizeBits {}
@@ -38,6 +71,16 @@ impl ValidMemReadSizeBits for Size<64> {}
 impl ValidMemReadSizeBits for Size<128> {}
 impl ValidMemReadSizeBits for Size<256> {}
 impl ValidMemReadSizeBits for Size<512> {}
+
+pub trait ValidWalkSize {}
+impl ValidWalkSize for Size<64> {}
+impl ValidWalkSize for Size<128> {}
+
+pub enum DescriptorType {
+    Table,
+    Leaf,
+    Invalid,
+}
 
 pub struct PhysMemRetStatus {
     pub statuscode: Fault,
@@ -228,7 +271,7 @@ pub enum SDFType {
     SmallPage,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Permissions {
     ap_table: u8,    // Stage 1 hierarchical access permissions
     xn_table: bool,  // Stage 1 hierarchical execute-never for single EL regimes
@@ -1241,6 +1284,7 @@ impl Cpu {
 
     #[allow(unused_variables)]
     pub fn phys_mem_read<const N: usize>(
+        &self,
         desc: &AddressDescriptor,
         accdesc: &AccessDescriptor,
     ) -> (PhysMemRetStatus, Bits<N>)
@@ -1253,17 +1297,226 @@ impl Cpu {
     pub fn fetch_descriptor<const N: usize>(
         &self,
         ee: bool,
-        walkparams: &S1TTWParams,
+        walkaddress: &AddressDescriptor,
         walkaccess: &AccessDescriptor,
         fault_in: &FaultRecord,
-    ) -> (FaultRecord, u128) {
-        let mut fault = fault_in.clone();
+    ) -> (FaultRecord, Bits<N>)
+    where
+        Size<N>: ValidMemReadSizeBits,
+    {
+        let fault = fault_in.clone();
 
         if Cpu::is_feature_implemented(Feature::RME) {
             todo!("RME stuff");
         }
 
-        todo!()
+        let (memstatus, mut descriptor) = self.phys_mem_read::<N>(walkaddress, walkaccess);
+        if is_fault_retstatus(&memstatus) {
+            todo!("Fault booo")
+        }
+
+        if ee {
+            descriptor = descriptor.reverse();
+        }
+
+        (fault, descriptor)
+    }
+
+    pub fn aarch64_block_desc_supported(&self, d128: bool, ds: bool, tgx: TGx, level: u8) -> bool {
+        match tgx {
+            TGx::_4KB => (level == 0 && (ds || d128)) || level == 1 || level == 2,
+            TGx::_16KB => (level == 1 && (ds || d128)) || level == 2,
+            TGx::_64KB => (level == 1 && (d128 || self.aarch64_pamax() >= 52)) || level == 2,
+        }
+    }
+
+    pub fn aarch64_decode_descriptor_type<const N: usize>(
+        &self,
+        desc: &Bits<N>,
+        d128: bool,
+        ds: bool,
+        tgx: TGx,
+        level: u8,
+    ) -> DescriptorType {
+        if !desc.nth_bit(0) {
+            return DescriptorType::Invalid;
+        } else if d128 {
+            let skl = ((desc.nth_bit(110) as u8) << 1) | desc.nth_bit(109) as u8;
+            if [TGx::_16KB, TGx::_64KB].contains(&tgx) && skl == 3 {
+                return DescriptorType::Invalid;
+            }
+
+            let effective_level = level + skl;
+            if effective_level > FINAL_LEVEL {
+                return DescriptorType::Invalid;
+            } else if effective_level == FINAL_LEVEL {
+                return DescriptorType::Leaf;
+            } else {
+                return DescriptorType::Table;
+            }
+        } else {
+            if desc.nth_bit(1) {
+                if level == FINAL_LEVEL {
+                    return DescriptorType::Leaf;
+                } else {
+                    return DescriptorType::Table;
+                }
+            } else {
+                if self.aarch64_block_desc_supported(d128, ds, tgx, level) {
+                    return DescriptorType::Leaf;
+                } else {
+                    return DescriptorType::Invalid;
+                }
+            }
+        }
+    }
+
+    pub fn aarch64_next_table_base<const N: usize>(
+        &self,
+        desc: &Bits<N>,
+        d128: bool,
+        skl: u8,
+        ds: bool,
+        tgx: TGx,
+    ) -> u64 {
+        let mut tablebase;
+        let granulebits = self.tgx_granulebits(tgx);
+        let tablesize = if d128 {
+            let descsizelog2 = 4u8;
+            let stride = granulebits - descsizelog2;
+            stride * (1 + skl) + descsizelog2
+        } else {
+            granulebits
+        };
+
+        tablebase = match tgx {
+            TGx::_4KB => desc.get_bits(47, 12),
+            TGx::_16KB => desc.get_bits(47, 14),
+            TGx::_64KB => desc.get_bits(47, 16),
+        };
+
+        tablebase = align_down_p2::<56>(tablebase, tablesize as u32);
+
+        if d128 {
+            tablebase |= desc.get_bits(48, 55) << 48;
+        } else if tgx == TGx::_64KB && self.aarch64_pamax() >= 52 {
+            tablebase |= desc.get_bits(12, 15) << 48;
+        } else if ds {
+            tablebase |= (desc.get_bits(8, 9) << 50) | (desc.get_bits(48, 49) << 48);
+        };
+
+        tablebase
+    }
+
+    pub fn aarch64_s1apply_table_perms<const N: usize>(
+        &self,
+        perms_in: &Permissions,
+        desc: &Bits<N>,
+        regime: Regime,
+        walkparams: &S1TTWParams,
+    ) -> Permissions {
+        if regime == Regime::EL10 && self.el2_enabled() && walkparams.nv1 {
+            Permissions {
+                ap_table: perms_in.ap_table | ((desc.nth_bit(62) as u8) << 1),
+                pxn_table: perms_in.pxn_table | desc.nth_bit(60),
+                ..Default::default()
+            }
+        } else if self.has_unprivileged(regime) {
+            Permissions {
+                ap_table: perms_in.ap_table | (desc.get_bits(62, 61) as u8),
+                uxn_table: perms_in.uxn_table | desc.nth_bit(60),
+                pxn_table: perms_in.pxn_table | desc.nth_bit(59),
+                ..Default::default()
+            }
+        } else {
+            Permissions {
+                ap_table: perms_in.ap_table | ((desc.nth_bit(62) as u8) << 1),
+                xn_table: perms_in.xn_table | desc.nth_bit(60),
+                ..Default::default()
+            }
+        }
+    }
+
+    pub fn aarch64_s1next_walk_state_table<const N: usize>(
+        &self,
+        currentstate: &TTWState,
+        s2fs1mro: bool,
+        regime: Regime,
+        walkparams: &S1TTWParams,
+        desc: &Bits<N>,
+    ) -> TTWState {
+        let skl = if walkparams.d128 {
+            ((desc.nth_bit(110) as u8) << 1) | desc.nth_bit(109) as u8
+        } else {
+            0
+        };
+
+        let tablebase = FullAddress {
+            address: self.aarch64_next_table_base(
+                desc,
+                walkparams.d128,
+                skl,
+                walkparams.ds,
+                walkparams.tgx,
+            ),
+            paspace: if currentstate.baseaddress.paspace == PASpace::Secure {
+                let nstable = if walkparams.d128 {
+                    desc.nth_bit(127)
+                } else {
+                    desc.nth_bit(63)
+                };
+                if !nstable {
+                    PASpace::Secure
+                } else {
+                    PASpace::NonSecure
+                }
+            } else {
+                currentstate.baseaddress.paspace
+            },
+        };
+
+        let protectedbit = if walkparams.d128 {
+            desc.nth_bit(114)
+        } else {
+            if walkparams.pnch {
+                desc.nth_bit(52)
+            } else {
+                false
+            }
+        };
+
+        TTWState {
+            istable: true,
+            level: if walkparams.d128 {
+                currentstate.level + skl + 1
+            } else {
+                currentstate.level + 1
+            },
+            baseaddress: tablebase,
+            contiguous: false,
+            s1assured: currentstate.s1assured && s2fs1mro && protectedbit,
+            s2assuredonly: false,
+            disch: if walkparams.d128 {
+                desc.nth_bit(112)
+            } else {
+                false
+            },
+            nG: currentstate.nG,
+            guardedpage: false,
+            sdftype: SDFType::Invalid,
+            domain: 0,
+            memattrs: currentstate.memattrs.clone(),
+            permissions: if !walkparams.hpd && !walkparams.pie {
+                self.aarch64_s1apply_table_perms(
+                    &currentstate.permissions,
+                    desc,
+                    regime,
+                    walkparams,
+                )
+            } else {
+                currentstate.permissions.clone()
+            },
+        }
     }
 
     pub fn aarch64_s1walk<const N: usize>(
@@ -1273,7 +1526,10 @@ impl Cpu {
         va: u64,
         regime: Regime,
         accdesc: &AccessDescriptor,
-    ) -> (FaultRecord, AddressDescriptor, TTWState, u128) {
+    ) -> (FaultRecord, AddressDescriptor, TTWState, u128)
+    where
+        Size<N>: ValidWalkSize + ValidMemReadSizeBits,
+    {
         let mut fault = fault_in;
         let mut aligned = false;
 
@@ -1343,17 +1599,63 @@ impl Cpu {
         let mut paddress: FullAddress;
         let mut s1assured: bool;
 
+        let mut desctype: DescriptorType;
+
+        let mut walkaddress = AddressDescriptor {
+            vaddress: va,
+            mecid,
+            memattrs,
+            fault: FaultRecord::no_fault(),
+            paddress: FullAddress {
+                paspace: PASpace::Root,
+                address: 0,
+            }, // replaced later
+            s1assured: false,
+            s2fs1mro,
+        };
+
         loop {
             fault.level = walkstate.level;
-            paddress = descaddress;
-            s1assured = walkstate.s1assured;
+            walkaddress.paddress = descaddress;
+            walkaddress.s1assured = walkstate.s1assured;
 
             let toplevel = walkstate.level == startlevel;
             let varange = self.aarch64_get_varange(va);
             let walkaccess = self.create_accdesc_s1ttw(toplevel, varange, &accdesc);
 
-            if regime == Regime::EL10 && self.el2_enabled() {
+            let descriptor = if regime == Regime::EL10 && self.el2_enabled() {
                 todo!("End it all bruh")
+            } else {
+                let (f, descriptor) =
+                    self.fetch_descriptor::<N>(walkparams.ee, &walkaddress, &walkaccess, &fault);
+                fault = f;
+                descriptor
+            };
+
+            if fault.statuscode != Fault::None {
+                return (
+                    fault,
+                    AddressDescriptor::arbitrary(),
+                    TTWState::arbitrary(),
+                    0,
+                );
+            }
+
+            let mut new_desc: Bits<N>;
+
+            loop {
+                new_desc = descriptor.clone();
+                desctype = self.aarch64_decode_descriptor_type(
+                    &descriptor,
+                    walkparams.d128,
+                    walkparams.ds,
+                    walkparams.tgx,
+                    walkstate.level,
+                );
+
+                // match desctype {
+                //     DescriptorType::Table => walkstate = todo!(),
+                // }
             }
         }
 
