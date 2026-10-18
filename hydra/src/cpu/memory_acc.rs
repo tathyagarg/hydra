@@ -1,6 +1,7 @@
 use crate::cpu::{
     Cpu, Feature,
     common::*,
+    constraint::Unpredictable,
     exeception::{FullAddress, PASpace},
     fault::{AccessDescriptor, AccessType, ErrorState, Fault, FaultRecord, VARange},
     regs::{
@@ -25,13 +26,17 @@ impl ValidMemReadSize for [(); 8] {}
 impl ValidMemReadSize for [(); 16] {}
 impl ValidMemReadSize for [(); 32] {}
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Bits<const N: usize> {
     // bytes.len() == N / 8
     bytes: Vec<u8>,
 }
 
 impl<const N: usize> Bits<N> {
+    pub fn zero() -> Bits<N> {
+        Bits { bytes: vec![0] }
+    }
+
     pub fn reverse(&self) -> Self {
         Self {
             bytes: self.bytes.iter().rev().copied().collect(),
@@ -72,6 +77,16 @@ impl<const N: usize> Bits<N> {
             self.bytes[byte_index] &= !mask;
         }
     }
+
+    pub fn compile_u128(&self) -> u128 {
+        let mut result = 0u128;
+        for byte in &self.bytes {
+            result |= *byte as u128;
+            result <<= 8;
+        }
+
+        result
+    }
 }
 
 pub trait ValidMemReadSizeBits {}
@@ -88,6 +103,7 @@ pub trait ValidWalkSize {}
 impl ValidWalkSize for Size<64> {}
 impl ValidWalkSize for Size<128> {}
 
+#[derive(PartialEq)]
 pub enum DescriptorType {
     Table,
     Leaf,
@@ -176,6 +192,7 @@ pub struct MemoryAttributes {
     pub xs: bool,
 }
 
+#[derive(Clone)]
 pub struct AddressDescriptor {
     pub fault: FaultRecord,
     pub memattrs: MemoryAttributes,
@@ -1568,6 +1585,39 @@ impl Cpu {
         }
     }
 
+    pub fn aarch64_s1contiguous_bit_faults(
+        &self,
+        walkparams: &S1TTWParams,
+        walkstate: &TTWState,
+    ) -> bool {
+        let iasize = self.aarch64_iasize(walkparams.txsz);
+        let tsize = self.translation_size(walkparams.d128, walkparams.tgx, walkstate.level);
+        let csize = self.contiguous_size(walkparams.d128, walkparams.tgx, walkstate);
+
+        (tsize + csize) > iasize
+    }
+
+    pub fn aarch64_s1amec_fault<const N: usize>(
+        &self,
+        walkparams: &S1TTWParams,
+        paspace: PASpace,
+        regime: Regime,
+        desc: &Bits<N>,
+    ) -> bool {
+        assert!((N == 64) | (N == 128));
+        let descriptor_amec = if walkparams.d128 {
+            desc.nth_bit(108)
+        } else {
+            desc.nth_bit(63)
+        };
+
+        walkparams.emec
+            && !walkparams.amec
+            && [Regime::EL2, Regime::EL20].contains(&regime)
+            && paspace == PASpace::Realm
+            && descriptor_amec
+    }
+
     pub fn aarch64_s1walk<const N: usize>(
         &self,
         fault_in: FaultRecord,
@@ -1575,7 +1625,7 @@ impl Cpu {
         va: u64,
         regime: Regime,
         accdesc: &AccessDescriptor,
-    ) -> (FaultRecord, AddressDescriptor, TTWState, u128)
+    ) -> (FaultRecord, AddressDescriptor, TTWState, Bits<N>)
     where
         Size<N>: ValidWalkSize + ValidMemReadSizeBits,
     {
@@ -1590,7 +1640,7 @@ impl Cpu {
                 fault,
                 AddressDescriptor::arbitrary(),
                 TTWState::arbitrary(),
-                0,
+                Bits::zero(),
             );
         }
 
@@ -1604,7 +1654,7 @@ impl Cpu {
                 fault,
                 AddressDescriptor::arbitrary(),
                 TTWState::arbitrary(),
-                0,
+                Bits::zero(),
             );
         }
 
@@ -1642,7 +1692,7 @@ impl Cpu {
                 fault,
                 AddressDescriptor::arbitrary(),
                 TTWState::arbitrary(),
-                0,
+                Bits::zero(),
             );
         }
 
@@ -1664,6 +1714,8 @@ impl Cpu {
             s2fs1mro,
         };
 
+        let mut descriptor: Bits<N>;
+
         loop {
             fault.level = walkstate.level;
             walkaddress.paddress = descaddress;
@@ -1673,7 +1725,7 @@ impl Cpu {
             let varange = self.aarch64_get_varange(va);
             let walkaccess = self.create_accdesc_s1ttw(toplevel, varange, &accdesc);
 
-            let descriptor = if regime == Regime::EL10 && self.el2_enabled() {
+            descriptor = if regime == Regime::EL10 && self.el2_enabled() {
                 todo!("End it all bruh")
             } else {
                 let (f, descriptor) =
@@ -1687,7 +1739,7 @@ impl Cpu {
                     fault,
                     AddressDescriptor::arbitrary(),
                     TTWState::arbitrary(),
-                    0,
+                    Bits::zero(),
                 );
             }
 
@@ -1731,7 +1783,7 @@ impl Cpu {
                                 fault,
                                 AddressDescriptor::arbitrary(),
                                 TTWState::arbitrary(),
-                                0,
+                                Bits::zero(),
                             );
                         }
 
@@ -1748,20 +1800,92 @@ impl Cpu {
                                 fault,
                                 AddressDescriptor::arbitrary(),
                                 TTWState::arbitrary(),
-                                0,
+                                Bits::zero(),
                             );
                         }
+                    }
+                    DescriptorType::Invalid => {
+                        fault.statuscode = Fault::Translation;
+                        return (
+                            fault,
+                            AddressDescriptor::arbitrary(),
+                            TTWState::arbitrary(),
+                            Bits::zero(),
+                        );
                     }
                     _ => todo!(),
                 }
 
-                break;
+                if new_desc != descriptor {
+                    if !self.is_wb_shareable(&walkaddress.memattrs)
+                        && Unpredictable::Unsupported_Atomic_HW_Update.constrain_bool()
+                    {
+                        fault.statuscode = Fault::UnsupportedAtomicHWUpdate;
+                        return (
+                            fault,
+                            AddressDescriptor::arbitrary(),
+                            TTWState::arbitrary(),
+                            Bits::zero(),
+                        );
+                    }
+
+                    let descaccess = self.create_accdesc_tte_update(&accdesc);
+                    let descpaddr = if regime == Regime::EL10 && self.el2_enabled() {
+                        let s1aarch64 = true;
+                        aligned = true;
+
+                        todo!()
+                    } else {
+                        walkaddress.clone()
+                    };
+
+                    todo!("MemSwapTableDesc");
+                }
+
+                if new_desc == descriptor {
+                    break;
+                }
             }
 
-            todo!()
+            if desctype == DescriptorType::Leaf {
+                break;
+            }
         }
 
-        todo!()
+        let oa = self.stage1oa(va, walkparams, &walkstate);
+
+        if walkstate.contiguous && self.aarch64_s1contiguous_bit_faults(walkparams, &walkstate) {
+            fault.statuscode = Fault::Translation;
+        } else if walkstate.level < FINAL_LEVEL
+            && self.aarch64_ntfaults(walkparams.d128, &descriptor)
+        {
+            fault.statuscode = Fault::Translation;
+        } else if self.aarch64_s1amec_fault(
+            walkparams,
+            walkstate.baseaddress.paspace,
+            regime,
+            &descriptor,
+        ) {
+            fault.statuscode = Fault::Translation;
+        } else if self.aarch64_s1oaout_of_range(oa.address, walkparams) {
+            fault.statuscode = Fault::AddressSize;
+        } else if !descriptor.nth_bit(10)
+            && !walkparams.ha
+            && ![AccessType::DC, AccessType::IC].contains(&accdesc.acctype)
+        {
+            fault.statuscode = Fault::AccessFlag;
+        }
+
+        if fault.statuscode != Fault::None {
+            return (
+                fault,
+                AddressDescriptor::arbitrary(),
+                TTWState::arbitrary(),
+                Bits::zero(),
+            );
+        }
+
+        (fault, walkaddress, walkstate, descriptor)
     }
 
     pub fn aarch64_s1translate(

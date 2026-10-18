@@ -3,13 +3,15 @@ use crate::cpu::{
     ShiftType,
     common::*,
     constraint::{Constraint, Unpredictable},
+    exeception::FullAddress,
     fault::{
         AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, FaultRecord, MPAMData, MPAMinfo,
-        MemOp, PARTIDSpaceType, PARTIDType, PMGType, VARange,
+        MemAtomicOp, MemOp, PARTIDSpaceType, PARTIDType, PMGType, VARange,
     },
     memory_acc::{
         AddressSize, DeviceType, MemAttr_NC, MemAttr_WB, MemAttr_WT, MemAttrHints, MemHint_No,
-        MemHint_RA, MemHint_RWA, MemTagType, MemType, MemoryAttributes, Shareability, TGx,
+        MemHint_RA, MemHint_RWA, MemTagType, MemType, MemoryAttributes, S1TTWParams, Shareability,
+        TGx, TTWState,
     },
     regs::{
         EDSCRField, HCR_EL2Field, MPAM0_EL1Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field,
@@ -1719,6 +1721,109 @@ impl Cpu {
         accdesc.varange = Some(varange);
 
         accdesc
+    }
+
+    // IsWBShareable()
+    // ===============
+    // Determines whether the given memory attributes are iWBoWB Shareable
+    pub fn is_wb_shareable(&self, memattrs: &MemoryAttributes) -> bool {
+        memattrs.memtype == MemType::Normal
+            && memattrs.inner.attrs == MemAttr_WB
+            && memattrs.outer.attrs == MemAttr_WB
+            && matches!(memattrs.shareability, Shareability::ISH | Shareability::OSH)
+    }
+
+    /// CreateAccDescTTEUpdate()
+    /// ========================
+    /// Access descriptor for translation table entry HW update
+    pub fn create_accdesc_tte_update(&self, accdesc_in: &AccessDescriptor) -> AccessDescriptor {
+        let mut accdesc = self.new_accdesc(AccessType::TTW, accdesc_in.mpam.clone());
+
+        accdesc.el = accdesc_in.el;
+        accdesc.ss = accdesc_in.ss;
+        accdesc.atomicop = true;
+        accdesc.modop = Some(MemAtomicOp::CAS);
+        accdesc.read = accdesc_in.read;
+        accdesc.write = accdesc_in.write;
+
+        accdesc
+    }
+
+    /// TranslationSize()
+    /// =================
+    /// Compute the number of bits directly mapped from the input address
+    /// to the output address
+    pub fn translation_size(&self, d128: bool, tgx: TGx, level: u8) -> AddressSize {
+        let granulebits = self.tgx_granulebits(tgx);
+        let descsizelog2 = if d128 { 4u8 } else { 3u8 };
+        let blockbits = (FINAL_LEVEL - level) * (granulebits - descsizelog2);
+
+        granulebits + blockbits
+    }
+
+    /// ContiguousSize()
+    /// ================
+    /// Return the number of entries log 2 marking a contiguous output range
+    pub fn contiguous_size(&self, d128: bool, tgx: TGx, walkstate: &TTWState) -> u8 {
+        if d128 {
+            match tgx {
+                TGx::_4KB => {
+                    assert!([1, 2, 3].contains(&walkstate.level));
+                    return if walkstate.level == 1 { 2 } else { 4 };
+                }
+                TGx::_16KB => {
+                    assert!([1, 2, 3].contains(&walkstate.level));
+                    return if walkstate.level == 1 {
+                        2
+                    } else if walkstate.level == 2 {
+                        4
+                    } else {
+                        6
+                    };
+                }
+                TGx::_64KB => {
+                    assert!([2, 3].contains(&walkstate.level));
+                    return if walkstate.level == 2 { 6 } else { 4 };
+                }
+            }
+        }
+
+        match tgx {
+            TGx::_4KB => {
+                assert!([1, 2, 3].contains(&walkstate.level));
+                return 4;
+            }
+            TGx::_16KB => {
+                assert!([2, 3].contains(&walkstate.level));
+                return if walkstate.level == 2 { 5 } else { 7 };
+            }
+            TGx::_64KB => {
+                assert!([2, 3].contains(&walkstate.level));
+                return 5;
+            }
+        }
+    }
+
+    /// Stage1OA()
+    /// ==========
+    /// Given the final walk state (a page or block descriptor), map the untranslated
+    /// input address bits to the output address
+    pub fn stage1oa(&self, ia: u64, walkparams: &S1TTWParams, walkstate: &TTWState) -> FullAddress {
+        let tsize = self.translation_size(walkparams.d128, walkparams.tgx, walkstate.level);
+        let csize = if walkstate.contiguous {
+            self.contiguous_size(walkparams.d128, walkparams.tgx, walkstate)
+        } else {
+            0
+        };
+
+        let ia_msb = tsize + csize;
+        let address =
+            (walkstate.baseaddress.address >> ia_msb << ia_msb) | (ia & ones(ia_msb as u32));
+
+        FullAddress {
+            paspace: walkstate.baseaddress.paspace,
+            address,
+        }
     }
 }
 
