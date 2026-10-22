@@ -5,7 +5,7 @@ use crate::cpu::{
     exeception::{Exception, ExceptionRecord},
     regs::{
         BRBCR_EL1Field, BRBCR_EL2Field, BRBFCR_EL0Field, BRBFCR_EL1Field, HCR_EL2Field,
-        MDCR_EL3Field, RegisterField, RegisterFieldRange, SCR_EL3Field, SCTLRField,
+        HCRX_EL2Field, MDCR_EL3Field, RegisterField, RegisterFieldRange, SCR_EL3Field, SCTLRField,
     },
     shared::{EL, EL0, EL1, EL2, EL3, SecurityState},
 };
@@ -364,6 +364,46 @@ impl Cpu {
         }
 
         self.el2_enabled()
+    }
+
+    /// IsHCRXEL2Enabled()
+    /// ==================
+    /// Returns TRUE if access to HCRX_EL2 register is enabled, and FALSE otherwise.
+    /// Indirect read of HCRX_EL2 returns 0 when access is not enabled.
+    pub fn is_hcrxel2_enabled(&self) -> bool {
+        if !Cpu::is_feature_implemented(Feature::HCX) {
+            return false;
+        }
+
+        if self.el_using_aarch32(EL2) {
+            return false;
+        }
+
+        if self.have_el(EL3) && !SCR_EL3Field::HXEn.fetch_bit(self.scr_el3) {
+            return false;
+        }
+
+        self.el2_enabled()
+    }
+
+    // IsTCR2EL1Enabled()
+    // ==================
+    // Returns TRUE if access to TCR2_EL1 register is enabled, and FALSE otherwise.
+    // Indirect read of TCR2_EL1 returns 0 when access is not enabled.
+    pub fn is_tcr2el1_enabled(&self) -> bool {
+        if !Cpu::is_feature_implemented(Feature::TCR2) {
+            return false;
+        }
+
+        if self.have_el(EL3) && !SCR_EL3Field::TCR2En.fetch_bit(self.scr_el3) {
+            return false;
+        } else if self.el2_enabled()
+            && (self.is_hcrxel2_enabled() && !HCRX_EL2Field::SRMASKEn.fetch_bit(self.hcrx_el2))
+        {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     pub fn is_sctlr2el2_enabled(&self) -> bool {

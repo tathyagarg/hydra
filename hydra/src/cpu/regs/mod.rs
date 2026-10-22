@@ -2,6 +2,7 @@ mod brbcr;
 mod brbfcr;
 mod edscr;
 mod hcr_el2;
+mod hcrx;
 mod mdcr_el3;
 mod mpam0_el1;
 mod mpam1_el1;
@@ -25,6 +26,7 @@ pub use self::brbcr::{BRBCR_EL1Field, BRBCR_EL2Field};
 pub use self::brbfcr::{BRBFCR_EL0Field, BRBFCR_EL1Field};
 pub use self::edscr::EDSCRField;
 pub use self::hcr_el2::HCR_EL2Field;
+pub use self::hcrx::HCRX_EL2Field;
 pub use self::mdcr_el3::MDCR_EL3Field;
 pub use self::mpam0_el1::MPAM0_EL1Field;
 pub use self::mpam1_el1::MPAM1_EL1Field;
@@ -48,7 +50,7 @@ pub use self::tcr::{
     E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field,
 };
 #[allow(unused_imports)]
-pub use self::tcr2::{TCR2_EL1Field, TCR2_EL2Field};
+pub use self::tcr2::{E2H_TCR2_EL2Field, TCR2_EL1Field, TCR2_EL2Field};
 #[allow(unused_imports)]
 pub use self::ttbr0::{
     TTBR0_64_EL1Field, TTBR0_64_EL2Field, TTBR0_64_EL3Field, TTBR0_128_EL1Field,

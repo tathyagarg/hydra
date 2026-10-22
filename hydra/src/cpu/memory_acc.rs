@@ -1,15 +1,15 @@
 use crate::cpu::{
     Cpu, Feature,
     common::*,
-    constraint::Unpredictable,
+    constraint::{Constraint, Unpredictable},
     exeception::{FullAddress, PASpace},
-    fault::{AccessDescriptor, AccessType, ErrorState, Fault, FaultRecord, VARange},
+    fault::{AccessDescriptor, AccessType, CacheType, ErrorState, Fault, FaultRecord, VARange},
     regs::{
-        E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType, MECID_P0_EL2, MECID_P1_EL2,
-        RegisterField, RegisterFieldRange, S1PIRType, SCR_EL3Field, SCTLR_EL1Field, SCTLR_EL2Field,
-        SCTLR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field, SCTLRField, TCR_EL1Field,
-        TCR_EL2CommonField, TCR_EL3Field, TCR2_EL2Field, VMECID_P_EL2, VTCR_EL2Field,
-        mairtype_from_mair,
+        E2H_TCR2_EL2Field, E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType,
+        MECID_P0_EL2, MECID_P1_EL2, RegisterField, RegisterFieldRange, S1PIRType, SCR_EL3Field,
+        SCTLR_EL1Field, SCTLR_EL2Field, SCTLR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field,
+        SCTLRField, TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL1Field, TCR2_EL2Field,
+        VMECID_P_EL2, VTCR_EL2Field, mairtype_from_mair,
     },
     shared::{EL, EL0, EL3, Regime, SecurityState},
 };
@@ -89,6 +89,18 @@ impl<const N: usize> Bits<N> {
     }
 }
 
+pub struct S1AccessControls {
+    pub r: bool,
+    pub w: bool,
+    pub x: bool,
+    pub gcs: bool,
+    pub overlay: bool,
+    pub or: bool,
+    pub ow: bool,
+    pub ox: bool,
+    pub wxn: bool,
+}
+
 pub trait ValidMemReadSizeBits {}
 pub struct Size<const N: usize>;
 impl ValidMemReadSizeBits for Size<8> {}
@@ -135,7 +147,7 @@ pub enum MemType {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub enum DeviceType {
     GRE,
     nGRE,
@@ -1888,6 +1900,295 @@ impl Cpu {
         (fault, walkaddress, walkstate, descriptor)
     }
 
+    pub fn aarch64_s1has_alignment_fault_due_to_memtype(
+        &self,
+        regime: Regime,
+        accdesc: &AccessDescriptor,
+        aligned: bool,
+        ntlsmd: bool,
+        memattrs: &MemoryAttributes,
+    ) -> bool {
+        if accdesc.exclusive || accdesc.atomicop || accdesc.acqsc || accdesc.acqpc || accdesc.relsc
+        {
+            if !aligned
+                && !(self.is_wb_shareable(memattrs) && self.aarch64_s1dcache_enabled(regime))
+                && Unpredictable::LSE2_ALIGNMENT_FAULT.constrain_bool()
+            {
+                return true;
+            }
+        }
+
+        if memattrs.memtype != MemType::Device {
+            return false;
+        } else if (accdesc.acctype == AccessType::DCZero
+            && accdesc.cachetype == Some(CacheType::Tag))
+            || accdesc.stzgm
+        {
+            return Unpredictable::DEVICETAGSTORE.constrain() == Constraint::FAULT;
+        } else if accdesc.a32lsmd && !ntlsmd {
+            return memattrs.device != DeviceType::GRE;
+        } else if accdesc.acctype == AccessType::DCZero {
+            return true;
+        } else if !aligned {
+            // TODO: ImpDefBool
+            return false;
+        } else {
+            return false;
+        }
+    }
+
+    pub fn aarch64_permissions_overlays_applied(&self, acctype: AccessType) -> bool {
+        match acctype {
+            AccessType::SPE | AccessType::TRBE => false,
+            _ => true,
+        }
+    }
+
+    pub fn aarch64_s1indirect_base_permissions(
+        &self,
+        regime: Regime,
+        walkstate: &TTWState,
+        walkparams: &S1TTWParams,
+        accdesc: &AccessDescriptor,
+    ) -> S1AccessControls {
+        let permissions = &walkstate.permissions;
+
+        let (mut ur, mut uw, mut ux, mut ugcs, mut uwxn, mut u_overlay) =
+            (false, false, false, false, false, false);
+
+        let (mut pr, mut pw, mut px, mut pgcs) = match permissions.ppi {
+            0b0000 => (false, false, false, false),
+            0b0001 => (true, false, false, false),
+            0b0010 => (false, false, true, false),
+            0b0011 => (true, false, true, false),
+            0b0100 => (false, false, false, false),
+            0b0101 => (true, true, false, false),
+            0b0110 => (true, true, true, false),
+            0b0111 => (true, true, true, false),
+            0b1000 => (true, false, false, false),
+            0b1001 => {
+                if Cpu::is_feature_implemented(Feature::GCS) {
+                    (true, false, false, true)
+                } else {
+                    (false, false, false, false)
+                }
+            }
+            0b1010 => (true, false, true, false),
+            0b1011 => (false, false, false, false),
+            0b1100 => (true, true, false, false),
+            0b1101 => (false, false, false, false),
+            0b1110 => (true, true, true, false),
+            0b1111 => (false, false, false, false),
+            _ => unreachable!(),
+        };
+
+        let p_overlay = !nth_bit(permissions.ppi, 3);
+        let pwxn = permissions.ppi == 0b0110;
+        let mut reserved_upi = false;
+
+        if self.has_unprivileged(regime) {
+            (ur, uw, ux, ugcs) = match permissions.upi {
+                0b0000 => (false, false, false, false),
+                0b0001 => (true, false, false, false),
+                0b0010 => (false, false, true, false),
+                0b0011 => (true, false, true, false),
+                0b0100 => {
+                    reserved_upi = true;
+                    (false, false, false, false)
+                }
+                0b0101 => (true, true, false, false),
+                0b0110 => (true, true, true, false),
+                0b0111 => (true, true, true, false),
+                0b1000 => (true, false, false, false),
+                0b1001 => {
+                    if Cpu::is_feature_implemented(Feature::GCS) {
+                        (true, false, false, true)
+                    } else {
+                        reserved_upi = true;
+                        (false, false, false, false)
+                    }
+                }
+                0b1010 => (true, false, true, false),
+                0b1011 => {
+                    reserved_upi = true;
+                    (false, false, false, false)
+                }
+                0b1100 => (true, true, false, false),
+                0b1101 => {
+                    reserved_upi = true;
+                    (false, false, false, false)
+                }
+                0b1110 => (true, true, true, false),
+                0b1111 => {
+                    reserved_upi = true;
+                    (false, false, false, false)
+                }
+                _ => unreachable!(),
+            };
+
+            u_overlay = !nth_bit(permissions.upi, 3);
+            uwxn = permissions.upi == 0b0110;
+
+            if (px || pgcs) && (uw || ugcs) {
+                (pr, pw, px, pgcs) = (false, false, false, false);
+                (ur, uw, ux, ugcs) = (false, false, false, false);
+            }
+        }
+
+        if accdesc.ss == SecurityState::Secure
+            && walkstate.baseaddress.paspace == PASpace::NonSecure
+        {
+            pgcs = false;
+            if self.has_unprivileged(regime) {
+                ugcs = false;
+            }
+
+            if walkparams.sif {
+                px = false;
+                if self.has_unprivileged(regime) {
+                    ux = false;
+                }
+            }
+        }
+
+        if accdesc.ss == SecurityState::Root && walkstate.baseaddress.paspace != PASpace::Root {
+            (px, pgcs) = (false, false);
+            if self.has_unprivileged(regime) {
+                (ux, ugcs) = (false, false);
+            }
+        }
+
+        if accdesc.ss == SecurityState::Realm
+            && [Regime::EL2, Regime::EL20].contains(&regime)
+            && walkstate.baseaddress.paspace != PASpace::Realm
+        {
+            (px, pgcs) = (false, false);
+            if self.has_unprivileged(regime) {
+                (ux, ugcs) = (false, false);
+            }
+        }
+
+        if self.has_unprivileged(regime)
+            && Cpu::is_feature_implemented(Feature::PAN)
+            && accdesc.pan
+            && !(regime == Regime::EL10 && walkparams.nv1)
+            && self.pstate.PAN
+            && permissions.upi != 0
+        {
+            if reserved_upi {
+                todo!("Imp Def Bool");
+            }
+
+            todo!("Imp Def Bool");
+        }
+
+        let (r, w, x, gcs, wxn, overlay) = if accdesc.el == EL0 {
+            (ur, uw, ux, ugcs, uwxn, u_overlay)
+        } else {
+            (pr, pw, px, pgcs, pwxn, p_overlay)
+        };
+
+        S1AccessControls {
+            r,
+            w,
+            x,
+            gcs,
+            wxn,
+            overlay: self.aarch64_permissions_overlays_applied(accdesc.acctype) && overlay,
+            or: false,
+            ow: false,
+            ox: false,
+        }
+    }
+
+    pub fn aarch64_s1e0po_enabled(&self, regime: Regime, nv1: bool) -> bool {
+        assert!(self.has_unprivileged(regime));
+
+        if !Cpu::is_feature_implemented(Feature::S1POE) {
+            return false;
+        }
+
+        match regime {
+            Regime::EL20 => {
+                self.is_tcr2el2_enabled() && E2H_TCR2_EL2Field::E0POE.fetch_bit(self.tcr2_el2)
+            }
+            Regime::EL10 => {
+                self.is_tcr2el1_enabled() && !nv1 && TCR2_EL1Field::E0POE.fetch_bit(self.tcr2_el1)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn aarch64_s1po_enabled(&self, regime: Regime) -> bool {
+        if !Cpu::is_feature_implemented(Feature::S1POE) {
+            return false;
+        }
+
+        match regime {
+            Regime::EL3 => TCR_EL3Field::POE.fetch_bit(self.tcr_el3),
+            Regime::EL2 | Regime::EL20 => {
+                self.is_tcr2el2_enabled() && !TCR2_EL2Field::POE.fetch_bit(self.tcr2_el2)
+            }
+            Regime::EL10 => {
+                self.is_tcr2el1_enabled() && !TCR2_EL1Field::POE.fetch_bit(self.tcr2_el2)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn aarch64_s1overlay_perms(
+        &self,
+        regime: Regime,
+        walkstate: &TTWState,
+        accdesc: &AccessDescriptor,
+    ) -> S1AccessControls {
+        todo!()
+    }
+
+    pub fn aarch64_s1compute_permissions(
+        &self,
+        regime: Regime,
+        walkstate: &TTWState,
+        walkparams: &S1TTWParams,
+        accdesc: &AccessDescriptor,
+    ) -> S1AccessControls {
+        let permissions = &walkstate.permissions;
+        let mut s1perms = if walkparams.pie {
+            self.aarch64_s1indirect_base_permissions(regime, walkstate, walkparams, accdesc)
+        } else {
+            todo!()
+        };
+
+        if accdesc.el == EL0 && !self.aarch64_s1e0po_enabled(regime, walkparams.nv1) {
+            s1perms.overlay = false;
+        } else if accdesc.el != EL0 && !self.aarch64_s1po_enabled(regime) {
+            s1perms.overlay = false;
+        }
+
+        if s1perms.overlay {
+            let s1overlay_perms = self.aarch64_s1overlay_perms(regime, walkstate, accdesc);
+        }
+
+        todo!()
+    }
+
+    pub fn aarch64_s1check_permissions(
+        &self,
+        fault_in: &FaultRecord,
+        va: u64,
+        size: usize,
+        regime: Regime,
+        walkstate: &TTWState,
+        walkparams: &S1TTWParams,
+        accdesc: &AccessDescriptor,
+    ) -> FaultRecord {
+        let mut fault = fault_in;
+        let permissions = &walkstate.permissions;
+        // let mut s1perms = self.aarch64_s1compute_permissions();
+
+        todo!()
+    }
+
     pub fn aarch64_s1translate(
         &self,
         fault_in: FaultRecord,
@@ -1932,6 +2233,36 @@ impl Cpu {
         }
 
         // TODO: SVE feature
+
+        // let mut descipaddr: AddressDescriptor;
+        // let mut walkstate: TTWState;
+        // let mut descriptor: u128;
+
+        let (descipaddr, walkstate, descriptor) = if walkparams.d128 {
+            let (f, da, w, dsc) =
+                self.aarch64_s1walk::<128>(fault, &walkparams, va, regime, accdesc);
+            fault = f;
+            (da, w, dsc.compile_u128())
+        } else {
+            let (f, da, w, dsc) =
+                self.aarch64_s1walk::<64>(fault, &walkparams, va, regime, accdesc);
+            fault = f;
+            (da, w, dsc.compile_u128())
+        };
+
+        if fault.statuscode != Fault::None {
+            return (fault, AddressDescriptor::arbitrary());
+        }
+
+        if self.aarch64_s1has_alignment_fault_due_to_memtype(
+            regime,
+            accdesc,
+            aligned,
+            walkparams.ntlsmd,
+            &walkstate.memattrs,
+        ) {
+            fault.statuscode = Fault::Alignment;
+        }
 
         todo!()
     }

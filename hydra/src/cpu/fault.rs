@@ -108,7 +108,7 @@ pub enum CacheOpScope {
     ALLUIS,
 }
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub enum CacheType {
     Data,
     Tag,

@@ -437,6 +437,8 @@ pub struct Cpu {
     mecid_p1_el2: u64,
     vmecid_p_el2: u64,
 
+    hcrx_el2: u64,
+
     brbe: Brbe,
     pmu: Pmu,
 
@@ -506,6 +508,7 @@ impl Default for Cpu {
             mecid_p0_el2: 0,
             mecid_p1_el2: 0,
             vmecid_p_el2: 0,
+            hcrx_el2: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
@@ -568,6 +571,7 @@ pub enum Feature {
     HAFT,
     HAFDBS,
     HBC,
+    HCX,
     HPDS,
     IESB,
     LPA,
@@ -582,11 +586,13 @@ pub enum Feature {
     #[allow(non_camel_case_types)]
     MTE_NO_ADDRESS_TAGS,
     PAuth,
+    PAN,
     PMUv3,
     #[allow(non_camel_case_types)]
     PMUv3_ICNTR,
     RME,
     S1PIE,
+    S1POE,
     SCTLR2,
     SECURE,
     SEL2,
@@ -630,7 +636,8 @@ impl Cpu {
             Feature::HAF => false,
             Feature::HAFT => false,
             Feature::HAFDBS => false,
-            Feature::HBC => true,
+            Feature::HBC => false,
+            Feature::HCX => false,
             Feature::HPDS => false,
             Feature::IESB => false,
             Feature::LPA => false,
@@ -643,10 +650,12 @@ impl Cpu {
             Feature::MTE_CANONICAL_TAGS => false,
             Feature::MTE_NO_ADDRESS_TAGS => false,
             Feature::PAuth => false,
+            Feature::PAN => false,
             Feature::PMUv3 => false,
             Feature::PMUv3_ICNTR => false,
             Feature::RME => false,
             Feature::S1PIE => false,
+            Feature::S1POE => false,
             Feature::SCTLR2 => false,
             Feature::SECURE => false,
             Feature::SEL2 => false,
