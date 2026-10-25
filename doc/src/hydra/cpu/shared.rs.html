@@ -5,9 +5,9 @@
 <a href=#5 id=5 data-nosnippet>5</a>    constraint::{Constraint, Unpredictable},
 <a href=#6 id=6 data-nosnippet>6</a>    exeception::{FullAddress, PASpace},
 <a href=#7 id=7 data-nosnippet>7</a>    fault::{
-<a href=#8 id=8 data-nosnippet>8</a>        AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, ErrorState, Fault, FaultRecord,
-<a href=#9 id=9 data-nosnippet>9</a>        GPCF, GPCFRecord, MPAMData, MPAMinfo, MemAtomicOp, MemOp, PARTIDSpaceType, PARTIDType,
-<a href=#10 id=10 data-nosnippet>10</a>        PMGType, VARange,
+<a href=#8 id=8 data-nosnippet>8</a>        AccessDescriptor, AccessType, CacheOp, DEFAULT_PARTID, DEFAULT_PMG, ErrorState, Fault,
+<a href=#9 id=9 data-nosnippet>9</a>        FaultRecord, GPCF, GPCFRecord, MPAMData, MPAMinfo, MemAtomicOp, MemOp, PARTIDSpaceType,
+<a href=#10 id=10 data-nosnippet>10</a>        PARTIDType, PMGType, VARange,
 <a href=#11 id=11 data-nosnippet>11</a>    },
 <a href=#12 id=12 data-nosnippet>12</a>    memory_acc::{
 <a href=#13 id=13 data-nosnippet>13</a>        AddressDescriptor, AddressSize, DeviceType, MemAttr_NC, MemAttr_WB, MemAttr_WT,
@@ -2775,30 +2775,49 @@
 <a href=#2775 id=2775 data-nosnippet>2775</a>        output_fault.paddress = memaddrdesc.paddress;
 <a href=#2776 id=2776 data-nosnippet>2776</a>        output_fault
 <a href=#2777 id=2777 data-nosnippet>2777</a>    }
-<a href=#2778 id=2778 data-nosnippet>2778</a>}
-<a href=#2779 id=2779 data-nosnippet>2779</a>
-<a href=#2780 id=2780 data-nosnippet>2780</a><span class="attr">#[cfg(test)]
-<a href=#2781 id=2781 data-nosnippet>2781</a></span><span class="kw">mod </span>tests {
-<a href=#2782 id=2782 data-nosnippet>2782</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#2783 id=2783 data-nosnippet>2783</a>
-<a href=#2784 id=2784 data-nosnippet>2784</a>    <span class="attr">#[test]
-<a href=#2785 id=2785 data-nosnippet>2785</a>    </span><span class="kw">fn </span>all_ones_8bit_repeated() {
-<a href=#2786 id=2786 data-nosnippet>2786</a>        <span class="macro">assert_eq!</span>(
-<a href=#2787 id=2787 data-nosnippet>2787</a>            decode_bit_masks::&lt;<span class="number">32</span>&gt;(<span class="bool-val">false</span>, <span class="number">0b110100</span>, <span class="number">0</span>),
-<a href=#2788 id=2788 data-nosnippet>2788</a>            (<span class="number">0x1F1F_1F1F</span>, <span class="number">0x1F1F_1F1F</span>)
-<a href=#2789 id=2789 data-nosnippet>2789</a>        );
-<a href=#2790 id=2790 data-nosnippet>2790</a>    }
-<a href=#2791 id=2791 data-nosnippet>2791</a>
-<a href=#2792 id=2792 data-nosnippet>2792</a>    <span class="attr">#[test]
-<a href=#2793 id=2793 data-nosnippet>2793</a>    </span><span class="kw">fn </span>rotated_8bit_pattern() {
-<a href=#2794 id=2794 data-nosnippet>2794</a>        <span class="kw">let </span>(w, <span class="kw">_</span>) = decode_bit_masks::&lt;<span class="number">32</span>&gt;(<span class="bool-val">false</span>, <span class="number">0b110100</span>, <span class="number">0b000010</span>);
-<a href=#2795 id=2795 data-nosnippet>2795</a>
-<a href=#2796 id=2796 data-nosnippet>2796</a>        <span class="macro">assert_eq!</span>(w, <span class="number">0xC7C7_C7C7</span>);
-<a href=#2797 id=2797 data-nosnippet>2797</a>    }
-<a href=#2798 id=2798 data-nosnippet>2798</a>    <span class="attr">#[test]
-<a href=#2799 id=2799 data-nosnippet>2799</a>    </span><span class="kw">fn </span>four_bit_element() {
-<a href=#2800 id=2800 data-nosnippet>2800</a>        <span class="kw">let </span>(w, <span class="kw">_</span>) = decode_bit_masks::&lt;<span class="number">32</span>&gt;(<span class="bool-val">false</span>, <span class="number">0b111010</span>, <span class="number">0b000001</span>);
-<a href=#2801 id=2801 data-nosnippet>2801</a>
-<a href=#2802 id=2802 data-nosnippet>2802</a>        <span class="macro">assert_eq!</span>(w, <span class="number">0xBBBB_BBBB</span>);
-<a href=#2803 id=2803 data-nosnippet>2803</a>    }
-<a href=#2804 id=2804 data-nosnippet>2804</a>}</code></pre></div></section></main></body></html>
+<a href=#2778 id=2778 data-nosnippet>2778</a>
+<a href=#2779 id=2779 data-nosnippet>2779</a>    <span class="doccomment">/// IsWatchpointableAccess()
+<a href=#2780 id=2780 data-nosnippet>2780</a>    /// ========================
+<a href=#2781 id=2781 data-nosnippet>2781</a>    /// Return TRUE if access should be checked for watchpoints.
+<a href=#2782 id=2782 data-nosnippet>2782</a>    </span><span class="kw">pub fn </span>is_watchpointable_access(<span class="kw-2">&amp;</span><span class="self">self</span>, accdesc: <span class="kw-2">&amp;</span>AccessDescriptor) -&gt; bool {
+<a href=#2783 id=2783 data-nosnippet>2783</a>        <span class="comment">// TODO: Impdef
+<a href=#2784 id=2784 data-nosnippet>2784</a>        </span><span class="kw">return </span>!<span class="macro">matches!</span>(
+<a href=#2785 id=2785 data-nosnippet>2785</a>            accdesc.acctype,
+<a href=#2786 id=2786 data-nosnippet>2786</a>            AccessType::IFETCH
+<a href=#2787 id=2787 data-nosnippet>2787</a>                | AccessType::TTW
+<a href=#2788 id=2788 data-nosnippet>2788</a>                | AccessType::DC
+<a href=#2789 id=2789 data-nosnippet>2789</a>                | AccessType::IC
+<a href=#2790 id=2790 data-nosnippet>2790</a>                | AccessType::SPE
+<a href=#2791 id=2791 data-nosnippet>2791</a>                | AccessType::TRBE
+<a href=#2792 id=2792 data-nosnippet>2792</a>                | AccessType::AT
+<a href=#2793 id=2793 data-nosnippet>2793</a>        ) || (accdesc.acctype == AccessType::DC
+<a href=#2794 id=2794 data-nosnippet>2794</a>            &amp;&amp; accdesc.cacheop == <span class="prelude-val">Some</span>(CacheOp::Invalidate)
+<a href=#2795 id=2795 data-nosnippet>2795</a>            &amp;&amp; !<span class="self">self</span>.using_aarch32());
+<a href=#2796 id=2796 data-nosnippet>2796</a>    }
+<a href=#2797 id=2797 data-nosnippet>2797</a>}
+<a href=#2798 id=2798 data-nosnippet>2798</a>
+<a href=#2799 id=2799 data-nosnippet>2799</a><span class="attr">#[cfg(test)]
+<a href=#2800 id=2800 data-nosnippet>2800</a></span><span class="kw">mod </span>tests {
+<a href=#2801 id=2801 data-nosnippet>2801</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+<a href=#2802 id=2802 data-nosnippet>2802</a>
+<a href=#2803 id=2803 data-nosnippet>2803</a>    <span class="attr">#[test]
+<a href=#2804 id=2804 data-nosnippet>2804</a>    </span><span class="kw">fn </span>all_ones_8bit_repeated() {
+<a href=#2805 id=2805 data-nosnippet>2805</a>        <span class="macro">assert_eq!</span>(
+<a href=#2806 id=2806 data-nosnippet>2806</a>            decode_bit_masks::&lt;<span class="number">32</span>&gt;(<span class="bool-val">false</span>, <span class="number">0b110100</span>, <span class="number">0</span>),
+<a href=#2807 id=2807 data-nosnippet>2807</a>            (<span class="number">0x1F1F_1F1F</span>, <span class="number">0x1F1F_1F1F</span>)
+<a href=#2808 id=2808 data-nosnippet>2808</a>        );
+<a href=#2809 id=2809 data-nosnippet>2809</a>    }
+<a href=#2810 id=2810 data-nosnippet>2810</a>
+<a href=#2811 id=2811 data-nosnippet>2811</a>    <span class="attr">#[test]
+<a href=#2812 id=2812 data-nosnippet>2812</a>    </span><span class="kw">fn </span>rotated_8bit_pattern() {
+<a href=#2813 id=2813 data-nosnippet>2813</a>        <span class="kw">let </span>(w, <span class="kw">_</span>) = decode_bit_masks::&lt;<span class="number">32</span>&gt;(<span class="bool-val">false</span>, <span class="number">0b110100</span>, <span class="number">0b000010</span>);
+<a href=#2814 id=2814 data-nosnippet>2814</a>
+<a href=#2815 id=2815 data-nosnippet>2815</a>        <span class="macro">assert_eq!</span>(w, <span class="number">0xC7C7_C7C7</span>);
+<a href=#2816 id=2816 data-nosnippet>2816</a>    }
+<a href=#2817 id=2817 data-nosnippet>2817</a>    <span class="attr">#[test]
+<a href=#2818 id=2818 data-nosnippet>2818</a>    </span><span class="kw">fn </span>four_bit_element() {
+<a href=#2819 id=2819 data-nosnippet>2819</a>        <span class="kw">let </span>(w, <span class="kw">_</span>) = decode_bit_masks::&lt;<span class="number">32</span>&gt;(<span class="bool-val">false</span>, <span class="number">0b111010</span>, <span class="number">0b000001</span>);
+<a href=#2820 id=2820 data-nosnippet>2820</a>
+<a href=#2821 id=2821 data-nosnippet>2821</a>        <span class="macro">assert_eq!</span>(w, <span class="number">0xBBBB_BBBB</span>);
+<a href=#2822 id=2822 data-nosnippet>2822</a>    }
+<a href=#2823 id=2823 data-nosnippet>2823</a>}</code></pre></div></section></main></body></html>

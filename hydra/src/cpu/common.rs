@@ -1,8 +1,3 @@
-use crate::cpu::{
-    fault::Fault,
-    memory_acc::{AddressDescriptor, PhysMemRetStatus},
-};
-
 pub const FINAL_LEVEL: u8 = 3;
 pub const NUM_PABITS: u8 = 56;
 

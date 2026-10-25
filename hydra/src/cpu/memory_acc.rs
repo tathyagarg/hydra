@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use crate::cpu::{
     Cpu, Feature,
     common::*,
@@ -290,6 +292,14 @@ impl AddressDescriptor {
             mecid: 0,
         }
     }
+
+    pub fn create_faulty(fault: &FaultRecord) -> Self {
+        Self {
+            vaddress: fault.vaddress,
+            fault: fault.clone(),
+            ..Self::arbitrary()
+        }
+    }
 }
 
 impl Faultable for AddressDescriptor {
@@ -573,7 +583,40 @@ impl Cpu {
         aligned: bool,
     ) -> AddressDescriptor {
         let regime = self.translation_regime(accdesc.el);
-        let mut fault = FaultRecord::no_fault_accdecs_va(accdesc, va);
+        let fault = FaultRecord::no_fault_accdecs_va(accdesc, va);
+        let (fault, ipa) = self.aarch64_s1translate(&fault, regime, va, size, aligned, accdesc);
+
+        if fault.statuscode != Fault::None {
+            return AddressDescriptor::create_faulty(&fault);
+        }
+
+        if accdesc.ss == SecurityState::Realm {
+            assert!(self.el2_enabled());
+        }
+
+        if regime == Regime::EL10 && self.el2_enabled() {
+            todo!("S2 Translation");
+        } else {
+            return ipa;
+        }
+    }
+
+    pub fn aarch64_check_debug(
+        &self,
+        vaddress: u64,
+        accdesc: &AccessDescriptor,
+        size: usize,
+    ) -> FaultRecord {
+        let mut fault = FaultRecord::no_fault_accdecs_va(accdesc, vaddress);
+
+        let d_side = self.is_watchpointable_access(accdesc);
+        let i_side = accdesc.acctype == AccessType::IFETCH;
+
+        let generate_exception = if accdesc.acctype == AccessType::NV2 {
+            let mask = false;
+            let ss = self.current_security_state();
+        } else {
+        };
 
         todo!()
     }
@@ -585,8 +628,13 @@ impl Cpu {
         aligned: bool,
         size: usize,
     ) -> AddressDescriptor {
+        let mut result = self.aarch64_full_translate(va, size, accdesc, aligned);
+
+        if !result.is_fault() && accdesc.acctype != AccessType::IFETCH {
+            result.fault = self.aarch64_check_debug(va, accdesc, size);
+        }
+
         todo!()
-        // let mut result = self.
     }
 
     #[allow(unused_variables)]

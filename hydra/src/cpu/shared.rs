@@ -5,9 +5,9 @@ use crate::cpu::{
     constraint::{Constraint, Unpredictable},
     exeception::{FullAddress, PASpace},
     fault::{
-        AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, ErrorState, Fault, FaultRecord,
-        GPCF, GPCFRecord, MPAMData, MPAMinfo, MemAtomicOp, MemOp, PARTIDSpaceType, PARTIDType,
-        PMGType, VARange,
+        AccessDescriptor, AccessType, CacheOp, DEFAULT_PARTID, DEFAULT_PMG, ErrorState, Fault,
+        FaultRecord, GPCF, GPCFRecord, MPAMData, MPAMinfo, MemAtomicOp, MemOp, PARTIDSpaceType,
+        PARTIDType, PMGType, VARange,
     },
     memory_acc::{
         AddressDescriptor, AddressSize, DeviceType, MemAttr_NC, MemAttr_WB, MemAttr_WT,
@@ -2774,6 +2774,25 @@ impl Cpu {
 
         output_fault.paddress = memaddrdesc.paddress;
         output_fault
+    }
+
+    /// IsWatchpointableAccess()
+    /// ========================
+    /// Return TRUE if access should be checked for watchpoints.
+    pub fn is_watchpointable_access(&self, accdesc: &AccessDescriptor) -> bool {
+        // TODO: Impdef
+        return !matches!(
+            accdesc.acctype,
+            AccessType::IFETCH
+                | AccessType::TTW
+                | AccessType::DC
+                | AccessType::IC
+                | AccessType::SPE
+                | AccessType::TRBE
+                | AccessType::AT
+        ) || (accdesc.acctype == AccessType::DC
+            && accdesc.cacheop == Some(CacheOp::Invalidate)
+            && !self.using_aarch32());
     }
 }
 

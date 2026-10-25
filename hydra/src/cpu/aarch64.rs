@@ -5,7 +5,8 @@ use crate::cpu::{
     exeception::{Exception, ExceptionRecord},
     regs::{
         BRBCR_EL1Field, BRBCR_EL2Field, BRBFCR_EL0Field, BRBFCR_EL1Field, HCR_EL2Field,
-        HCRX_EL2Field, MDCR_EL3Field, RegisterField, RegisterFieldRange, SCR_EL3Field, SCTLRField,
+        HCRX_EL2Field, MDCR_EL3Field, OSLSR_EL1Field, RegisterField, RegisterFieldRange,
+        SCR_EL3Field, SCTLRField,
     },
     shared::{EL, EL0, EL1, EL2, EL3, SecurityState},
 };
@@ -406,6 +407,10 @@ impl Cpu {
         }
     }
 
+    /// IsSCTLR2EL2Enabled()
+    /// ====================
+    /// Returns TRUE if access to SCTLR2_EL2 register is enabled, and FALSE otherwise.
+    /// Indirect read of SCTLR2_EL2 returns 0 when access is not enabled.
     pub fn is_sctlr2el2_enabled(&self) -> bool {
         if !Cpu::is_feature_implemented(Feature::SCTLR2) {
             return false;
@@ -416,5 +421,15 @@ impl Cpu {
         }
 
         self.el2_enabled()
+    }
+
+    pub fn aarch64_generate_debug_exceptions_from(
+        &self,
+        from_el: EL,
+        from_state: SecurityState,
+        mask: bool,
+    ) -> bool {
+        // if OSLSR_EL1Field::OSLK.
+        todo!()
     }
 }

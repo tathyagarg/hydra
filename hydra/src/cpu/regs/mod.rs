@@ -27,6 +27,8 @@ mod ttbr0;
 mod ttbr1;
 mod vtcr;
 
+use crate::cpu::common::nth_bit;
+
 pub use self::brbcr::{BRBCR_EL1Field, BRBCR_EL2Field};
 pub use self::brbfcr::{BRBFCR_EL0Field, BRBFCR_EL1Field};
 pub use self::edscr::EDSCRField;
@@ -154,5 +156,28 @@ pub enum VMECID_P_EL2Field {
 impl RegisterFieldRange<u64, u16> for VMECID_P_EL2Field {
     fn fetch_range(self, v: u64) -> u16 {
         (v & 0xFFFF) as u16
+    }
+}
+
+#[allow(non_camel_case_types)]
+pub enum OSLSR_EL1Field {
+    nTT = 2,
+    OSLK = 1,
+    OSLM = -1,
+}
+
+impl RegisterField<u64> for OSLSR_EL1Field {
+    fn fetch_bit(self, v: u64) -> bool {
+        nth_bit(v, self as usize)
+    }
+}
+
+impl RegisterFieldRange<u64, u8> for OSLSR_EL1Field {
+    fn fetch_range(self, v: u64) -> u8 {
+        if let Self::OSLM = self {
+            return ((nth_bit(v, 3) as u8) << 1) | (nth_bit(v, 0) as u8);
+        }
+
+        unreachable!()
     }
 }

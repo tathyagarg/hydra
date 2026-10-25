@@ -454,6 +454,8 @@ pub struct Cpu {
     hcr: u32,
     hcr2: u32,
 
+    oslsr_el1: u64,
+
     brbe: Brbe,
     pmu: Pmu,
 
@@ -536,6 +538,7 @@ impl Default for Cpu {
             gptbr_el3: 0,
             hcr: 0,
             hcr2: 0,
+            oslsr_el1: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
