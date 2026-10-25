@@ -1,6 +1,7 @@
 use crate::cpu::{
-    Register,
+    Cpu, Feature, Register,
     exeception::{FullAddress, PASpace},
+    memory_acc::MemoryAttributes,
     shared::{EL, EL1, Faultable, SecurityState},
 };
 
@@ -30,6 +31,23 @@ pub enum Fault {
     Lockdown,
     Exclusive,
     ICacheMaint,
+}
+
+impl Fault {
+    pub fn is_external_sync_abort(&self) -> bool {
+        assert!(self != &Self::None);
+        if Cpu::is_feature_implemented(Feature::RAS) {
+            assert!(!matches!(self, Fault::SyncParity | Fault::SyncParityOnWalk));
+        }
+
+        matches!(
+            self,
+            Fault::SyncExternal
+                | Fault::SyncParity
+                | Fault::SyncExternalOnWalk
+                | Fault::SyncParityOnWalk
+        )
+    }
 }
 
 impl Faultable for Fault {
@@ -242,8 +260,6 @@ pub struct AccessDescriptor {
     pub(crate) mpam: MPAMinfo,
 }
 
-impl AccessDescriptor {}
-
 impl Default for AccessDescriptor {
     fn default() -> Self {
         Self {
@@ -301,7 +317,7 @@ impl Default for AccessDescriptor {
     }
 }
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum GPCF {
     None,        // No fault
     AddressSize, // GPT address size fault
@@ -312,8 +328,8 @@ pub enum GPCF {
 
 #[derive(Clone)]
 pub struct GPCFRecord {
-    gpf: GPCF,
-    level: u8,
+    pub gpf: GPCF,
+    pub level: u8,
 }
 
 impl GPCFRecord {
@@ -472,5 +488,14 @@ impl FaultRecord {
         fault.vaddress = va;
 
         fault
+    }
+
+    pub fn is_external_sync_abort(&self) -> bool {
+        self.statuscode.is_external_sync_abort() || self.gpcf.gpf == GPCF::EABT
+    }
+
+    pub fn is_second_stage(&self) -> bool {
+        assert!(self.statuscode != Fault::None);
+        self.secondstage
     }
 }

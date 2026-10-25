@@ -434,8 +434,11 @@ pub struct Cpu {
     vtcr_el2: u64,
 
     mecid_p0_el2: u64,
+    mecid_a0_el2: u64,
     mecid_p1_el2: u64,
+    mecid_a1_el2: u64,
     vmecid_p_el2: u64,
+    mecid_rl_a_el3: u64,
 
     hcrx_el2: u64,
 
@@ -447,6 +450,9 @@ pub struct Cpu {
     gpccr_el3: u64,
     gpcbw_el3: u64,
     gptbr_el3: u64,
+
+    hcr: u32,
+    hcr2: u32,
 
     brbe: Brbe,
     pmu: Pmu,
@@ -515,8 +521,11 @@ impl Default for Cpu {
             ttbr1_el2: 0,
             vtcr_el2: 0,
             mecid_p0_el2: 0,
+            mecid_a0_el2: 0,
             mecid_p1_el2: 0,
+            mecid_a1_el2: 0,
             vmecid_p_el2: 0,
+            mecid_rl_a_el3: 0,
             hcrx_el2: 0,
             por_el0: [0; 16],
             por_el1: [0; 16],
@@ -525,6 +534,8 @@ impl Default for Cpu {
             gpccr_el3: 0,
             gpcbw_el3: 0,
             gptbr_el3: 0,
+            hcr: 0,
+            hcr2: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
@@ -577,6 +588,7 @@ pub enum Feature {
     CMPBR,
     CSSC,
     D128,
+    DoubleFault2,
     DoubleLock,
     E2H0,
     ExS,
@@ -597,6 +609,7 @@ pub enum Feature {
     MEC,
     MPAMv0p1,
     MPAMv1p1,
+    MTE2,
     #[allow(non_camel_case_types)]
     MTE_CANONICAL_TAGS,
     #[allow(non_camel_case_types)]
@@ -606,6 +619,8 @@ pub enum Feature {
     PMUv3,
     #[allow(non_camel_case_types)]
     PMUv3_ICNTR,
+    RAS,
+    RASv2,
     RME,
     #[allow(non_camel_case_types)]
     RME_GDI,
@@ -649,6 +664,7 @@ impl Cpu {
             Feature::CMPBR => true,
             Feature::CSSC => true,
             Feature::D128 => false,
+            Feature::DoubleFault2 => false,
             Feature::DoubleLock => false,
             Feature::E2H0 => false,
             Feature::ExS => false,
@@ -669,12 +685,15 @@ impl Cpu {
             Feature::MEC => false,
             Feature::MPAMv0p1 => false,
             Feature::MPAMv1p1 => false,
+            Feature::MTE2 => false,
             Feature::MTE_CANONICAL_TAGS => false,
             Feature::MTE_NO_ADDRESS_TAGS => false,
             Feature::PAuth => false,
             Feature::PAN => false,
             Feature::PMUv3 => false,
             Feature::PMUv3_ICNTR => false,
+            Feature::RAS => false,
+            Feature::RASv2 => false,
             Feature::RME => false,
             Feature::RME_GDI => false,
             Feature::RME_GPC2 => false,

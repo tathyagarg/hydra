@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use crate::cpu::{
     BranchType, Cpu, DecodeType, EndOfInstructionReason, ExtendType, Feature, HIGH, Register,
     ShiftType,
@@ -7,19 +5,20 @@ use crate::cpu::{
     constraint::{Constraint, Unpredictable},
     exeception::{FullAddress, PASpace},
     fault::{
-        AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, FaultRecord, GPCF, GPCFRecord,
-        MPAMData, MPAMinfo, MemAtomicOp, MemOp, PARTIDSpaceType, PARTIDType, PMGType, VARange,
+        AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, ErrorState, Fault, FaultRecord,
+        GPCF, GPCFRecord, MPAMData, MPAMinfo, MemAtomicOp, MemOp, PARTIDSpaceType, PARTIDType,
+        PMGType, VARange,
     },
     memory_acc::{
         AddressDescriptor, AddressSize, DeviceType, MemAttr_NC, MemAttr_WB, MemAttr_WT,
         MemAttrHints, MemHint_No, MemHint_RA, MemHint_RWA, MemTagType, MemType, MemoryAttributes,
-        S1TTWParams, Shareability, TGx, TTWState,
+        PhysMemRetStatus, S1TTWParams, Shareability, TGx, TTWState,
     },
     regs::{
-        EDSCRField, GPCBW_EL3Field, GPCCR_EL3Field, GPTBR_EL3Field, HCR_EL2Field, MPAM0_EL1Field,
-        MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field, MPAMHCR_EL2Field, MPAMIDR_EL1Field,
-        MPAMSM_EL1Field, MPAMVPMV_EL2Field, RegisterField, RegisterFieldRange, SCR_EL3Field,
-        SCRField, TCR_EL1Field,
+        EDSCRField, GPCBW_EL3Field, GPCCR_EL3Field, GPTBR_EL3Field, HCR_EL2Field, HCR2Field,
+        HCRField, HCRX_EL2Field, MPAM0_EL1Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field,
+        MPAMHCR_EL2Field, MPAMIDR_EL1Field, MPAMSM_EL1Field, MPAMVPMV_EL2Field, RegisterField,
+        RegisterFieldRange, SCR_EL3Field, SCRField, TCR_EL1Field,
     },
 };
 
@@ -2463,6 +2462,54 @@ impl Cpu {
         }
     }
 
+    /// GPICheck()
+    /// ==========
+    /// Returns whether an access to a given physical address space is permitted
+    /// given the configured GPI value.
+    /// paspace: Physical address space of the access
+    /// gpi: Value read from GPT for the access
+    /// ss: Security state of the access
+    pub fn gpi_check(&self, paspace: PASpace, gpi: u8, ss: SecurityState) -> bool {
+        match gpi {
+            GPT_NoAccess => false,
+            GPT_Secure => {
+                assert!(Cpu::is_feature_implemented(Feature::SEL2));
+                paspace == PASpace::Secure
+            }
+            GPT_NonSecure => paspace == PASpace::NonSecure,
+            GPT_Root => paspace == PASpace::Root,
+            GPT_Realm => paspace == PASpace::Realm,
+            GPT_NonSecureOnly => {
+                assert!(Cpu::is_feature_implemented(Feature::RME_GPC2));
+                paspace == PASpace::NonSecure
+                    && matches!(ss, SecurityState::Root | SecurityState::NonSecure)
+            }
+            GPT_SystemAgent => {
+                assert!(Cpu::is_feature_implemented(Feature::RME_GDI));
+                paspace == PASpace::SystemAgent
+            }
+            GPT_NonSecureProtected => {
+                assert!(Cpu::is_feature_implemented(Feature::RME_GDI));
+                paspace == PASpace::NonSecureProtected
+            }
+            GPT_NA6 => {
+                assert!(Cpu::is_feature_implemented(Feature::RME_GDI));
+                false
+            }
+            GPT_NA7 => {
+                assert!(Cpu::is_feature_implemented(Feature::RME_GDI));
+                false
+            }
+            GPT_Any => true,
+            _ => unreachable!(),
+        }
+    }
+
+    /// GranuleProtectionCheck()
+    /// ========================
+    /// Returns whether a given access is permitted, according to the
+    /// granule protection check.
+    /// addrdesc and accdesc describe the access to be checked.
     pub fn granule_protection_check(
         &self,
         addrdesc: &AddressDescriptor,
@@ -2517,7 +2564,216 @@ impl Cpu {
             return GPCFRecord::fault(GPCF::AddressSize, 0);
         }
 
-        todo!()
+        let (mut gpcf, gpt_entry) = self.gpt_walk(address.address, accdesc);
+        if gpcf.gpf != GPCF::None {
+            return gpcf;
+        }
+
+        let permitted = self.gpi_check(address.paspace, gpt_entry.gpi, accdesc.ss);
+        if !permitted {
+            gpcf = GPCFRecord::fault(GPCF::Fail, gpt_entry.level);
+            return gpcf;
+        }
+
+        GPCFRecord::no_fault()
+    }
+
+    /// EffectiveEA()
+    /// =============
+    /// Returns the Effective value of SCR_EL3().EA
+    pub fn effective_ea(&self) -> bool {
+        if !self.have_el(EL3) || self.halted() {
+            false
+        } else {
+            if self.have_aarch64() {
+                SCR_EL3Field::EA.fetch_bit(self.scr_el3)
+            } else {
+                SCRField::EA.fetch_bit(self.scr)
+            }
+        }
+    }
+
+    /// EffectiveHCR_TEA()
+    /// ==================
+    /// Return the Effective value of HCR_EL2.TEA.
+    pub fn effective_hcr_tea(&self) -> bool {
+        if self.el2_enabled() && Cpu::is_feature_implemented(Feature::RAS) {
+            if self.el_using_aarch32(EL2) {
+                HCR2Field::TEA.fetch_bit(self.hcr2)
+            } else {
+                HCR_EL2Field::TEA.fetch_bit(self.hcr_el2)
+            }
+        } else {
+            false
+        }
+    }
+
+    /// EffectiveTGE()
+    /// ==============
+    /// Returns the Effective value of TGE.
+    pub fn effective_tge(&self) -> bool {
+        if self.el2_enabled() {
+            if self.el_using_aarch32(EL2) {
+                HCRField::TGE.fetch_bit(self.hcr)
+            } else {
+                HCR_EL2Field::TGE.fetch_bit(self.hcr_el2)
+            }
+        } else {
+            false
+        }
+    }
+
+    /// IsHCRXEL2Enabled()
+    /// ==================
+    /// Returns TRUE if access to HCRX_EL2 register is enabled, and FALSE otherwise.
+    /// Indirect read of HCRX_EL2 returns 0 when access is not enabled.
+    pub fn is_hcrx_el2_enabled(&self) -> bool {
+        if !Cpu::is_feature_implemented(Feature::HCX) {
+            return false;
+        }
+
+        if self.el_using_aarch32(EL2) {
+            return false;
+        }
+
+        if self.have_el(EL3) && !SCR_EL3Field::HXEn.fetch_bit(self.scr_el3) {
+            return false;
+        }
+
+        self.el2_enabled()
+    }
+
+    /// EffectiveHCRX_EL2_TMEA()
+    /// ========================
+    /// Return the Effective value of HCRX_EL2.TMEA.
+    pub fn effective_hcrx_el2_tmea(&self) -> bool {
+        if Cpu::is_feature_implemented(Feature::DoubleFault2)
+            && self.el2_enabled()
+            && !self.el_using_aarch32(EL2)
+            && self.is_hcrx_el2_enabled()
+        {
+            HCRX_EL2Field::TMEA.fetch_bit(self.hcrx_el2)
+        } else {
+            false
+        }
+    }
+
+    /// EffectiveSCR_EL3_TMEA()
+    /// =======================
+    /// Returns the Effective value of SCR_EL3().TMEA
+    pub fn effective_scr_el3_tmea(&self) -> bool {
+        if Cpu::is_feature_implemented(Feature::DoubleFault2)
+            && self.have_el(EL3)
+            && !self.el_using_aarch32(EL3)
+        {
+            SCR_EL3Field::TMEA.fetch_bit(self.scr_el3)
+        } else {
+            false
+        }
+    }
+
+    /// SyncExternalAbortTarget()
+    /// =========================
+    /// Returns the target Exception level for a Synchronous External Data or
+    /// Instruction or Prefetch Abort.
+    /// If EL3 is implemented and using AArch32, then a target Exception level of
+    /// EL1 means Abort mode, and EL3 means Monitor mode, including in Secure
+    /// state when Abort mode is part of EL3.
+    pub fn sync_external_abort_target(&self, fault: &FaultRecord) -> EL {
+        let effective_ea = self.effective_ea();
+        let effective_tea = self.effective_hcr_tea();
+        let effective_tge = self.effective_tge();
+
+        if effective_ea || (self.pstate.EL() == EL3 && !self.el_using_aarch32(EL3)) {
+            EL3
+        } else if self.el2_enabled()
+            && (self.pstate.EL() == EL1 || self.pstate.EL() == EL0)
+            && (effective_tea
+                || fault.is_second_stage()
+                || fault.accessdesc.acctype == AccessType::NV2
+                || (self.pstate.EL() == EL0 && effective_tge))
+        {
+            EL2
+        } else if self.effective_hcrx_el2_tmea() && self.pstate.A && self.pstate.EL() == EL1 {
+            EL2
+        } else if self.effective_scr_el3_tmea()
+            && self.pstate.A
+            && (self.pstate.EL() == EL1 || self.pstate.EL() == EL2)
+        {
+            EL3
+        } else {
+            assert!(self.pstate.EL() != EL3 || self.el_using_aarch32(EL3));
+            if self.pstate.EL() == EL2 { EL2 } else { EL1 }
+        }
+    }
+
+    /// ExtAbortToAArch64()
+    /// ===================
+    /// Returns TRUE if synchronous exception is being taken to an Exception level using AArch64_
+    pub fn ext_abort_to_aarch64(&self, fault: &FaultRecord) -> bool {
+        assert!(fault.statuscode.is_external_sync_abort());
+
+        !self.el_using_aarch32(self.sync_external_abort_target(fault))
+    }
+
+    /// PEErrorState()
+    /// ==============
+    /// Returns the error state of the PE on taking an error exception:
+    /// The PE error state reported to software through the exception syndrome also
+    /// depends on how the exception is taken, and so might differ from the value
+    /// returned from this function.    
+    pub fn peerror_state(&self, fault: &FaultRecord) -> ErrorState {
+        // TODO: Impdef stuff
+        ErrorState::UEO
+    }
+
+    /// HandleExternalTTWAbort()
+    /// ========================
+    /// Take Asynchronous abort or update FaultRecord for Translation Table Walk
+    /// based on PhysMemRetStatus.
+    pub fn handle_external_ttw_abort(
+        &self,
+        memretstatus: &PhysMemRetStatus,
+        memaddrdesc: &AddressDescriptor,
+        input_fault: &FaultRecord,
+    ) -> FaultRecord {
+        let mut output_fault = input_fault.clone();
+        output_fault.extflag = memretstatus.extflag;
+        output_fault.statuscode = memretstatus.statuscode.clone();
+
+        if output_fault.is_external_sync_abort()
+            && (Cpu::is_feature_implemented(Feature::RASv2)
+                && self.ext_abort_to_aarch64(&output_fault)
+                && matches!(
+                    self.peerror_state(&output_fault),
+                    ErrorState::UC | ErrorState::UEU
+                ))
+        {
+            if output_fault.statuscode == Fault::SyncParity {
+                output_fault.statuscode = Fault::AsyncParity;
+            } else {
+                output_fault.statuscode = Fault::AsyncExternal;
+            }
+        }
+
+        if output_fault.is_external_sync_abort() {
+            if output_fault.statuscode == Fault::SyncParity {
+                output_fault.statuscode = Fault::SyncParityOnWalk;
+            } else {
+                output_fault.statuscode = Fault::SyncExternalOnWalk;
+            }
+        }
+
+        if Cpu::is_feature_implemented(Feature::RAS) {
+            output_fault.merrorstate = memretstatus.merrorstate.clone().unwrap();
+        }
+
+        if !output_fault.is_external_sync_abort() {
+            output_fault.statuscode = Fault::None;
+        }
+
+        output_fault.paddress = memaddrdesc.paddress;
+        output_fault
     }
 }
 

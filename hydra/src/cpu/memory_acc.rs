@@ -4,14 +4,16 @@ use crate::cpu::{
     constraint::{Constraint, Unpredictable},
     exeception::{FullAddress, PASpace},
     fault::{
-        AccessDescriptor, AccessType, CacheOp, CacheType, ErrorState, Fault, FaultRecord, VARange,
+        AccessDescriptor, AccessType, CacheOp, CacheType, ErrorState, Fault, FaultRecord, GPCF,
+        VARange,
     },
     regs::{
         E2H_TCR2_EL2Field, E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType,
-        MECID_P0_EL2, MECID_P1_EL2, RegisterField, RegisterFieldRange, S1PIRType, S1PORType,
-        SCR_EL3Field, SCTLR_EL1Field, SCTLR_EL2Field, SCTLR_EL3Field, SCTLR2_EL2Field,
-        SCTLR2_EL3Field, SCTLRField, TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL1Field,
-        TCR2_EL2Field, VMECID_P_EL2, VTCR_EL2Field, mairtype_from_mair,
+        MECID_A0_EL2Field, MECID_A1_EL2Field, MECID_P0_EL2Field, MECID_P1_EL2Field,
+        MECID_RL_A_EL3Field, RegisterField, RegisterFieldRange, S1PIRType, S1PORType, SCR_EL3Field,
+        SCTLR_EL1Field, SCTLR_EL2Field, SCTLR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field,
+        SCTLRField, TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL1Field, TCR2_EL2Field,
+        VMECID_P_EL2Field, VTCR_EL2Field, mairtype_from_mair,
     },
     shared::{EL, EL0, EL3, Faultable, Regime, SecurityState},
 };
@@ -88,6 +90,22 @@ impl<const N: usize> Bits<N> {
         }
 
         result
+    }
+
+    pub fn extend_to<const S: usize>(self) -> Bits<S> {
+        assert!(S > N);
+
+        Bits {
+            bytes: [vec![0; (S - N) / 8], self.bytes].concat(),
+        }
+    }
+
+    pub fn shrink_to<const S: usize>(self) -> Bits<S> {
+        assert!(S < N);
+
+        Bits {
+            bytes: self.bytes[(N - S) / 8..0].to_vec(),
+        }
     }
 }
 
@@ -253,6 +271,23 @@ impl AddressDescriptor {
             s2fs1mro: false,
             mecid: 0,
             vaddress: 0,
+        }
+    }
+
+    pub fn create(
+        va: u64,
+        pa: FullAddress,
+        memattrs: MemoryAttributes,
+        accdesc: &AccessDescriptor,
+    ) -> Self {
+        Self {
+            paddress: pa,
+            vaddress: va,
+            memattrs,
+            fault: FaultRecord::no_fault_accdesc(accdesc),
+            s1assured: false,
+            s2fs1mro: false,
+            mecid: 0,
         }
     }
 }
@@ -1202,15 +1237,15 @@ impl Cpu {
         }
 
         match regime {
-            Regime::EL2 => MECID_P0_EL2::MECID.fetch_range(self.mecid_p0_el2),
+            Regime::EL2 => MECID_P0_EL2Field::MECID.fetch_range(self.mecid_p0_el2),
             Regime::EL20 => {
                 if !E2H1_TCR_EL2Field::A1.fetch_bit(self.tcr_el2) {
-                    return MECID_P1_EL2::MECID.fetch_range(self.mecid_p1_el2);
+                    return MECID_P1_EL2Field::MECID.fetch_range(self.mecid_p1_el2);
                 } else {
-                    return MECID_P0_EL2::MECID.fetch_range(self.mecid_p0_el2);
+                    return MECID_P0_EL2Field::MECID.fetch_range(self.mecid_p0_el2);
                 }
             }
-            Regime::EL10 => VMECID_P_EL2::MECID.fetch_range(self.vmecid_p_el2),
+            Regime::EL10 => VMECID_P_EL2Field::MECID.fetch_range(self.vmecid_p_el2),
             _ => unreachable!(),
         }
     }
@@ -1221,6 +1256,16 @@ impl Cpu {
             Regime::EL2 => SCTLR_EL2Field::C.fetch_bit(self.sctlr_el2),
             Regime::EL20 => SCTLR_EL2Field::C.fetch_bit(self.sctlr_el2),
             Regime::EL10 => SCTLR_EL1Field::C.fetch_bit(self.sctlr_el1),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn aarch64_s1icache_enabled(&self, regime: Regime) -> bool {
+        match regime {
+            Regime::EL3 => SCTLR_EL3Field::I.fetch_bit(self.sctlr_el3),
+            Regime::EL2 => SCTLR_EL2Field::I.fetch_bit(self.sctlr_el2),
+            Regime::EL20 => SCTLR_EL2Field::I.fetch_bit(self.sctlr_el2),
+            Regime::EL10 => SCTLR_EL1Field::I.fetch_bit(self.sctlr_el1),
             _ => unreachable!(),
         }
     }
@@ -1347,6 +1392,19 @@ impl Cpu {
         Size<N>: ValidMemReadSizeBits,
     {
         todo!("Read")
+    }
+
+    #[allow(unused_variables)]
+    pub fn phys_mem_write<const N: usize>(
+        &self,
+        desc: &AddressDescriptor,
+        accdesc: &AccessDescriptor,
+        value: Bits<N>,
+    ) -> PhysMemRetStatus
+    where
+        Size<N>: ValidMemReadSizeBits,
+    {
+        todo!("Write")
     }
 
     pub fn fetch_descriptor<const N: usize>(
@@ -2458,35 +2516,150 @@ impl Cpu {
     pub fn aarch64_mem_swap_table_desc<const S: usize>(
         &self,
         fault_in: &FaultRecord,
-        prev_desc: u128,
-        new_desc: u128,
+        prev_desc: &Bits<S>,
+        new_desc: &Bits<S>,
         ee: bool,
         descaccess: &AccessDescriptor,
-        descpaddr: &AccessDescriptor,
-    ) -> (FaultRecord, u128)
+        descpaddr: &AddressDescriptor,
+    ) -> (FaultRecord, Bits<S>)
     where
-        Size<S>: ValidWalkSize,
+        Size<S>: ValidWalkSize + ValidMemReadSizeBits,
     {
         assert!(descaccess.acctype == AccessType::TTW);
         let mut fault = fault_in.clone();
 
         if Cpu::is_feature_implemented(Feature::RME) {
-            fault.gpcf = self.granule_
+            fault.gpcf = self.granule_protection_check(descpaddr, descaccess);
+            if fault.gpcf.gpf != GPCF::None {
+                fault.statuscode = Fault::GPCFOnWalk;
+                fault.paddress = descpaddr.paddress;
+                fault.gpcfs2walk = fault.secondstage;
+                return (fault, Bits::zero());
+            }
         }
 
-        todo!()
+        let (mut memstatus, mut mem_desc) = self.phys_mem_read::<S>(descpaddr, descaccess);
+
+        if ee {
+            mem_desc = mem_desc.reverse();
+        }
+
+        if memstatus.is_fault() {
+            fault = self.handle_external_ttw_abort(&memstatus, &descpaddr, &fault);
+            if fault.statuscode.is_fault() {
+                return (fault, Bits::zero());
+            }
+        }
+
+        if mem_desc == *prev_desc {
+            let ordered_new_desc = if ee {
+                new_desc.reverse()
+            } else {
+                new_desc.clone()
+            };
+            memstatus = self.phys_mem_write(descpaddr, descaccess, ordered_new_desc);
+
+            if memstatus.is_fault() {
+                fault = self.handle_external_ttw_abort(&memstatus, &descpaddr, &fault);
+
+                if fault.statuscode.is_fault() {
+                    return (fault, Bits::zero());
+                }
+            }
+
+            mem_desc = new_desc.clone();
+        }
+
+        (fault, mem_desc)
+    }
+
+    pub fn aarch64_s1treat_as_normal_nc(
+        &self,
+        walkstate: &TTWState,
+        regime: Regime,
+        accdesc: &AccessDescriptor,
+    ) -> bool {
+        (accdesc.acctype == AccessType::IFETCH
+            && (walkstate.memattrs.memtype == MemType::Device
+                || self.aarch64_s1icache_enabled(regime)))
+            || (accdesc.acctype != AccessType::IFETCH
+                && !self.aarch64_s1dcache_enabled(regime)
+                && walkstate.memattrs.memtype == MemType::Normal)
+    }
+
+    pub fn is_pmte_selected(&self) -> bool {
+        if !Cpu::is_feature_implemented(Feature::MTE2) {
+            return false;
+        }
+
+        true
+    }
+
+    pub fn aarch64_s1output_mecid<const N: usize>(
+        &self,
+        walkparams: &S1TTWParams,
+        regime: Regime,
+        varange: VARange,
+        paspace: PASpace,
+        desc: &Bits<N>,
+    ) -> u16 {
+        if !walkparams.emec {
+            return DEFAULT_MECID;
+        }
+
+        if paspace != PASpace::Realm {
+            return DEFAULT_MECID;
+        }
+
+        if regime != Regime::EL3 && !self.effective_scr_el3_mecen() {
+            return DEFAULT_MECID;
+        }
+
+        let descriptor_amec = if walkparams.d128 {
+            desc.nth_bit(108)
+        } else {
+            desc.nth_bit(63)
+        };
+
+        match regime {
+            Regime::EL3 => MECID_RL_A_EL3Field::MECID.fetch_range(self.mecid_rl_a_el3),
+            Regime::EL2 => {
+                if !descriptor_amec {
+                    MECID_P0_EL2Field::MECID.fetch_range(self.mecid_p0_el2)
+                } else {
+                    MECID_A0_EL2Field::MECID.fetch_range(self.mecid_a0_el2)
+                }
+            }
+            Regime::EL20 => {
+                if varange == VARange::LOWER {
+                    if !descriptor_amec {
+                        MECID_P0_EL2Field::MECID.fetch_range(self.mecid_p0_el2)
+                    } else {
+                        MECID_A0_EL2Field::MECID.fetch_range(self.mecid_a0_el2)
+                    }
+                } else {
+                    if !descriptor_amec {
+                        MECID_P1_EL2Field::MECID.fetch_range(self.mecid_p1_el2)
+                    } else {
+                        MECID_A1_EL2Field::MECID.fetch_range(self.mecid_a1_el2)
+                    }
+                }
+            }
+            Regime::EL10 => VMECID_P_EL2Field::MECID.fetch_range(self.vmecid_p_el2),
+            _ => unreachable!(),
+        }
     }
 
     pub fn aarch64_s1translate(
         &self,
-        fault_in: FaultRecord,
+        fault_in: &FaultRecord,
         regime: Regime,
         va: u64,
         size: usize,
         aligned: bool,
         accdesc: &AccessDescriptor,
     ) -> (FaultRecord, AddressDescriptor) {
-        let mut fault = fault_in;
+        let mut fault = fault_in.clone();
         fault.secondstage = false;
         fault.s2fs1walk = false;
 
@@ -2530,12 +2703,12 @@ impl Cpu {
             let (f, da, w, dsc) =
                 self.aarch64_s1walk::<128>(fault, &walkparams, va, regime, accdesc);
             fault = f;
-            (da, w, dsc.compile_u128())
+            (da, w, dsc)
         } else {
             let (f, da, w, dsc) =
                 self.aarch64_s1walk::<64>(fault, &walkparams, va, regime, accdesc);
             fault = f;
-            (da, w, dsc.compile_u128())
+            (da, w, dsc.extend_to())
         };
 
         if fault.statuscode != Fault::None {
@@ -2555,21 +2728,21 @@ impl Cpu {
         let fault_perm =
             self.aarch64_s1check_permissions(&fault, regime, &walkstate, &walkparams, accdesc);
 
-        let mut mem_desc: u128;
-        let mut new_desc = descriptor;
+        let mut mem_desc: Bits<128>;
+        let mut new_desc = descriptor.clone();
 
         if self.aarch64_set_access_flag(walkparams.ha, accdesc, &fault, &fault_perm) {
-            new_desc = set_nth_bit(new_desc, 10, true);
+            new_desc.set_bit(10, true);
         }
 
         if self.aarch64_set_dirty_state(
             walkparams.hd,
-            walkparams.pie || nth_bit(descriptor, 51),
+            walkparams.pie || descriptor.nth_bit(51),
             accdesc,
             &fault,
             &fault_perm,
         ) {
-            new_desc = set_nth_bit(new_desc, 7, false);
+            new_desc.set_bit(7, false);
         }
 
         if fault.statuscode == Fault::None && fault_perm.statuscode != Fault::None {
@@ -2592,12 +2765,109 @@ impl Cpu {
             };
 
             (fault, mem_desc) = if walkparams.d128 {
-                self.aarch64_mem_swap_table_desc::<128>()
+                self.aarch64_mem_swap_table_desc::<128>(
+                    &fault,
+                    &descriptor,
+                    &new_desc,
+                    walkparams.ee,
+                    &descaccess,
+                    &descpaddr,
+                )
             } else {
-                self.aarch64_mem_swap_table_desc::<64>()
+                let (f, m) = self.aarch64_mem_swap_table_desc::<64>(
+                    &fault,
+                    &descriptor.clone().shrink_to(),
+                    &new_desc.clone().shrink_to(),
+                    walkparams.ee,
+                    &descaccess,
+                    &descpaddr,
+                );
+
+                (f, m.extend_to())
             };
+
+            if fault.statuscode != Fault::None {
+                if accdesc.acctype == AccessType::AT {
+                    // TODO: Impdef
+                    fault.statuscode = Fault::None;
+                } else {
+                    return (fault, AddressDescriptor::arbitrary());
+                }
+            } else if new_desc != descriptor && mem_desc != new_desc {
+                return self.aarch64_s1translate(fault_in, regime, va, size, aligned, accdesc);
+            }
         }
 
-        todo!()
+        if fault.statuscode != Fault::None {
+            return (fault, AddressDescriptor::arbitrary());
+        }
+
+        let oa = self.stage1oa(va, &walkparams, &walkstate);
+        let mut memattrs: MemoryAttributes;
+
+        if self.aarch64_s1treat_as_normal_nc(&walkstate, regime, accdesc) {
+            memattrs = self.normal_nc_memattr();
+            memattrs.xs = walkstate.memattrs.xs;
+
+            if self.is_pmte_selected()
+                && walkstate.memattrs.tags == MemTagType::AllocationTagged
+                && Unpredictable::S1CTAGGED.constrain_bool()
+            {
+                memattrs.tags = MemTagType::AllocationTagged;
+            } else if Cpu::is_feature_implemented(Feature::MTE_CANONICAL_TAGS)
+                && walkstate.memattrs.tags == MemTagType::CanonicallyTagged
+            {
+                memattrs.tags = MemTagType::CanonicallyTagged;
+            }
+        } else {
+            memattrs = walkstate.memattrs.clone();
+        }
+
+        memattrs.shareability = if regime == Regime::EL10
+            && self.el2_enabled()
+            && HCR_EL2Field::VM.fetch_bit(self.hcr_el2)
+        {
+            // TODO: Impdef
+            walkstate.memattrs.shareability
+        } else {
+            self.effective_shareability(&memattrs)
+        };
+
+        let mut ipa = AddressDescriptor::create(va, oa, memattrs.clone(), accdesc);
+        ipa.s1assured = walkstate.s1assured;
+
+        let varange = self.aarch64_get_varange(va);
+        ipa.mecid = self.aarch64_s1output_mecid(
+            &walkparams,
+            regime,
+            varange,
+            ipa.paddress.paspace,
+            &descriptor,
+        );
+
+        if accdesc.atomicop
+            && !self.is_wb_shareable(&memattrs)
+            && Unpredictable::Atomic_MMU_IMPDEF_FAULT.constrain_bool()
+        {
+            fault.statuscode = Fault::Exclusive;
+            return (fault, ipa);
+        }
+
+        if accdesc.ls64 && memattrs.memtype == MemType::Normal {
+            if Cpu::is_feature_implemented(Feature::LS64WB) && !accdesc.withstatus {
+                if !self.is_wb_shareable(&memattrs)
+                    && !(memattrs.inner.attrs == MemAttr_NC && memattrs.outer.attrs == MemAttr_NC)
+                {
+                    // TODO: Impdef
+                    fault.statuscode = Fault::Exclusive;
+                    return (fault, ipa);
+                }
+            } else if !(memattrs.inner.attrs == MemAttr_NC && memattrs.outer.attrs == MemAttr_NC) {
+                fault.statuscode = Fault::Exclusive;
+                return (fault, ipa);
+            }
+        }
+
+        (fault, ipa)
     }
 }

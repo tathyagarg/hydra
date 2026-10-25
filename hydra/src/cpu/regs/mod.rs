@@ -4,6 +4,8 @@ mod edscr;
 mod gpcbw;
 mod gpccr;
 mod gptbr;
+mod hcr;
+mod hcr2;
 mod hcr_el2;
 mod hcrx;
 mod mdcr_el3;
@@ -31,7 +33,9 @@ pub use self::edscr::EDSCRField;
 pub use self::gpcbw::GPCBW_EL3Field;
 pub use self::gpccr::GPCCR_EL3Field;
 pub use self::gptbr::GPTBR_EL3Field;
+pub use self::hcr::HCRField;
 pub use self::hcr_el2::HCR_EL2Field;
+pub use self::hcr2::HCR2Field;
 pub use self::hcrx::HCRX_EL2Field;
 pub use self::mdcr_el3::MDCR_EL3Field;
 pub use self::mpam0_el1::MPAM0_EL1Field;
@@ -88,33 +92,66 @@ pub type S1PORType = [u8; 16];
 pub type MPAMVPMnEL2Type = u64;
 
 #[allow(non_camel_case_types)]
-pub enum MECID_P0_EL2 {
+pub enum MECID_RL_A_EL3Field {
     MECID = -1, // 15-0
 }
 
-impl RegisterFieldRange<u64, u16> for MECID_P0_EL2 {
+impl RegisterFieldRange<u64, u16> for MECID_RL_A_EL3Field {
     fn fetch_range(self, v: u64) -> u16 {
         (v & 0xFFFF) as u16
     }
 }
 
 #[allow(non_camel_case_types)]
-pub enum MECID_P1_EL2 {
+pub enum MECID_A0_EL2Field {
     MECID = -1, // 15-0
 }
 
-impl RegisterFieldRange<u64, u16> for MECID_P1_EL2 {
+impl RegisterFieldRange<u64, u16> for MECID_A0_EL2Field {
     fn fetch_range(self, v: u64) -> u16 {
         (v & 0xFFFF) as u16
     }
 }
 
 #[allow(non_camel_case_types)]
-pub enum VMECID_P_EL2 {
+pub enum MECID_A1_EL2Field {
     MECID = -1, // 15-0
 }
 
-impl RegisterFieldRange<u64, u16> for VMECID_P_EL2 {
+impl RegisterFieldRange<u64, u16> for MECID_A1_EL2Field {
+    fn fetch_range(self, v: u64) -> u16 {
+        (v & 0xFFFF) as u16
+    }
+}
+
+#[allow(non_camel_case_types)]
+pub enum MECID_P0_EL2Field {
+    MECID = -1, // 15-0
+}
+
+impl RegisterFieldRange<u64, u16> for MECID_P0_EL2Field {
+    fn fetch_range(self, v: u64) -> u16 {
+        (v & 0xFFFF) as u16
+    }
+}
+
+#[allow(non_camel_case_types)]
+pub enum MECID_P1_EL2Field {
+    MECID = -1, // 15-0
+}
+
+impl RegisterFieldRange<u64, u16> for MECID_P1_EL2Field {
+    fn fetch_range(self, v: u64) -> u16 {
+        (v & 0xFFFF) as u16
+    }
+}
+
+#[allow(non_camel_case_types)]
+pub enum VMECID_P_EL2Field {
+    MECID = -1, // 15-0
+}
+
+impl RegisterFieldRange<u64, u16> for VMECID_P_EL2Field {
     fn fetch_range(self, v: u64) -> u16 {
         (v & 0xFFFF) as u16
     }
