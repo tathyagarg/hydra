@@ -86,7 +86,7 @@ pub enum MemOp {
     PREFETCH,
 }
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub enum CacheOp {
     Clean,
     Invalidate,

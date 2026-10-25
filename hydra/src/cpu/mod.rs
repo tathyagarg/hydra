@@ -6,7 +6,7 @@ use crate::{
         common::NZCV,
         decode::Instruction,
         pmu::Pmu,
-        regs::{MPAMVPMnEL2Type, PIRType},
+        regs::{MPAMVPMnEL2Type, S1PIRType, S1PORType},
     },
     memory::Memory,
 };
@@ -415,9 +415,9 @@ pub struct Cpu {
 
     mpamvpmn_el2: [MPAMVPMnEL2Type; 8],
 
-    pir_el1: PIRType,
-    pir_el2: PIRType,
-    pir_el3: PIRType,
+    pir_el1: S1PIRType,
+    pir_el2: S1PIRType,
+    pir_el3: S1PIRType,
 
     tcr2_el1: u64,
     tcr2_el2: u64,
@@ -438,6 +438,11 @@ pub struct Cpu {
     vmecid_p_el2: u64,
 
     hcrx_el2: u64,
+
+    por_el0: S1PORType,
+    por_el1: S1PORType,
+    por_el2: S1PORType,
+    por_el3: S1PORType,
 
     brbe: Brbe,
     pmu: Pmu,
@@ -509,6 +514,10 @@ impl Default for Cpu {
             mecid_p1_el2: 0,
             vmecid_p_el2: 0,
             hcrx_el2: 0,
+            por_el0: [0; 16],
+            por_el1: [0; 16],
+            por_el2: [0; 16],
+            por_el3: [0; 16],
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],

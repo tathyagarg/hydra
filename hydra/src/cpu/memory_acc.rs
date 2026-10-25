@@ -3,13 +3,15 @@ use crate::cpu::{
     common::*,
     constraint::{Constraint, Unpredictable},
     exeception::{FullAddress, PASpace},
-    fault::{AccessDescriptor, AccessType, CacheType, ErrorState, Fault, FaultRecord, VARange},
+    fault::{
+        AccessDescriptor, AccessType, CacheOp, CacheType, ErrorState, Fault, FaultRecord, VARange,
+    },
     regs::{
         E2H_TCR2_EL2Field, E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType,
-        MECID_P0_EL2, MECID_P1_EL2, RegisterField, RegisterFieldRange, S1PIRType, SCR_EL3Field,
-        SCTLR_EL1Field, SCTLR_EL2Field, SCTLR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field,
-        SCTLRField, TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL1Field, TCR2_EL2Field,
-        VMECID_P_EL2, VTCR_EL2Field, mairtype_from_mair,
+        MECID_P0_EL2, MECID_P1_EL2, RegisterField, RegisterFieldRange, S1PIRType, S1PORType,
+        SCR_EL3Field, SCTLR_EL1Field, SCTLR_EL2Field, SCTLR_EL3Field, SCTLR2_EL2Field,
+        SCTLR2_EL3Field, SCTLRField, TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL1Field,
+        TCR2_EL2Field, VMECID_P_EL2, VTCR_EL2Field, mairtype_from_mair,
     },
     shared::{EL, EL0, EL3, Regime, SecurityState},
 };
@@ -185,7 +187,7 @@ pub enum Shareability {
     OSH,
 }
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub enum MemTagType {
     AllocationTagged,
     CanonicallyTagged,
@@ -2136,13 +2138,80 @@ impl Cpu {
         }
     }
 
+    pub fn aarch64_s1por(&self, regime: Regime) -> S1PORType {
+        match regime {
+            Regime::EL3 => self.por_el3 as S1PORType,
+            Regime::EL2 => self.por_el2 as S1PORType,
+            Regime::EL20 => self.por_el2 as S1PORType,
+            Regime::EL10 => self.por_el1 as S1PORType,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn aarch64_s1overlay_perms(
         &self,
         regime: Regime,
         walkstate: &TTWState,
         accdesc: &AccessDescriptor,
     ) -> S1AccessControls {
-        todo!()
+        let (mut ur, mut uw, mut ux) = (false, false, false);
+
+        let perms = &walkstate.permissions;
+        let por = self.aarch64_s1por(regime);
+
+        let ppo = por[perms.po_index as usize];
+
+        let (pr, pw, px) = match ppo {
+            0b0000 => (false, false, false),
+            0b0001 => (true, false, false),
+            0b0010 => (false, false, true),
+            0b0011 => (true, false, true),
+            0b0100 => (false, true, false),
+            0b0101 => (true, true, false),
+            0b0110 => (false, true, true),
+            0b0111 => (true, true, true),
+            0b1000..=0b1111 => (false, false, false),
+            _ => unreachable!(),
+        };
+
+        if self.has_unprivileged(regime) {
+            let upo = if !(self.have_el(EL3) && !SCR_EL3Field::PIEn.fetch_bit(self.scr_el3)) {
+                self.por_el0[perms.po_index as usize]
+            } else {
+                0
+            };
+
+            (ur, uw, ux) = match upo {
+                0b0000 => (false, false, false),
+                0b0001 => (true, false, false),
+                0b0010 => (false, false, true),
+                0b0011 => (true, false, true),
+                0b0100 => (false, true, false),
+                0b0101 => (true, true, false),
+                0b0110 => (false, true, true),
+                0b0111 => (true, true, true),
+                0b1000..=0b1111 => (false, false, false),
+                _ => unreachable!(),
+            };
+        }
+
+        let (r, w, x) = if accdesc.el == EL0 {
+            (ur, uw, ux)
+        } else {
+            (pr, pw, px)
+        };
+
+        S1AccessControls {
+            r: false,
+            w: false,
+            x: false,
+            gcs: false,
+            overlay: false,
+            or: r,
+            ow: w,
+            ox: x,
+            wxn: false,
+        }
     }
 
     pub fn aarch64_s1compute_permissions(
@@ -2152,7 +2221,6 @@ impl Cpu {
         walkparams: &S1TTWParams,
         accdesc: &AccessDescriptor,
     ) -> S1AccessControls {
-        let permissions = &walkstate.permissions;
         let mut s1perms = if walkparams.pie {
             self.aarch64_s1indirect_base_permissions(regime, walkstate, walkparams, accdesc)
         } else {
@@ -2167,26 +2235,139 @@ impl Cpu {
 
         if s1perms.overlay {
             let s1overlay_perms = self.aarch64_s1overlay_perms(regime, walkstate, accdesc);
+
+            s1perms.or = s1overlay_perms.or;
+            s1perms.ow = s1overlay_perms.ow;
+            s1perms.ox = s1overlay_perms.ox;
         }
 
-        todo!()
+        if s1perms.overlay {
+            s1perms.ow = s1perms.ow && !(s1perms.wxn && s1perms.ox);
+        } else {
+            s1perms.x = s1perms.x && !s1perms.wxn;
+        }
+
+        s1perms
     }
 
     pub fn aarch64_s1check_permissions(
         &self,
         fault_in: &FaultRecord,
-        va: u64,
-        size: usize,
         regime: Regime,
         walkstate: &TTWState,
         walkparams: &S1TTWParams,
         accdesc: &AccessDescriptor,
     ) -> FaultRecord {
-        let mut fault = fault_in;
+        let mut fault = fault_in.clone();
         let permissions = &walkstate.permissions;
-        // let mut s1perms = self.aarch64_s1compute_permissions();
+        let s1perms = self.aarch64_s1compute_permissions(regime, walkstate, walkparams, accdesc);
 
-        todo!()
+        if accdesc.acctype == AccessType::IFETCH {
+            // TODO: Guarded Page
+
+            if s1perms.overlay && !s1perms.ox {
+                fault.statuscode = Fault::Permission;
+                fault.overlay = true;
+            } else if walkstate.memattrs.memtype == MemType::Device
+                && Unpredictable::INSTRDEVICE.constrain() == Constraint::FAULT
+            {
+                fault.statuscode = Fault::Permission;
+            } else if !s1perms.x {
+                fault.statuscode = Fault::Permission;
+            }
+        } else if accdesc.acctype == AccessType::DC {
+            if accdesc.cacheop == Some(CacheOp::Invalidate) {
+                if s1perms.overlay && !s1perms.ow {
+                    fault.statuscode = Fault::Permission;
+                    fault.overlay = true;
+                } else if !s1perms.w {
+                    fault.statuscode = Fault::Permission;
+                } else if !walkparams.hd && walkparams.pie && permissions.ndirty {
+                    fault.statuscode = Fault::Permission;
+                    fault.dirtybit = true;
+                }
+            } else if accdesc.el == EL0 {
+                if s1perms.overlay && !s1perms.or {
+                    fault.statuscode = Fault::Permission;
+                    fault.overlay = true;
+                } else if walkparams.cmow
+                    && accdesc.cacheop == Some(CacheOp::CleanInvalidate)
+                    && s1perms.overlay
+                    && !s1perms.ow
+                {
+                    fault.statuscode = Fault::Permission;
+                    fault.overlay = true;
+                } else if !s1perms.r {
+                    fault.statuscode = Fault::Permission;
+                } else if walkparams.cmow
+                    && accdesc.cacheop == Some(CacheOp::CleanInvalidate)
+                    && !s1perms.w
+                {
+                    fault.statuscode = Fault::Permission;
+                } else if walkparams.cmow
+                    && !walkparams.hd
+                    && walkparams.pie
+                    && permissions.ndirty
+                    && accdesc.cacheop == Some(CacheOp::CleanInvalidate)
+                {
+                    fault.statuscode = Fault::Permission;
+                    fault.dirtybit = true;
+                }
+            }
+        } else if accdesc.acctype == AccessType::IC {
+            if accdesc.el == EL0 {
+                if s1perms.overlay && !s1perms.or {
+                    fault.statuscode = Fault::Permission;
+                    fault.overlay = true;
+                } else if walkparams.cmow && s1perms.overlay && !s1perms.ow {
+                    fault.statuscode = Fault::Permission;
+                    fault.overlay = true;
+                } else if !s1perms.r {
+                    fault.statuscode = Fault::Permission;
+                } else if walkparams.cmow && !s1perms.w {
+                    fault.statuscode = Fault::Permission;
+                } else if walkparams.cmow && !walkparams.hd && walkparams.pie && permissions.ndirty
+                {
+                    fault.statuscode = Fault::Permission;
+                    fault.dirtybit = true;
+                }
+            }
+        } else if Cpu::is_feature_implemented(Feature::GCS) && accdesc.acctype == AccessType::GCS {
+            if !s1perms.gcs {
+                fault.statuscode = Fault::Permission;
+            } else if accdesc.write && !walkparams.hd && permissions.ndirty {
+                fault.statuscode = Fault::Permission;
+                fault.dirtybit = true;
+                fault.write = true;
+            }
+        } else if accdesc.read && s1perms.overlay && !s1perms.or {
+            fault.statuscode = Fault::Permission;
+            fault.overlay = true;
+            fault.write = false;
+        } else if accdesc.write && s1perms.overlay && !s1perms.ow {
+            fault.statuscode = Fault::Permission;
+            fault.overlay = true;
+            fault.write = true;
+        } else if accdesc.read && !s1perms.r {
+            fault.statuscode = Fault::Permission;
+            fault.write = false;
+        } else if accdesc.write && !s1perms.w {
+            fault.statuscode = Fault::Permission;
+            fault.write = true;
+        } else if accdesc.write
+            && accdesc.tagaccess
+            && walkstate.memattrs.tags == MemTagType::CanonicallyTagged
+        {
+            fault.statuscode = Fault::Permission;
+            fault.write = true;
+            fault.s1tagnotdata = true;
+        } else if accdesc.write && !walkparams.hd && walkparams.pie && permissions.ndirty {
+            fault.statuscode = Fault::Permission;
+            fault.dirtybit = true;
+            fault.write = true;
+        }
+
+        fault
     }
 
     pub fn aarch64_s1translate(

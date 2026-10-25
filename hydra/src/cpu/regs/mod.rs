@@ -77,10 +77,9 @@ pub fn mairtype_from_mair(mair: u64) -> MAIRType {
 }
 
 pub type S1PIRType = [u8; 16];
+pub type S1PORType = [u8; 16];
 
 pub type MPAMVPMnEL2Type = u64;
-
-pub type PIRType = [u8; 16];
 
 #[allow(non_camel_case_types)]
 pub enum MECID_P0_EL2 {
