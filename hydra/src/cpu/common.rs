@@ -129,6 +129,10 @@ pub fn align_down_p2<const N: u32>(x: u64, p2: u32) -> u64 {
     x & !ones_as::<u64>(p2) & ones_as::<u64>(N)
 }
 
+pub fn align_down_size(x: u64, size: u64) -> u64 {
+    x - (x % size)
+}
+
 pub fn align_down_p2_as<T>(x: T, p2: u32) -> T
 where
     T: BitInteger + std::ops::BitAnd<Output = T> + std::ops::Not<Output = T>,

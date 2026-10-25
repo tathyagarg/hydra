@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::cpu::{
     BranchType, Cpu, DecodeType, EndOfInstructionReason, ExtendType, Feature, HIGH, Register,
     ShiftType,
@@ -2233,6 +2235,111 @@ impl Cpu {
         }
     }
 
+    /// GPTLevel1Index()
+    /// ================
+    /// Compute the level 1 index based on input PA.
+    pub fn gpt_level1_index(&self, pa: u64) -> u64 {
+        let l0sz = self.gptl0_size();
+
+        (match self.decode_pgs(GPCCR_EL3Field::PGS.fetch_range(self.gpccr_el3)) {
+            PGSe::_4KB => get_bits(pa, (l0sz - 1) as usize, 16),
+            PGSe::_16KB => get_bits(pa, (l0sz - 1) as usize, 18),
+            PGSe::_64KB => get_bits(pa, (l0sz - 1) as usize, 20),
+        }) as u64
+    }
+
+    /// GPTContigDescriptorValid()
+    /// ==========================
+    /// Returns TRUE if the given GPT Contiguous descriptor is valid, and FALSE otherwise.
+    pub fn gpt_contig_descriptor_valid(&self, level_1_entry: u64) -> bool {
+        assert!(get_bits(level_1_entry, 3, 0) as u8 == GPT_Contig);
+
+        get_bits(level_1_entry, 63, 10) == 0
+            && get_bits(level_1_entry, 9, 8) != 0
+            && self.gpi_valid(get_bits(level_1_entry, 7, 4) as u8)
+    }
+
+    /// GPTGranulesDescriptorValid()
+    /// ============================
+    /// Returns TRUE if the given GPT Granules descriptor is valid, and FALSE otherwise.
+    pub fn gpt_granules_descriptor_valid(&self, level_1_entry: u64) -> bool {
+        for i in 0..=15 {
+            if !self.gpi_valid(get_bits(level_1_entry, i * 4, i * 4 + 4) as u8) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// GPTLevel1EntryValid()
+    /// =====================
+    /// Returns TRUE if the given level 1 gpt descriptor is valid, and FALSE otherwise.
+    pub fn gpt_level1_entry_valid(&self, gpt_entry: u64) -> bool {
+        match get_bits(gpt_entry, 3, 0) as u8 {
+            GPT_Contig => self.gpt_contig_descriptor_valid(gpt_entry),
+            _ => self.gpt_granules_descriptor_valid(gpt_entry),
+        }
+    }
+
+    /// DecodeGPTContiguous()
+    /// =====================
+    /// Decode a GPT Contiguous descriptor.
+    pub fn decode_gpt_contiguous(&self, pgs: PGSe, gpt_entry: u64) -> GPTEntry {
+        assert!(get_bits(gpt_entry, 3, 0) as u8 == GPT_Contig);
+
+        GPTEntry {
+            gpi: get_bits(gpt_entry, 7, 4) as u8,
+            size: match pgs {
+                PGSe::_4KB => GPTRange_4KB,
+                PGSe::_16KB => GPTRange_16KB,
+                PGSe::_64KB => GPTRange_64KB,
+            },
+            contig_size: match get_bits(gpt_entry, 9, 8) as u8 {
+                0b01 => GPTRange_2MB,
+                0b10 => GPTRange_32MB,
+                0b11 => GPTRange_512MB,
+                _ => unreachable!(),
+            },
+            level: 1,
+            istable: false,
+            pa: 0,
+        }
+    }
+
+    /// GPIIndex()
+    /// ==========
+    pub fn gpi_index(&self, pa: u64) -> u8 {
+        (match self.decode_pgs(GPCCR_EL3Field::PGS.fetch_range(self.gpccr_el3) as u8) {
+            PGSe::_4KB => get_bits(pa, 15, 12),
+            PGSe::_16KB => get_bits(pa, 17, 14),
+            PGSe::_64KB => get_bits(pa, 19, 16),
+        }) as u8
+    }
+
+    /// DecodeGPTGranules()
+    /// ===================
+    /// Decode a GPT Granules descriptor.
+    pub fn decode_gpt_granules(&self, pgs: PGSe, index: u8, gpt_entry: u64) -> GPTEntry {
+        let size = match pgs {
+            PGSe::_4KB => GPTRange_4KB,
+            PGSe::_16KB => GPTRange_16KB,
+            PGSe::_64KB => GPTRange_64KB,
+        };
+
+        GPTEntry {
+            gpi: get_bits(gpt_entry, index as usize * 4, index as usize * 4 + 4) as u8,
+            size,
+            contig_size: size,
+            level: 1,
+            istable: false,
+            pa: 0,
+        }
+    }
+
+    /// GPTWalk()
+    /// =========
+    /// Get the GPT entry for a given physical address, pa
     pub fn gpt_walk(&self, pa: u64, accdesc: &AccessDescriptor) -> (GPCFRecord, GPTEntry) {
         let pgs = self.decode_pgs(GPCCR_EL3Field::PGS.fetch_range(self.gpccr_el3));
         let mut base = GPTBR_EL3Field::BADDR.fetch_range(self.gptbr_el3) << 12;
@@ -2256,7 +2363,7 @@ impl Cpu {
             address: base + self.gpt_level0_index(pa) * 8,
         };
 
-        let gptaddrdesc = AddressDescriptor {
+        let mut gptaddrdesc = AddressDescriptor {
             memattrs,
             fault,
             paddress,
@@ -2293,7 +2400,64 @@ impl Cpu {
                     );
                 }
 
-                todo!()
+                let offset = self.gpt_level1_index(pa) * 8;
+                let level_1_entry = if Cpu::is_feature_implemented(Feature::RME_GDI) {
+                    gptaddrdesc.paddress.address = align_down_size(table.address + offset, 16);
+                    let (memstatus, raw_level_1_entry_lower) =
+                        self.phys_mem_read::<64>(&gptaddrdesc, &gptaccdesc);
+                    let level_1_entry_lower = raw_level_1_entry_lower.compile_u128() as u64;
+
+                    if memstatus.is_fault() {
+                        return (GPCFRecord::fault(GPCF::EABT, 1), GPTEntry::arbitrary());
+                    }
+
+                    gptaddrdesc.paddress.address += 8;
+                    let (memstatus, raw_level_1_entry_upper) =
+                        self.phys_mem_read::<64>(&gptaddrdesc, &gptaccdesc);
+                    let level_1_entry_upper = raw_level_1_entry_upper.compile_u128() as u64;
+
+                    if memstatus.is_fault() {
+                        return (GPCFRecord::fault(GPCF::EABT, 1), GPTEntry::arbitrary());
+                    }
+
+                    if !self.gpt_level1_entry_valid(level_1_entry_upper)
+                        || !self.gpt_level1_entry_valid(level_1_entry_lower)
+                    {
+                        return (GPCFRecord::fault(GPCF::Walk, 1), GPTEntry::arbitrary());
+                    }
+
+                    if nth_bit(offset, 3) {
+                        level_1_entry_upper
+                    } else {
+                        level_1_entry_lower
+                    }
+                } else {
+                    gptaddrdesc.paddress.address = table.address + offset;
+
+                    let (memstatus, raw_l1e) = self.phys_mem_read::<64>(&gptaddrdesc, &gptaccdesc);
+                    let l1e = raw_l1e.compile_u128() as u64;
+
+                    if memstatus.is_fault() {
+                        return (GPCFRecord::fault(GPCF::EABT, 1), GPTEntry::arbitrary());
+                    }
+
+                    if !self.gpt_level1_entry_valid(l1e) {
+                        return (GPCFRecord::fault(GPCF::Walk, 1), GPTEntry::arbitrary());
+                    }
+
+                    l1e
+                };
+
+                let mut result = match get_bits(level_1_entry, 3, 0) as u8 {
+                    GPT_Contig => self.decode_gpt_contiguous(pgs, level_1_entry),
+                    _ => {
+                        let gpi_index = self.gpi_index(pa);
+                        self.decode_gpt_granules(pgs, gpi_index, level_1_entry)
+                    }
+                };
+
+                result.pa = pa;
+                (GPCFRecord::no_fault(), result)
             }
             _ => unreachable!(),
         }
