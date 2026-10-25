@@ -1,7 +1,7 @@
 use crate::cpu::{
     Register,
     exeception::{FullAddress, PASpace},
-    shared::{EL, EL1, SecurityState},
+    shared::{EL, EL1, Faultable, SecurityState},
 };
 
 #[derive(PartialEq, Clone)]
@@ -30,6 +30,12 @@ pub enum Fault {
     Lockdown,
     Exclusive,
     ICacheMaint,
+}
+
+impl Faultable for Fault {
+    fn is_fault(&self) -> bool {
+        self != &Fault::None
+    }
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -316,6 +322,10 @@ impl GPCFRecord {
             gpf: GPCF::None,
             level: 0,
         }
+    }
+
+    pub fn fault(gpf: GPCF, level: u8) -> Self {
+        Self { gpf, level }
     }
 }
 

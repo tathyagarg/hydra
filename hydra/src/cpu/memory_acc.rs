@@ -13,7 +13,7 @@ use crate::cpu::{
         SCTLR2_EL3Field, SCTLRField, TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL1Field,
         TCR2_EL2Field, VMECID_P_EL2, VTCR_EL2Field, mairtype_from_mair,
     },
-    shared::{EL, EL0, EL3, Regime, SecurityState},
+    shared::{EL, EL0, EL3, Faultable, Regime, SecurityState},
 };
 
 pub type AddressSize = u8;
@@ -142,6 +142,12 @@ impl PhysMemRetStatus {
     }
 }
 
+impl Faultable for PhysMemRetStatus {
+    fn is_fault(&self) -> bool {
+        self.statuscode != Fault::None
+    }
+}
+
 #[derive(PartialEq, Clone)]
 pub enum MemType {
     Normal,
@@ -248,6 +254,12 @@ impl AddressDescriptor {
             mecid: 0,
             vaddress: 0,
         }
+    }
+}
+
+impl Faultable for AddressDescriptor {
+    fn is_fault(&self) -> bool {
+        self.fault.statuscode != Fault::None
     }
 }
 
@@ -476,11 +488,11 @@ impl Cpu {
         let (value, memaddrdesc, memstatus) =
             self.aarch64_mem_single_read(address, accdesc_in, aligned);
 
-        if is_fault_addrdesc(&memaddrdesc) {
+        if memaddrdesc.is_fault() {
             todo!("Abort");
         }
 
-        if is_fault_retstatus(&memstatus) {
+        if memstatus.is_fault() {
             todo!("Abort")
         }
 
@@ -1354,7 +1366,7 @@ impl Cpu {
         }
 
         let (memstatus, mut descriptor) = self.phys_mem_read::<N>(walkaddress, walkaccess);
-        if is_fault_retstatus(&memstatus) {
+        if memstatus.is_fault() {
             todo!("Fault booo")
         }
 
@@ -2370,6 +2382,101 @@ impl Cpu {
         fault
     }
 
+    pub fn aarch64_setting_access_flag_permitted(
+        &self,
+        fault: &FaultRecord,
+        fault_perm: &FaultRecord,
+    ) -> bool {
+        if fault.statuscode == Fault::None && fault_perm.statuscode == Fault::None {
+            true
+        } else if fault.statuscode == Fault::Alignment || fault_perm.statuscode == Fault::Permission
+        {
+            Unpredictable::AFUPDATE.constrain_bool()
+        } else {
+            false
+        }
+    }
+
+    pub fn aarch64_set_access_flag(
+        &self,
+        ha: bool,
+        accdesc: &AccessDescriptor,
+        fault: &FaultRecord,
+        fault_perm: &FaultRecord,
+    ) -> bool {
+        if !ha || !self.aarch64_setting_access_flag_permitted(fault, fault_perm) {
+            false
+        } else if accdesc.acctype == AccessType::AT {
+            todo!("AT updates AF");
+        } else if matches!(accdesc.acctype, AccessType::DC | AccessType::IC) {
+            todo!("Generate access flag fault on IC/DC operations");
+        } else {
+            true
+        }
+    }
+
+    pub fn aarch64_setting_dirty_state_permitted(
+        &self,
+        fault: &FaultRecord,
+        fault_perm: &FaultRecord,
+    ) -> bool {
+        if fault_perm.statuscode != Fault::None {
+            false
+        } else if fault.statuscode == Fault::None {
+            true
+        } else if fault.statuscode == Fault::Alignment {
+            Unpredictable::DBUPDATE.constrain_bool()
+        } else {
+            false
+        }
+    }
+
+    pub fn aarch64_set_dirty_state(
+        &self,
+        hd: bool,
+        dbm: bool,
+        accdesc: &AccessDescriptor,
+        fault: &FaultRecord,
+        fault_perm: &FaultRecord,
+    ) -> bool {
+        if !hd {
+            false
+        } else if !self.aarch64_setting_dirty_state_permitted(fault, fault_perm) {
+            false
+        } else if matches!(
+            accdesc.acctype,
+            AccessType::AT | AccessType::IC | AccessType::DC
+        ) {
+            false
+        } else if !accdesc.write {
+            false
+        } else {
+            dbm
+        }
+    }
+
+    pub fn aarch64_mem_swap_table_desc<const S: usize>(
+        &self,
+        fault_in: &FaultRecord,
+        prev_desc: u128,
+        new_desc: u128,
+        ee: bool,
+        descaccess: &AccessDescriptor,
+        descpaddr: &AccessDescriptor,
+    ) -> (FaultRecord, u128)
+    where
+        Size<S>: ValidWalkSize,
+    {
+        assert!(descaccess.acctype == AccessType::TTW);
+        let mut fault = fault_in.clone();
+
+        if Cpu::is_feature_implemented(Feature::RME) {
+            fault.gpcf = self.granule_
+        }
+
+        todo!()
+    }
+
     pub fn aarch64_s1translate(
         &self,
         fault_in: FaultRecord,
@@ -2443,6 +2550,52 @@ impl Cpu {
             &walkstate.memattrs,
         ) {
             fault.statuscode = Fault::Alignment;
+        }
+
+        let fault_perm =
+            self.aarch64_s1check_permissions(&fault, regime, &walkstate, &walkparams, accdesc);
+
+        let mut mem_desc: u128;
+        let mut new_desc = descriptor;
+
+        if self.aarch64_set_access_flag(walkparams.ha, accdesc, &fault, &fault_perm) {
+            new_desc = set_nth_bit(new_desc, 10, true);
+        }
+
+        if self.aarch64_set_dirty_state(
+            walkparams.hd,
+            walkparams.pie || nth_bit(descriptor, 51),
+            accdesc,
+            &fault,
+            &fault_perm,
+        ) {
+            new_desc = set_nth_bit(new_desc, 7, false);
+        }
+
+        if fault.statuscode == Fault::None && fault_perm.statuscode != Fault::None {
+            fault = fault_perm;
+        }
+
+        if new_desc != descriptor {
+            if !self.is_wb_shareable(&descipaddr.memattrs)
+                && Unpredictable::Unsupported_Atomic_HW_Update.constrain_bool()
+            {
+                fault.statuscode = Fault::UnsupportedAtomicHWUpdate;
+                return (fault, AddressDescriptor::arbitrary());
+            }
+
+            let descaccess = self.create_accdesc_tte_update(accdesc);
+            let descpaddr = if regime == Regime::EL10 && self.el2_enabled() {
+                todo!("S2 translate")
+            } else {
+                descipaddr
+            };
+
+            (fault, mem_desc) = if walkparams.d128 {
+                self.aarch64_mem_swap_table_desc::<128>()
+            } else {
+                self.aarch64_mem_swap_table_desc::<64>()
+            };
         }
 
         todo!()

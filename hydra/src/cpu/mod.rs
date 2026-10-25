@@ -444,6 +444,10 @@ pub struct Cpu {
     por_el2: S1PORType,
     por_el3: S1PORType,
 
+    gpccr_el3: u64,
+    gpcbw_el3: u64,
+    gptbr_el3: u64,
+
     brbe: Brbe,
     pmu: Pmu,
 
@@ -518,6 +522,9 @@ impl Default for Cpu {
             por_el1: [0; 16],
             por_el2: [0; 16],
             por_el3: [0; 16],
+            gpccr_el3: 0,
+            gpcbw_el3: 0,
+            gptbr_el3: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
@@ -600,6 +607,12 @@ pub enum Feature {
     #[allow(non_camel_case_types)]
     PMUv3_ICNTR,
     RME,
+    #[allow(non_camel_case_types)]
+    RME_GDI,
+    #[allow(non_camel_case_types)]
+    RME_GPC2,
+    #[allow(non_camel_case_types)]
+    RME_GPC3,
     S1PIE,
     S1POE,
     SCTLR2,
@@ -663,6 +676,9 @@ impl Cpu {
             Feature::PMUv3 => false,
             Feature::PMUv3_ICNTR => false,
             Feature::RME => false,
+            Feature::RME_GDI => false,
+            Feature::RME_GPC2 => false,
+            Feature::RME_GPC3 => false,
             Feature::S1PIE => false,
             Feature::S1POE => false,
             Feature::SCTLR2 => false,

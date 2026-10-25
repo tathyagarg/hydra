@@ -3,20 +3,21 @@ use crate::cpu::{
     ShiftType,
     common::*,
     constraint::{Constraint, Unpredictable},
-    exeception::FullAddress,
+    exeception::{FullAddress, PASpace},
     fault::{
-        AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, FaultRecord, MPAMData, MPAMinfo,
-        MemAtomicOp, MemOp, PARTIDSpaceType, PARTIDType, PMGType, VARange,
+        AccessDescriptor, AccessType, DEFAULT_PARTID, DEFAULT_PMG, FaultRecord, GPCF, GPCFRecord,
+        MPAMData, MPAMinfo, MemAtomicOp, MemOp, PARTIDSpaceType, PARTIDType, PMGType, VARange,
     },
     memory_acc::{
-        AddressSize, DeviceType, MemAttr_NC, MemAttr_WB, MemAttr_WT, MemAttrHints, MemHint_No,
-        MemHint_RA, MemHint_RWA, MemTagType, MemType, MemoryAttributes, S1TTWParams, Shareability,
-        TGx, TTWState,
+        AddressDescriptor, AddressSize, DeviceType, MemAttr_NC, MemAttr_WB, MemAttr_WT,
+        MemAttrHints, MemHint_No, MemHint_RA, MemHint_RWA, MemTagType, MemType, MemoryAttributes,
+        S1TTWParams, Shareability, TGx, TTWState,
     },
     regs::{
-        EDSCRField, HCR_EL2Field, MPAM0_EL1Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field,
-        MPAMHCR_EL2Field, MPAMIDR_EL1Field, MPAMSM_EL1Field, MPAMVPMV_EL2Field, RegisterField,
-        RegisterFieldRange, SCR_EL3Field, SCRField, TCR_EL1Field,
+        EDSCRField, GPCBW_EL3Field, GPCCR_EL3Field, GPTBR_EL3Field, HCR_EL2Field, MPAM0_EL1Field,
+        MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field, MPAMHCR_EL2Field, MPAMIDR_EL1Field,
+        MPAMSM_EL1Field, MPAMVPMV_EL2Field, RegisterField, RegisterFieldRange, SCR_EL3Field,
+        SCRField, TCR_EL1Field,
     },
 };
 
@@ -26,6 +27,93 @@ pub const EL0: EL = 0b00;
 pub const EL1: EL = 0b01;
 pub const EL2: EL = 0b10;
 pub const EL3: EL = 0b11;
+
+pub trait Faultable {
+    fn is_fault(&self) -> bool;
+}
+
+#[allow(non_upper_case_globals)]
+pub const GPTRange_4KB: AddressSize = 12;
+#[allow(non_upper_case_globals)]
+pub const GPTRange_16KB: AddressSize = 14;
+#[allow(non_upper_case_globals)]
+pub const GPTRange_64KB: AddressSize = 16;
+#[allow(non_upper_case_globals)]
+pub const GPTRange_2MB: AddressSize = 21;
+#[allow(non_upper_case_globals)]
+pub const GPTRange_32MB: AddressSize = 25;
+#[allow(non_upper_case_globals)]
+pub const GPTRange_512MB: AddressSize = 29;
+#[allow(non_upper_case_globals)]
+pub const GPTRange_1GB: AddressSize = 30;
+#[allow(non_upper_case_globals)]
+pub const GPTRange_16GB: AddressSize = 34;
+#[allow(non_upper_case_globals)]
+pub const GPTRange_64GB: AddressSize = 36;
+#[allow(non_upper_case_globals)]
+pub const GPTRange_512GB: AddressSize = 39;
+
+#[allow(non_upper_case_globals)]
+pub const GPT_NoAccess: u8 = 0b0000;
+#[allow(non_upper_case_globals)]
+pub const GPT_Table: u8 = 0b0011;
+#[allow(non_upper_case_globals)]
+pub const GPT_Block: u8 = 0b0001;
+#[allow(non_upper_case_globals)]
+pub const GPT_Contig: u8 = 0b0001;
+#[allow(non_upper_case_globals)]
+pub const GPT_SystemAgent: u8 = 0b0100;
+#[allow(non_upper_case_globals)]
+pub const GPT_NonSecureProtected: u8 = 0b0101;
+#[allow(non_upper_case_globals)]
+pub const GPT_NA6: u8 = 0b0110;
+#[allow(non_upper_case_globals)]
+pub const GPT_NA7: u8 = 0b0111;
+#[allow(non_upper_case_globals)]
+pub const GPT_Secure: u8 = 0b1000;
+#[allow(non_upper_case_globals)]
+pub const GPT_NonSecure: u8 = 0b1001;
+#[allow(non_upper_case_globals)]
+pub const GPT_Root: u8 = 0b1010;
+#[allow(non_upper_case_globals)]
+pub const GPT_Realm: u8 = 0b1011;
+#[allow(non_upper_case_globals)]
+pub const GPT_NonSecureOnly: u8 = 0b1101;
+#[allow(non_upper_case_globals)]
+pub const GPT_Any: u8 = 0b1111;
+
+pub struct GPTTable {
+    pub address: u64,
+}
+
+pub struct GPTEntry {
+    pub gpi: u8,
+    pub size: AddressSize,
+    pub contig_size: AddressSize,
+    pub istable: bool,
+    pub level: u8,
+    pub pa: u64,
+}
+
+impl GPTEntry {
+    pub fn arbitrary() -> Self {
+        Self {
+            gpi: 0,
+            size: 0,
+            contig_size: 0,
+            istable: false,
+            level: 0,
+            pa: 0,
+        }
+    }
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum PGSe {
+    _4KB,
+    _16KB,
+    _64KB,
+}
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum SecurityState {
@@ -1824,6 +1912,448 @@ impl Cpu {
             paspace: walkstate.baseaddress.paspace,
             address,
         }
+    }
+
+    /// GPCBW_EL3BWSTRIDEValid()
+    /// ========================
+    /// Returns whether the current GPCBW_EL3.BWSTRIDE value is valid
+    pub fn gpcbw_el3bwstride_valid(&self) -> bool {
+        assert!(Cpu::is_feature_implemented(Feature::RME_GPC3));
+        [
+            0b00000u8, 0b00010, 0b00100, 0b00110, 0b00111, 0b01000, 0b01001, 0b01010, 0b10000,
+        ]
+        .contains(&GPCBW_EL3Field::BWSTRIDE.fetch_range(self.gpcbw_el3))
+    }
+
+    /// DecodePPS()
+    /// ===========
+    /// Size of region protected by the GPT, in bits.
+    pub fn decode_pps(&self) -> AddressSize {
+        let merge = ((GPCCR_EL3Field::PPS3.fetch_bit(self.gpccr_el3) as u8) << 3)
+            | GPCCR_EL3Field::PPS.fetch_range(self.gpccr_el3);
+
+        match merge {
+            0b0000 => 32,
+            0b0001 => 36,
+            0b0010 => 40,
+            0b0011 => 42,
+            0b0100 => 44,
+            0b0101 => 48,
+            0b0110 => 52,
+            0b0111 => {
+                assert!(Cpu::is_feature_implemented(Feature::RME_GPC3));
+                56
+            }
+            0b1000 => {
+                assert!(Cpu::is_feature_implemented(Feature::RME_GPC3));
+                46
+            }
+            0b1001 => {
+                assert!(Cpu::is_feature_implemented(Feature::RME_GPC3));
+                47
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    /// GPCRegistersConsistent()
+    /// ========================
+    /// Returns whether the GPT registers are configured correctly.
+    /// This returns false if any fields select a Reserved value.
+    pub fn gpc_registers_consistent(&self) -> bool {
+        if Cpu::is_feature_implemented(Feature::RME_GPC3) {
+            let merge = ((GPCCR_EL3Field::PPS3.fetch_bit(self.gpccr_el3) as u8) << 3)
+                | GPCCR_EL3Field::PPS.fetch_range(self.gpccr_el3);
+
+            if !matches!(merge, 0b0000..=0b0111 | 0b1000 | 0b1001) {
+                return false;
+            }
+
+            if GPCCR_EL3Field::GPCBW.fetch_bit(self.gpccr_el3) {
+                if !matches!(
+                    GPCBW_EL3Field::BWSIZE.fetch_range(self.gpcbw_el3),
+                    0b000u8 | 0b001 | 0b100 | 0b110 | 0b010
+                ) {
+                    return false;
+                }
+
+                if !self.gpcbw_el3bwstride_valid() {
+                    return false;
+                }
+
+                let raw_stride: u8 = GPCBW_EL3Field::BWSTRIDE.fetch_range(self.gpcbw_el3);
+                let bwstride = 1u64 << (40 + raw_stride);
+
+                let raw_addr: u32 = GPCBW_EL3Field::BWADDR.fetch_range(self.gpcbw_el3);
+                let bwaddr = (raw_addr as u64) << 30;
+
+                if bwstride <= bwaddr {
+                    return false;
+                }
+
+                let size: u8 = GPCBW_EL3Field::BWSIZE.fetch_range(self.gpcbw_el3);
+
+                if !is_aligned_size(raw_addr as u64, 1 << size) {
+                    return false;
+                }
+            }
+        } else {
+            if GPCCR_EL3Field::PPS.fetch_range(self.gpccr_el3) == 0b111 {
+                return false;
+            }
+        }
+
+        if self.decode_pps() > self.aarch64_pamax() {
+            return false;
+        }
+
+        if GPCCR_EL3Field::PGS.fetch_range(self.gpccr_el3) == 0b11 {
+            return false;
+        }
+
+        if GPCCR_EL3Field::SH.fetch_range(self.gpccr_el3) == 0b01 {
+            return false;
+        }
+
+        if GPCCR_EL3Field::ORGN.fetch_range(self.gpccr_el3) == 0b00
+            && GPCCR_EL3Field::IRGN.fetch_range(self.gpccr_el3) == 0b00
+            && GPCCR_EL3Field::SH.fetch_range(self.gpccr_el3) != 0b10
+        {
+            return false;
+        }
+
+        true
+    }
+
+    /// AbovePPS()
+    /// ==========
+    /// Returns TRUE if an address exceeds the range configured in GPCCR_EL3.PPS.
+    pub fn above_pps(&self, address: u64) -> bool {
+        let pps = self.decode_pps();
+        if pps >= NUM_PABITS {
+            return false;
+        }
+
+        return get_bits(address, (NUM_PABITS - 1) as usize, pps as usize) != 0;
+    }
+
+    /// PAWithinGPCBypassWindow()
+    /// =========================
+    /// Check if the supplied address is within a GPC Bypass window.
+    pub fn pa_within_gpc_bypass_window(&self, pa_in: u64) -> bool {
+        let pa = get_bits(pa_in, 55, 30);
+
+        let raw_gpcbwl: u8 = GPCBW_EL3Field::BWSIZE.fetch_range(self.gpcbw_el3);
+        let raw_gpcbwu: u8 = GPCBW_EL3Field::BWSTRIDE.fetch_range(self.gpcbw_el3);
+
+        let gpcbwl = raw_gpcbwl as usize;
+        let gpcbwu = 9 + raw_gpcbwu as usize;
+
+        let addr: u32 = GPCBW_EL3Field::BWADDR.fetch_range(self.gpccr_el3);
+
+        return get_bits(pa, gpcbwu, gpcbwl) == get_bits(addr, gpcbwu, gpcbwl);
+    }
+
+    /// DecodePGS()
+    /// ===========
+    pub fn decode_pgs(&self, pgs: u8) -> PGSe {
+        match pgs {
+            0b00 => PGSe::_4KB,
+            0b01 => PGSe::_16KB,
+            0b10 => PGSe::_64KB,
+            _ => unreachable!(),
+        }
+    }
+
+    /// GPTL0Size()
+    /// ===========
+    /// Returns number of bits covered by a level 0 GPT entry
+    pub fn gptl0_size(&self) -> AddressSize {
+        match GPCCR_EL3Field::L0GPTSZ.fetch_range(self.gpccr_el3) {
+            0b0000 => GPTRange_1GB,
+            0b0100 => GPTRange_16GB,
+            0b0110 => GPTRange_64GB,
+            0b1001 => GPTRange_512GB,
+            _ => unreachable!(),
+        }
+    }
+
+    /// CreateAccDescGPTW()
+    /// ===================
+    /// Access descriptor for Granule Protection Table walks
+    pub fn create_accdesc_gptw(&self, accdesc_in: &AccessDescriptor) -> AccessDescriptor {
+        let mut accdesc = self.new_accdesc(AccessType::GPTW, accdesc_in.mpam.clone());
+
+        accdesc.el = accdesc_in.el;
+        accdesc.ss = accdesc_in.ss;
+        accdesc.read = true;
+
+        accdesc
+    }
+
+    /// GPTLevel0Index()
+    /// ================
+    /// Compute the level 0 index based on input PA.
+    pub fn gpt_level0_index(&self, pa: u64) -> u64 {
+        let pps = self.decode_pps();
+        let l0sz = self.gptl0_size();
+
+        if pps <= l0sz {
+            return 0;
+        }
+
+        get_bits(pa, (pps - 1) as usize, l0sz as usize) as u64
+    }
+
+    /// GPIValid()
+    /// ==========
+    /// Returns whether a given value is a valid encoding for a GPI value
+    pub fn gpi_valid(&self, gpi: u8) -> bool {
+        match gpi {
+            GPT_NoAccess => true,
+            GPT_NonSecureProtected => {
+                Cpu::is_feature_implemented(Feature::RME_GDI)
+                    && GPCCR_EL3Field::NSP.fetch_bit(self.gpccr_el3)
+            }
+            GPT_SystemAgent => {
+                Cpu::is_feature_implemented(Feature::RME_GDI)
+                    && GPCCR_EL3Field::SA.fetch_bit(self.gpccr_el3)
+            }
+            GPT_NA6 => {
+                Cpu::is_feature_implemented(Feature::RME_GDI)
+                    && GPCCR_EL3Field::NA6.fetch_bit(self.gpccr_el3)
+            }
+            GPT_NA7 => {
+                Cpu::is_feature_implemented(Feature::RME_GDI)
+                    && GPCCR_EL3Field::NA7.fetch_bit(self.gpccr_el3)
+            }
+            GPT_Secure => Cpu::is_feature_implemented(Feature::SEL2),
+            GPT_NonSecure => true,
+            GPT_Realm => true,
+            GPT_Root => true,
+            GPT_NonSecureOnly => {
+                Cpu::is_feature_implemented(Feature::RME_GPC2)
+                    && GPCCR_EL3Field::NSO.fetch_bit(self.gpccr_el3)
+            }
+            GPT_Any => true,
+            _ => false,
+        }
+    }
+
+    /// GPTBlockDescriptorValid()
+    /// =========================
+    /// Returns TRUE if the given GPT Block descriptor is valid, and FALSE otherwise.
+    pub fn gpt_block_descriptor_valid(&self, level_0_entry: u64) -> bool {
+        assert!(get_bits(level_0_entry, 3, 0) as u8 == GPT_Block);
+        get_bits(level_0_entry, 63, 8) == 0 && self.gpi_valid(get_bits(level_0_entry, 7, 4) as u8)
+    }
+
+    /// DecodePGSRange()
+    /// ================
+    pub fn decode_pgs_range(&self, pgs: PGSe) -> AddressSize {
+        match pgs {
+            PGSe::_4KB => GPTRange_4KB,
+            PGSe::_16KB => GPTRange_16KB,
+            PGSe::_64KB => GPTRange_64KB,
+        }
+    }
+
+    /// GPTTableDescriptorValid()
+    /// =========================
+    /// Returns TRUE if the given GPT Table descriptor is valid, and FALSE otherwise.
+    pub fn gpt_table_descriptor_valid(&self, level_0_entry: u64) -> bool {
+        assert!(get_bits(level_0_entry, 3, 0) as u8 == GPT_Table);
+
+        let l0sz = self.gptl0_size();
+        let pgs = self.decode_pgs(GPCCR_EL3Field::PGS.fetch_range(self.gpccr_el3));
+        let p = self.decode_pgs_range(pgs);
+
+        let top = if self.decode_pps() == 56 { 56 } else { 52 } as usize;
+
+        get_bits(level_0_entry, 63, top) == 0
+            && get_bits(level_0_entry, 11, 4) == 0
+            && get_bits(level_0_entry, (l0sz - p) as usize, 12) == 0
+    }
+
+    /// GPTLevel0EntryValid()
+    /// =====================
+    /// Returns TRUE if the given level 0 gpt descriptor is valid, and FALSE otherwise.
+    pub fn gpt_level0_entry_valid(&self, gpt_entry: u64) -> bool {
+        match get_bits(gpt_entry, 3, 0) as u8 {
+            GPT_Block => self.gpt_block_descriptor_valid(gpt_entry),
+            GPT_Table => self.gpt_table_descriptor_valid(gpt_entry),
+            _ => unreachable!(),
+        }
+    }
+
+    /// DecodeGPTBlock()
+    /// ================
+    /// Decode a GPT Block descriptor.
+    pub fn decode_gpt_block(&self, pgs: PGSe, gpt_entry: u64) -> GPTEntry {
+        assert!(get_bits(gpt_entry, 3, 0) as u8 == GPT_Block);
+
+        GPTEntry {
+            gpi: get_bits(gpt_entry, 7, 4) as u8,
+            level: 0,
+            istable: false,
+            size: match pgs {
+                PGSe::_4KB => GPTRange_4KB,
+                PGSe::_16KB => GPTRange_16KB,
+                PGSe::_64KB => GPTRange_64KB,
+            },
+            contig_size: self.gptl0_size(),
+            pa: 0,
+        }
+    }
+
+    /// DecodeGPTTable()
+    /// ================
+    /// Decode a GPT Table descriptor.
+    pub fn decode_gpt_table(&self, pgs: PGSe, gpt_entry: u64) -> GPTTable {
+        assert!(get_bits(gpt_entry, 3, 0) as u8 == GPT_Table);
+
+        let s = match self.gptl0_size() {
+            GPTRange_1GB => 30,
+            GPTRange_16GB => 34,
+            GPTRange_64GB => 36,
+            GPTRange_512GB => 39,
+            _ => unreachable!(),
+        } as u32;
+
+        let p = match pgs {
+            PGSe::_4KB => 12,
+            PGSe::_16KB => 14,
+            PGSe::_64KB => 16,
+        } as u32;
+
+        let align_bits = (s - p) - 1;
+
+        GPTTable {
+            address: align_down_p2::<64>(gpt_entry, align_bits),
+        }
+    }
+
+    pub fn gpt_walk(&self, pa: u64, accdesc: &AccessDescriptor) -> (GPCFRecord, GPTEntry) {
+        let pgs = self.decode_pgs(GPCCR_EL3Field::PGS.fetch_range(self.gpccr_el3));
+        let mut base = GPTBR_EL3Field::BADDR.fetch_range(self.gptbr_el3) << 12;
+
+        let pps = self.decode_pps();
+        let l0sz = self.gptl0_size();
+        let alignment = ((pps - l0sz) + 3).max(12) as AddressSize;
+
+        base &= !ones(alignment as u32);
+
+        let gptaccdesc = self.create_accdesc_gptw(accdesc);
+
+        let memattrs = self.walk_mem_attrs(
+            GPCCR_EL3Field::SH.fetch_range(self.gpccr_el3),
+            GPCCR_EL3Field::IRGN.fetch_range(self.gpccr_el3),
+            GPCCR_EL3Field::ORGN.fetch_range(self.gpccr_el3),
+        );
+        let fault = FaultRecord::no_fault_accdesc(&gptaccdesc);
+        let paddress = FullAddress {
+            paspace: PASpace::Root,
+            address: base + self.gpt_level0_index(pa) * 8,
+        };
+
+        let gptaddrdesc = AddressDescriptor {
+            memattrs,
+            fault,
+            paddress,
+            s1assured: false,
+            s2fs1mro: false,
+            mecid: 0,
+            vaddress: 0,
+        };
+
+        let (memstatus, raw_level_0_entry) = self.phys_mem_read::<64>(&gptaddrdesc, &gptaccdesc);
+        let level_0_entry = raw_level_0_entry.compile_u128() as u64;
+
+        if memstatus.is_fault() {
+            return (GPCFRecord::fault(GPCF::EABT, 0), GPTEntry::arbitrary());
+        }
+
+        if !self.gpt_level0_entry_valid(level_0_entry) {
+            return (GPCFRecord::fault(GPCF::Walk, 0), GPTEntry::arbitrary());
+        }
+
+        match get_bits(level_0_entry, 3, 0) as u8 {
+            GPT_Block => {
+                let mut result = self.decode_gpt_block(pgs, level_0_entry);
+                result.pa = pa;
+                (GPCFRecord::no_fault(), result)
+            }
+            GPT_Table => {
+                let table = self.decode_gpt_table(pgs, level_0_entry);
+
+                if self.above_pps(table.address) {
+                    return (
+                        GPCFRecord::fault(GPCF::AddressSize, 0),
+                        GPTEntry::arbitrary(),
+                    );
+                }
+
+                todo!()
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn granule_protection_check(
+        &self,
+        addrdesc: &AddressDescriptor,
+        accdesc: &AccessDescriptor,
+    ) -> GPCFRecord {
+        assert!(Cpu::is_feature_implemented(Feature::RME));
+
+        let address = addrdesc.paddress;
+
+        if !GPCCR_EL3Field::GPC.fetch_bit(self.gpccr_el3) {
+            return GPCFRecord::no_fault();
+        }
+
+        if !self.gpc_registers_consistent() {
+            return GPCFRecord::fault(GPCF::Walk, 0);
+        }
+
+        if Cpu::is_feature_implemented(Feature::RME_GPC2) {
+            let access_disabled = match address.paspace {
+                PASpace::Secure => GPCCR_EL3Field::SPAD.fetch_bit(self.gpccr_el3),
+                PASpace::NonSecure => GPCCR_EL3Field::NSPAD.fetch_bit(self.gpccr_el3),
+                PASpace::Realm => GPCCR_EL3Field::RLPAD.fetch_bit(self.gpccr_el3),
+                PASpace::Root => false,
+                _ => unreachable!(),
+            };
+
+            if access_disabled {
+                return GPCFRecord::fault(GPCF::Fail, 0);
+            }
+        }
+
+        if self.above_pps(address.address) {
+            if address.paspace == PASpace::NonSecure
+                || (Cpu::is_feature_implemented(Feature::RME_GPC2)
+                    && GPCCR_EL3Field::APPSAA.fetch_bit(self.gpccr_el3))
+            {
+                return GPCFRecord::no_fault();
+            } else {
+                return GPCFRecord::fault(GPCF::Fail, 0);
+            }
+        }
+
+        if Cpu::is_feature_implemented(Feature::RME_GPC3)
+            && GPCCR_EL3Field::GPCBW.fetch_bit(self.gpccr_el3)
+            && self.pa_within_gpc_bypass_window(address.address)
+        {
+            return GPCFRecord::no_fault();
+        }
+
+        let gpt_base = GPTBR_EL3Field::BADDR.fetch_range(self.gptbr_el3) << 12;
+        if self.above_pps(gpt_base) {
+            return GPCFRecord::fault(GPCF::AddressSize, 0);
+        }
+
+        todo!()
     }
 }
 

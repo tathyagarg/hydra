@@ -56,6 +56,17 @@ pub fn get_bits<T: Into<u128>>(v: T, x: usize, y: usize) -> u128 {
     (v.into() >> x) & mask
 }
 
+pub fn set_nth_bit<T: Into<u128>>(v: T, n: usize, r: bool) -> u128 {
+    let mut v = v.into();
+    if r {
+        v |= 1u128 << n;
+    } else {
+        v &= !(1u128 << n);
+    }
+
+    v
+}
+
 pub trait BitInteger:
     Copy + std::ops::Shl<u32, Output = Self> + std::ops::Sub<Output = Self>
 {
@@ -111,18 +122,6 @@ pub fn count_leading_zero_bits<const N: usize>(value: u64) -> u32 {
 
 pub fn is_aligned_size(address: u64, size: u64) -> bool {
     address % size == 0
-}
-
-pub fn is_fault_addrdesc(addrdesc: &AddressDescriptor) -> bool {
-    addrdesc.fault.statuscode != Fault::None
-}
-
-pub fn is_fault_fault(fault: &Fault) -> bool {
-    *fault != Fault::None
-}
-
-pub fn is_fault_retstatus(retstatus: &PhysMemRetStatus) -> bool {
-    retstatus.statuscode != Fault::None
 }
 
 pub fn align_down_p2<const N: u32>(x: u64, p2: u32) -> u64 {
