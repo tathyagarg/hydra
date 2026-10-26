@@ -1,5 +1,3 @@
-use crate::cpu::{common::nth_bit, regs::RegisterField};
-
 pub enum SCRField {
     TERR = 15,
     TWE = 13,
@@ -15,10 +13,4 @@ pub enum SCRField {
     FIQ = 2,
     IRQ = 1,
     NS = 0,
-}
-
-impl RegisterField<u32> for SCRField {
-    fn fetch_bit(self, scr_v: u32) -> bool {
-        nth_bit::<u32>(scr_v, self as usize)
-    }
 }

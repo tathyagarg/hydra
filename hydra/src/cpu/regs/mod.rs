@@ -8,7 +8,7 @@ mod hcr;
 mod hcr2;
 mod hcr_el2;
 mod hcrx;
-mod mdcr_el3;
+mod mdcr;
 mod mpam0_el1;
 mod mpam1_el1;
 mod mpam2_el2;
@@ -39,7 +39,7 @@ pub use self::hcr::HCRField;
 pub use self::hcr_el2::HCR_EL2Field;
 pub use self::hcr2::HCR2Field;
 pub use self::hcrx::HCRX_EL2Field;
-pub use self::mdcr_el3::MDCR_EL3Field;
+pub use self::mdcr::{MDCR_EL2Field, MDCR_EL3Field};
 pub use self::mpam0_el1::MPAM0_EL1Field;
 pub use self::mpam1_el1::MPAM1_EL1Field;
 pub use self::mpam2_el2::MPAM2_EL2Field;
@@ -166,12 +166,6 @@ pub enum OSLSR_EL1Field {
     OSLM = -1,
 }
 
-impl RegisterField<u64> for OSLSR_EL1Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
-}
-
 impl RegisterFieldRange<u64, u8> for OSLSR_EL1Field {
     fn fetch_range(self, v: u64) -> u8 {
         if let Self::OSLM = self {
@@ -181,3 +175,130 @@ impl RegisterFieldRange<u64, u8> for OSLSR_EL1Field {
         unreachable!()
     }
 }
+
+macro_rules! register_field {
+    ($($ty:ty $( {$value_type:ty} )?),* $(,)?) => {
+        $(
+            impl RegisterField<register_field!(@type $($value_type)?)> for $ty {
+                fn fetch_bit(self, v: register_field!(@type $($value_type)?)) -> bool {
+                    nth_bit(v, self as usize)
+                }
+            }
+        )*
+    };
+
+    (@type $ty:ty) => { $ty };
+    (@type) => { u32 };
+}
+
+pub enum DBGOSDLRField {
+    DLK = 0,
+}
+
+#[allow(non_camel_case_types)]
+pub enum OSDLR_EL1Field {
+    DLK = 0,
+}
+
+pub enum DBGPRCRField {
+    CORENPDRQ = 0,
+}
+
+#[allow(non_camel_case_types)]
+pub enum DBGPRCR_EL1Field {
+    CORENPDRQ = 0,
+}
+
+#[allow(non_camel_case_types)]
+pub enum SDER32_EL3Field {
+    SUNIDEN = 1,
+    SUIDEN = 0,
+}
+
+#[allow(non_camel_case_types)]
+pub enum MDSCR_EL1Field {
+    EnSTEPOP = 50,
+    EHBWE = 35,
+    EnSPM = 34,
+    TTA = 33,
+    EMBWE = 32,
+    TFO = 31,
+    RXfull = 30,
+    TXfull = 29,
+    RXO = 27,
+    TXU = 26,
+    INTdis = -1, // 23-22
+    TDA = 21,
+    SC2 = 19,
+    MDE = 15,
+    HDE = 14,
+    KDE = 13,
+    TDCC = 12,
+    ERR = 6,
+    SS = 0,
+}
+
+impl RegisterFieldRange<u64, u8> for MDSCR_EL1Field {
+    fn fetch_range(self, v: u64) -> u8 {
+        if let Self::INTdis = self {
+            return ((v >> 22) & 0b11) as u8;
+        }
+
+        unreachable!()
+    }
+}
+
+register_field!(
+    BRBCR_EL1Field { u64 },
+    BRBCR_EL2Field { u64 },
+    BRBFCR_EL0Field { u64 },
+    BRBFCR_EL1Field { u64 },
+    DBGOSDLRField { u32 },
+    DBGPRCRField { u32 },
+    DBGPRCR_EL1Field { u64 },
+    EDSCRField { u32 },
+    GPCCR_EL3Field { u64 },
+    HCRField { u32 },
+    HCR2Field { u32 },
+    HCR_EL2Field { u64 },
+    HCRX_EL2Field { u64 },
+    MDCR_EL2Field { u64 },
+    MDCR_EL3Field { u64 },
+    MDSCR_EL1Field { u64 },
+    MPAM1_EL1Field { u64 },
+    MPAM2_EL2Field { u64 },
+    MPAM3_EL3Field { u64 },
+    MPAMHCR_EL2Field { u64 },
+    MPAMIDR_EL1Field { u64 },
+    MPAMVPMV_EL2Field { u64 },
+    OSDLR_EL1Field { u64 },
+    OSLSR_EL1Field { u64 },
+    SCRField { u32 },
+    SCR_EL3Field { u64 },
+    SCTLR_EL1Field { u64 },
+    SCTLR_EL2Field { u64 },
+    SCTLR_EL3Field { u64 },
+    SCTLRField { u64 },
+    SCTLR2_EL1Field { u64 },
+    SCTLR2_EL2Field { u64 },
+    SCTLR2_EL3Field { u64 },
+    SDER32_EL3Field { u64 },
+    TCR_EL1Field { u64 },
+    E2H0_TCR_EL2Field { u64 },
+    E2H1_TCR_EL2Field { u64 },
+    TCR_EL3Field { u64 },
+    TCR2_EL1Field { u64 },
+    TCR2_EL2Field { u64 },
+    E2H_TCR2_EL2Field { u64 },
+    TTBR0_128_EL1Field { u128 },
+    TTBR0_64_EL1Field { u64 },
+    TTBR0_128_EL2Field { u128 },
+    TTBR0_64_EL2Field { u64 },
+    TTBR0_128_EL3Field { u128 },
+    TTBR0_64_EL3Field { u64 },
+    TTBR1_128_EL1Field { u128 },
+    TTBR1_64_EL1Field { u64 },
+    TTBR1_128_EL2Field { u128 },
+    TTBR1_64_EL2Field { u64 },
+    VTCR_EL2Field { u64 },
+);

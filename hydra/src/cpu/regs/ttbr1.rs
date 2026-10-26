@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 #[allow(non_camel_case_types)]
 pub enum TTBR1_128_EL1Field {
@@ -10,12 +7,6 @@ pub enum TTBR1_128_EL1Field {
     BADDR_42_0 = -3,  // 47-5
     SKL = -4,         // 2-1
     CnP = 0,
-}
-
-impl RegisterField<u128> for TTBR1_128_EL1Field {
-    fn fetch_bit(self, v: u128) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u128, u8> for TTBR1_128_EL1Field {
@@ -59,12 +50,6 @@ pub enum TTBR1_64_EL1Field {
     CnP = 0,
 }
 
-impl RegisterField<u64> for TTBR1_64_EL1Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
-}
-
 impl RegisterFieldRange<u64, u16> for TTBR1_64_EL1Field {
     fn fetch_range(self, v: u64) -> u16 {
         if let Self::ASID = self {
@@ -92,12 +77,6 @@ pub enum TTBR1_128_EL2Field {
     BADDR_42_0 = -3,  // 47-5
     SKL = -4,         // 2-1
     CnP = 0,
-}
-
-impl RegisterField<u128> for TTBR1_128_EL2Field {
-    fn fetch_bit(self, v: u128) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u128, u8> for TTBR1_128_EL2Field {
@@ -139,12 +118,6 @@ pub enum TTBR1_64_EL2Field {
     ASID = -2,       // 63-48
     BADDR_47_1 = -3, // 47-1
     CnP = 0,
-}
-
-impl RegisterField<u64> for TTBR1_64_EL2Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u16> for TTBR1_64_EL2Field {

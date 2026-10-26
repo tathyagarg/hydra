@@ -1,5 +1,3 @@
-use crate::cpu::{common::nth_bit, regs::RegisterField};
-
 #[allow(non_camel_case_types)]
 pub enum TCR2_EL1Field {
     FNGNA1 = 21,
@@ -19,12 +17,6 @@ pub enum TCR2_EL1Field {
     PnCH = 0,
 }
 
-impl RegisterField<u64> for TCR2_EL1Field {
-    fn fetch_bit(self, tcr2_el1_v: u64) -> bool {
-        nth_bit(tcr2_el1_v, self as usize)
-    }
-}
-
 #[allow(non_camel_case_types)]
 pub enum TCR2_EL2Field {
     AMEC0 = 12,
@@ -34,12 +26,6 @@ pub enum TCR2_EL2Field {
     POE = 3,
     PIE = 1,
     PnCH = 0,
-}
-
-impl RegisterField<u64> for TCR2_EL2Field {
-    fn fetch_bit(self, tcr2_el2_v: u64) -> bool {
-        nth_bit(tcr2_el2_v, self as usize)
-    }
 }
 
 #[allow(non_camel_case_types)]
@@ -59,10 +45,4 @@ pub enum E2H_TCR2_EL2Field {
     E0POE = 2,
     PIE = 1,
     PnCH = 0,
-}
-
-impl RegisterField<u64> for E2H_TCR2_EL2Field {
-    fn fetch_bit(self, tcr2_el2_v: u64) -> bool {
-        nth_bit(tcr2_el2_v, self as usize)
-    }
 }

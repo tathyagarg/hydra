@@ -15,9 +15,10 @@ use crate::cpu::{
         PhysMemRetStatus, S1TTWParams, Shareability, TGx, TTWState,
     },
     regs::{
-        EDSCRField, GPCBW_EL3Field, GPCCR_EL3Field, GPTBR_EL3Field, HCR_EL2Field, HCR2Field,
-        HCRField, HCRX_EL2Field, MPAM0_EL1Field, MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field,
-        MPAMHCR_EL2Field, MPAMIDR_EL1Field, MPAMSM_EL1Field, MPAMVPMV_EL2Field, RegisterField,
+        DBGOSDLRField, DBGPRCR_EL1Field, DBGPRCRField, EDSCRField, GPCBW_EL3Field, GPCCR_EL3Field,
+        GPTBR_EL3Field, HCR_EL2Field, HCR2Field, HCRField, HCRX_EL2Field, MPAM0_EL1Field,
+        MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field, MPAMHCR_EL2Field, MPAMIDR_EL1Field,
+        MPAMSM_EL1Field, MPAMVPMV_EL2Field, OSDLR_EL1Field, OSLSR_EL1Field, RegisterField,
         RegisterFieldRange, SCR_EL3Field, SCRField, TCR_EL1Field,
     },
 };
@@ -33,55 +34,31 @@ pub trait Faultable {
     fn is_fault(&self) -> bool;
 }
 
-#[allow(non_upper_case_globals)]
-pub const GPTRange_4KB: AddressSize = 12;
-#[allow(non_upper_case_globals)]
-pub const GPTRange_16KB: AddressSize = 14;
-#[allow(non_upper_case_globals)]
-pub const GPTRange_64KB: AddressSize = 16;
-#[allow(non_upper_case_globals)]
-pub const GPTRange_2MB: AddressSize = 21;
-#[allow(non_upper_case_globals)]
-pub const GPTRange_32MB: AddressSize = 25;
-#[allow(non_upper_case_globals)]
-pub const GPTRange_512MB: AddressSize = 29;
-#[allow(non_upper_case_globals)]
-pub const GPTRange_1GB: AddressSize = 30;
-#[allow(non_upper_case_globals)]
-pub const GPTRange_16GB: AddressSize = 34;
-#[allow(non_upper_case_globals)]
-pub const GPTRange_64GB: AddressSize = 36;
-#[allow(non_upper_case_globals)]
-pub const GPTRange_512GB: AddressSize = 39;
+pub const GPT_RANGE_4KB: AddressSize = 12;
+pub const GPT_RANGE_16KB: AddressSize = 14;
+pub const GPT_RANGE_64KB: AddressSize = 16;
+pub const GPT_RANGE_2MB: AddressSize = 21;
+pub const GPT_RANGE_32MB: AddressSize = 25;
+pub const GPT_RANGE_512MB: AddressSize = 29;
+pub const GPT_RANGE_1GB: AddressSize = 30;
+pub const GPT_RANGE_16GB: AddressSize = 34;
+pub const GPT_RANGE_64GB: AddressSize = 36;
+pub const GPT_RANGE_512GB: AddressSize = 39;
 
-#[allow(non_upper_case_globals)]
-pub const GPT_NoAccess: u8 = 0b0000;
-#[allow(non_upper_case_globals)]
-pub const GPT_Table: u8 = 0b0011;
-#[allow(non_upper_case_globals)]
-pub const GPT_Block: u8 = 0b0001;
-#[allow(non_upper_case_globals)]
-pub const GPT_Contig: u8 = 0b0001;
-#[allow(non_upper_case_globals)]
-pub const GPT_SystemAgent: u8 = 0b0100;
-#[allow(non_upper_case_globals)]
-pub const GPT_NonSecureProtected: u8 = 0b0101;
-#[allow(non_upper_case_globals)]
+pub const GPT_NO_ACCESS: u8 = 0b0000;
+pub const GPT_TABLE: u8 = 0b0011;
+pub const GPT_BLOCK: u8 = 0b0001;
+pub const GPT_CONTIG: u8 = 0b0001;
+pub const GPT_SYSTEM_AGENT: u8 = 0b0100;
+pub const GPT_NON_SECURE_PROTECTED: u8 = 0b0101;
 pub const GPT_NA6: u8 = 0b0110;
-#[allow(non_upper_case_globals)]
 pub const GPT_NA7: u8 = 0b0111;
-#[allow(non_upper_case_globals)]
-pub const GPT_Secure: u8 = 0b1000;
-#[allow(non_upper_case_globals)]
-pub const GPT_NonSecure: u8 = 0b1001;
-#[allow(non_upper_case_globals)]
-pub const GPT_Root: u8 = 0b1010;
-#[allow(non_upper_case_globals)]
-pub const GPT_Realm: u8 = 0b1011;
-#[allow(non_upper_case_globals)]
-pub const GPT_NonSecureOnly: u8 = 0b1101;
-#[allow(non_upper_case_globals)]
-pub const GPT_Any: u8 = 0b1111;
+pub const GPT_SECURE: u8 = 0b1000;
+pub const GPT_NON_SECURE: u8 = 0b1001;
+pub const GPT_ROOT: u8 = 0b1010;
+pub const GPT_REALM: u8 = 0b1011;
+pub const GPT_NON_SECURE_ONLY: u8 = 0b1101;
+pub const GPT_ANY: u8 = 0b1111;
 
 pub struct GPTTable {
     pub address: u64,
@@ -330,7 +307,15 @@ impl Cpu {
             return false;
         }
 
-        todo!()
+        if self.el_using_aarch32(EL1) {
+            DBGOSDLRField::DLK.fetch_bit(self.dbgosdlr)
+                && !DBGPRCRField::CORENPDRQ.fetch_bit(self.dbgprcr)
+                && !self.halted()
+        } else {
+            OSDLR_EL1Field::DLK.fetch_bit(self.osdlr_el1)
+                && DBGPRCR_EL1Field::CORENPDRQ.fetch_bit(self.dbgprcr_el1)
+                && !self.halted()
+        }
     }
 
     /// ExternalInvasiveDebugEnabled()
@@ -1012,7 +997,7 @@ impl Cpu {
     /// S1TranslationRegime()
     /// =====================
     /// Stage 1 translation regime for the given Exception level
-    pub fn s1translationregime(&self, el: EL) -> u8 {
+    pub fn s1translationregime(&self, el: EL) -> EL {
         if el != EL0 {
             return el;
         } else if self.have_el(EL3)
@@ -1025,6 +1010,15 @@ impl Cpu {
         } else {
             return EL1;
         }
+    }
+
+    /// S1TranslationRegime()
+    /// =====================
+    /// Returns the Exception level controlling the current Stage 1 translation regime. For the most
+    /// part this is unused in code because the System register accessors (SCTLR_ELx, etc.) implicitly
+    /// return the correct value.
+    pub fn s1translationregime_raw(&self) -> EL {
+        self.s1translationregime(self.pstate.EL())
     }
 
     /// HighestEL()
@@ -2071,10 +2065,10 @@ impl Cpu {
     /// Returns number of bits covered by a level 0 GPT entry
     pub fn gptl0_size(&self) -> AddressSize {
         match GPCCR_EL3Field::L0GPTSZ.fetch_range(self.gpccr_el3) {
-            0b0000 => GPTRange_1GB,
-            0b0100 => GPTRange_16GB,
-            0b0110 => GPTRange_64GB,
-            0b1001 => GPTRange_512GB,
+            0b0000 => GPT_RANGE_1GB,
+            0b0100 => GPT_RANGE_16GB,
+            0b0110 => GPT_RANGE_64GB,
+            0b1001 => GPT_RANGE_512GB,
             _ => unreachable!(),
         }
     }
@@ -2111,12 +2105,12 @@ impl Cpu {
     /// Returns whether a given value is a valid encoding for a GPI value
     pub fn gpi_valid(&self, gpi: u8) -> bool {
         match gpi {
-            GPT_NoAccess => true,
-            GPT_NonSecureProtected => {
+            GPT_NO_ACCESS => true,
+            GPT_NON_SECURE_PROTECTED => {
                 Cpu::is_feature_implemented(Feature::RME_GDI)
                     && GPCCR_EL3Field::NSP.fetch_bit(self.gpccr_el3)
             }
-            GPT_SystemAgent => {
+            GPT_SYSTEM_AGENT => {
                 Cpu::is_feature_implemented(Feature::RME_GDI)
                     && GPCCR_EL3Field::SA.fetch_bit(self.gpccr_el3)
             }
@@ -2128,15 +2122,15 @@ impl Cpu {
                 Cpu::is_feature_implemented(Feature::RME_GDI)
                     && GPCCR_EL3Field::NA7.fetch_bit(self.gpccr_el3)
             }
-            GPT_Secure => Cpu::is_feature_implemented(Feature::SEL2),
-            GPT_NonSecure => true,
-            GPT_Realm => true,
-            GPT_Root => true,
-            GPT_NonSecureOnly => {
+            GPT_SECURE => Cpu::is_feature_implemented(Feature::SEL2),
+            GPT_NON_SECURE => true,
+            GPT_REALM => true,
+            GPT_ROOT => true,
+            GPT_NON_SECURE_ONLY => {
                 Cpu::is_feature_implemented(Feature::RME_GPC2)
                     && GPCCR_EL3Field::NSO.fetch_bit(self.gpccr_el3)
             }
-            GPT_Any => true,
+            GPT_ANY => true,
             _ => false,
         }
     }
@@ -2145,7 +2139,7 @@ impl Cpu {
     /// =========================
     /// Returns TRUE if the given GPT Block descriptor is valid, and FALSE otherwise.
     pub fn gpt_block_descriptor_valid(&self, level_0_entry: u64) -> bool {
-        assert!(get_bits(level_0_entry, 3, 0) as u8 == GPT_Block);
+        assert!(get_bits(level_0_entry, 3, 0) as u8 == GPT_BLOCK);
         get_bits(level_0_entry, 63, 8) == 0 && self.gpi_valid(get_bits(level_0_entry, 7, 4) as u8)
     }
 
@@ -2153,9 +2147,9 @@ impl Cpu {
     /// ================
     pub fn decode_pgs_range(&self, pgs: PGSe) -> AddressSize {
         match pgs {
-            PGSe::_4KB => GPTRange_4KB,
-            PGSe::_16KB => GPTRange_16KB,
-            PGSe::_64KB => GPTRange_64KB,
+            PGSe::_4KB => GPT_RANGE_4KB,
+            PGSe::_16KB => GPT_RANGE_16KB,
+            PGSe::_64KB => GPT_RANGE_64KB,
         }
     }
 
@@ -2163,7 +2157,7 @@ impl Cpu {
     /// =========================
     /// Returns TRUE if the given GPT Table descriptor is valid, and FALSE otherwise.
     pub fn gpt_table_descriptor_valid(&self, level_0_entry: u64) -> bool {
-        assert!(get_bits(level_0_entry, 3, 0) as u8 == GPT_Table);
+        assert!(get_bits(level_0_entry, 3, 0) as u8 == GPT_TABLE);
 
         let l0sz = self.gptl0_size();
         let pgs = self.decode_pgs(GPCCR_EL3Field::PGS.fetch_range(self.gpccr_el3));
@@ -2181,8 +2175,8 @@ impl Cpu {
     /// Returns TRUE if the given level 0 gpt descriptor is valid, and FALSE otherwise.
     pub fn gpt_level0_entry_valid(&self, gpt_entry: u64) -> bool {
         match get_bits(gpt_entry, 3, 0) as u8 {
-            GPT_Block => self.gpt_block_descriptor_valid(gpt_entry),
-            GPT_Table => self.gpt_table_descriptor_valid(gpt_entry),
+            GPT_BLOCK => self.gpt_block_descriptor_valid(gpt_entry),
+            GPT_TABLE => self.gpt_table_descriptor_valid(gpt_entry),
             _ => unreachable!(),
         }
     }
@@ -2191,16 +2185,16 @@ impl Cpu {
     /// ================
     /// Decode a GPT Block descriptor.
     pub fn decode_gpt_block(&self, pgs: PGSe, gpt_entry: u64) -> GPTEntry {
-        assert!(get_bits(gpt_entry, 3, 0) as u8 == GPT_Block);
+        assert!(get_bits(gpt_entry, 3, 0) as u8 == GPT_BLOCK);
 
         GPTEntry {
             gpi: get_bits(gpt_entry, 7, 4) as u8,
             level: 0,
             istable: false,
             size: match pgs {
-                PGSe::_4KB => GPTRange_4KB,
-                PGSe::_16KB => GPTRange_16KB,
-                PGSe::_64KB => GPTRange_64KB,
+                PGSe::_4KB => GPT_RANGE_4KB,
+                PGSe::_16KB => GPT_RANGE_16KB,
+                PGSe::_64KB => GPT_RANGE_64KB,
             },
             contig_size: self.gptl0_size(),
             pa: 0,
@@ -2211,13 +2205,13 @@ impl Cpu {
     /// ================
     /// Decode a GPT Table descriptor.
     pub fn decode_gpt_table(&self, pgs: PGSe, gpt_entry: u64) -> GPTTable {
-        assert!(get_bits(gpt_entry, 3, 0) as u8 == GPT_Table);
+        assert!(get_bits(gpt_entry, 3, 0) as u8 == GPT_TABLE);
 
         let s = match self.gptl0_size() {
-            GPTRange_1GB => 30,
-            GPTRange_16GB => 34,
-            GPTRange_64GB => 36,
-            GPTRange_512GB => 39,
+            GPT_RANGE_1GB => 30,
+            GPT_RANGE_16GB => 34,
+            GPT_RANGE_64GB => 36,
+            GPT_RANGE_512GB => 39,
             _ => unreachable!(),
         } as u32;
 
@@ -2251,7 +2245,7 @@ impl Cpu {
     /// ==========================
     /// Returns TRUE if the given GPT Contiguous descriptor is valid, and FALSE otherwise.
     pub fn gpt_contig_descriptor_valid(&self, level_1_entry: u64) -> bool {
-        assert!(get_bits(level_1_entry, 3, 0) as u8 == GPT_Contig);
+        assert!(get_bits(level_1_entry, 3, 0) as u8 == GPT_CONTIG);
 
         get_bits(level_1_entry, 63, 10) == 0
             && get_bits(level_1_entry, 9, 8) != 0
@@ -2276,7 +2270,7 @@ impl Cpu {
     /// Returns TRUE if the given level 1 gpt descriptor is valid, and FALSE otherwise.
     pub fn gpt_level1_entry_valid(&self, gpt_entry: u64) -> bool {
         match get_bits(gpt_entry, 3, 0) as u8 {
-            GPT_Contig => self.gpt_contig_descriptor_valid(gpt_entry),
+            GPT_CONTIG => self.gpt_contig_descriptor_valid(gpt_entry),
             _ => self.gpt_granules_descriptor_valid(gpt_entry),
         }
     }
@@ -2285,19 +2279,19 @@ impl Cpu {
     /// =====================
     /// Decode a GPT Contiguous descriptor.
     pub fn decode_gpt_contiguous(&self, pgs: PGSe, gpt_entry: u64) -> GPTEntry {
-        assert!(get_bits(gpt_entry, 3, 0) as u8 == GPT_Contig);
+        assert!(get_bits(gpt_entry, 3, 0) as u8 == GPT_CONTIG);
 
         GPTEntry {
             gpi: get_bits(gpt_entry, 7, 4) as u8,
             size: match pgs {
-                PGSe::_4KB => GPTRange_4KB,
-                PGSe::_16KB => GPTRange_16KB,
-                PGSe::_64KB => GPTRange_64KB,
+                PGSe::_4KB => GPT_RANGE_4KB,
+                PGSe::_16KB => GPT_RANGE_16KB,
+                PGSe::_64KB => GPT_RANGE_64KB,
             },
             contig_size: match get_bits(gpt_entry, 9, 8) as u8 {
-                0b01 => GPTRange_2MB,
-                0b10 => GPTRange_32MB,
-                0b11 => GPTRange_512MB,
+                0b01 => GPT_RANGE_2MB,
+                0b10 => GPT_RANGE_32MB,
+                0b11 => GPT_RANGE_512MB,
                 _ => unreachable!(),
             },
             level: 1,
@@ -2321,9 +2315,9 @@ impl Cpu {
     /// Decode a GPT Granules descriptor.
     pub fn decode_gpt_granules(&self, pgs: PGSe, index: u8, gpt_entry: u64) -> GPTEntry {
         let size = match pgs {
-            PGSe::_4KB => GPTRange_4KB,
-            PGSe::_16KB => GPTRange_16KB,
-            PGSe::_64KB => GPTRange_64KB,
+            PGSe::_4KB => GPT_RANGE_4KB,
+            PGSe::_16KB => GPT_RANGE_16KB,
+            PGSe::_64KB => GPT_RANGE_64KB,
         };
 
         GPTEntry {
@@ -2384,12 +2378,12 @@ impl Cpu {
         }
 
         match get_bits(level_0_entry, 3, 0) as u8 {
-            GPT_Block => {
+            GPT_BLOCK => {
                 let mut result = self.decode_gpt_block(pgs, level_0_entry);
                 result.pa = pa;
                 (GPCFRecord::no_fault(), result)
             }
-            GPT_Table => {
+            GPT_TABLE => {
                 let table = self.decode_gpt_table(pgs, level_0_entry);
 
                 if self.above_pps(table.address) {
@@ -2448,7 +2442,7 @@ impl Cpu {
                 };
 
                 let mut result = match get_bits(level_1_entry, 3, 0) as u8 {
-                    GPT_Contig => self.decode_gpt_contiguous(pgs, level_1_entry),
+                    GPT_CONTIG => self.decode_gpt_contiguous(pgs, level_1_entry),
                     _ => {
                         let gpi_index = self.gpi_index(pa);
                         self.decode_gpt_granules(pgs, gpi_index, level_1_entry)
@@ -2471,24 +2465,24 @@ impl Cpu {
     /// ss: Security state of the access
     pub fn gpi_check(&self, paspace: PASpace, gpi: u8, ss: SecurityState) -> bool {
         match gpi {
-            GPT_NoAccess => false,
-            GPT_Secure => {
+            GPT_NO_ACCESS => false,
+            GPT_SECURE => {
                 assert!(Cpu::is_feature_implemented(Feature::SEL2));
                 paspace == PASpace::Secure
             }
-            GPT_NonSecure => paspace == PASpace::NonSecure,
-            GPT_Root => paspace == PASpace::Root,
-            GPT_Realm => paspace == PASpace::Realm,
-            GPT_NonSecureOnly => {
+            GPT_NON_SECURE => paspace == PASpace::NonSecure,
+            GPT_ROOT => paspace == PASpace::Root,
+            GPT_REALM => paspace == PASpace::Realm,
+            GPT_NON_SECURE_ONLY => {
                 assert!(Cpu::is_feature_implemented(Feature::RME_GPC2));
                 paspace == PASpace::NonSecure
                     && matches!(ss, SecurityState::Root | SecurityState::NonSecure)
             }
-            GPT_SystemAgent => {
+            GPT_SYSTEM_AGENT => {
                 assert!(Cpu::is_feature_implemented(Feature::RME_GDI));
                 paspace == PASpace::SystemAgent
             }
-            GPT_NonSecureProtected => {
+            GPT_NON_SECURE_PROTECTED => {
                 assert!(Cpu::is_feature_implemented(Feature::RME_GDI));
                 paspace == PASpace::NonSecureProtected
             }
@@ -2500,7 +2494,7 @@ impl Cpu {
                 assert!(Cpu::is_feature_implemented(Feature::RME_GDI));
                 false
             }
-            GPT_Any => true,
+            GPT_ANY => true,
             _ => unreachable!(),
         }
     }
@@ -2722,6 +2716,7 @@ impl Cpu {
     /// The PE error state reported to software through the exception syndrome also
     /// depends on how the exception is taken, and so might differ from the value
     /// returned from this function.    
+    #[allow(unused_variables)]
     pub fn peerror_state(&self, fault: &FaultRecord) -> ErrorState {
         // TODO: Impdef stuff
         ErrorState::UEO
@@ -2793,6 +2788,55 @@ impl Cpu {
         ) || (accdesc.acctype == AccessType::DC
             && accdesc.cacheop == Some(CacheOp::Invalidate)
             && !self.using_aarch32());
+    }
+
+    /// HaltOnBreakpointOrWatchpoint()
+    /// ==============================
+    /// Returns TRUE if the Breakpoint and Watchpoint debug events should be considered for Debug
+    /// state entry, FALSE if they should be considered for a debug exception.
+    pub fn halt_on_breakpoint_or_watchpoint(&self) -> bool {
+        self.halting_allowed()
+            && EDSCRField::HDE.fetch_bit(self.edscr)
+            && !OSLSR_EL1Field::OSLK.fetch_bit(self.oslsr_el1)
+    }
+
+    /// IsContiguousSVEAccess()
+    /// =======================
+    /// Return TRUE if memory access is contiguous load/stores in an SVE mode.
+    pub fn is_contiguous_sve_access(&self, accdesc: &AccessDescriptor) -> bool {
+        accdesc.acctype == AccessType::SVE && accdesc.contiguous
+    }
+
+    /// IsSMEAccess()
+    /// =============
+    /// Return TRUE if access is of SME load/stores.
+    pub fn is_sme_access(&self, accdesc: &AccessDescriptor) -> bool {
+        accdesc.acctype == AccessType::SME
+    }
+
+    /// IsSIMDFPAccess()
+    /// ================
+    /// Return TRUE if access is SIMD&FP.
+    pub fn is_simdfp_access(&self, accdesc: &AccessDescriptor) -> bool {
+        accdesc.acctype == AccessType::ASIMD
+    }
+
+    /// InStreamingMode()
+    /// =================
+    pub fn in_streaming_mode(&self) -> bool {
+        Cpu::is_feature_implemented(Feature::SME) && self.pstate.SM
+    }
+
+    /// IsRelaxedWatchpointAccess()
+    /// ===========================
+    /// Return TRUE if memory access is one of -
+    /// - SIMD&FP load/store instruction when the PE is in Streaming SVE mode
+    /// - SVE contiguous vector load/store instruction.
+    /// - SME load/store instruction
+    pub fn is_relaxed_watchpoint_access(&self, accdesc: &AccessDescriptor) -> bool {
+        self.is_contiguous_sve_access(accdesc)
+            || self.is_sme_access(accdesc)
+            || (self.is_simdfp_access(accdesc) && self.in_streaming_mode())
     }
 }
 

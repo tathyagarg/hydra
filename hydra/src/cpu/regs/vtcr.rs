@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 #[allow(non_camel_case_types)]
 pub enum VTCR_EL2Field {
@@ -32,12 +29,6 @@ pub enum VTCR_EL2Field {
     IRGN0 = -5, // 9-8
     SL0 = -6,   // 7-6
     T0SZ = -7,  // 5-0
-}
-
-impl RegisterField<u64> for VTCR_EL2Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for VTCR_EL2Field {

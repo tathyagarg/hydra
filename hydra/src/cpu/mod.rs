@@ -398,7 +398,10 @@ pub struct Cpu {
     brbcr_el1: u64,
     brbcr_el2: u64,
 
+    mdcr_el2: u64,
     mdcr_el3: u64,
+
+    mdscr_el1: u64,
 
     mair_el1: u64,
     mair_el2: u64,
@@ -455,6 +458,12 @@ pub struct Cpu {
     hcr2: u32,
 
     oslsr_el1: u64,
+    osdlr_el1: u64,
+    dbgosdlr: u32,
+    dbgprcr: u32,
+    dbgprcr_el1: u64,
+
+    sder32_el3: u64,
 
     brbe: Brbe,
     pmu: Pmu,
@@ -498,7 +507,9 @@ impl Default for Cpu {
             brbfcr_el1: 0,
             brbcr_el1: 0,
             brbcr_el2: 0,
+            mdcr_el2: 0,
             mdcr_el3: 0,
+            mdscr_el1: 0,
             mpamidr_el1: 0,
             mair_el1: 0,
             mair_el2: 0,
@@ -539,6 +550,11 @@ impl Default for Cpu {
             hcr: 0,
             hcr2: 0,
             oslsr_el1: 0,
+            osdlr_el1: 0,
+            dbgosdlr: 0,
+            dbgprcr: 0,
+            dbgprcr_el1: 0,
+            sder32_el3: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],

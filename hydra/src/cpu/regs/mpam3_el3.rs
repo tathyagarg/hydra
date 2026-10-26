@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 #[allow(non_camel_case_types)]
 pub enum MPAM3_EL3Field {
@@ -17,12 +14,6 @@ pub enum MPAM3_EL3Field {
     PMG_I = -2,    // 39-32
     PARTID_D = -3, // 31-16
     PARTID_I = -4, // 15-0
-}
-
-impl RegisterField<u64> for MPAM3_EL3Field {
-    fn fetch_bit(self, mpam3_el3_v: u64) -> bool {
-        nth_bit(mpam3_el3_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for MPAM3_EL3Field {

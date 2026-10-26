@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 #[allow(non_camel_case_types)]
 pub enum HCR_EL2Field {
@@ -63,12 +60,6 @@ pub enum HCR_EL2Field {
     PTW = 2,
     SWIO = 1,
     VM = 0,
-}
-
-impl RegisterField<u64> for HCR_EL2Field {
-    fn fetch_bit(self, hcr_el2_v: u64) -> bool {
-        nth_bit(hcr_el2_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for HCR_EL2Field {

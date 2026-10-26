@@ -1,5 +1,3 @@
-use crate::cpu::{common::nth_bit, regs::RegisterField};
-
 #[allow(non_camel_case_types)]
 pub enum MPAMVPMV_EL2Field {
     VPM_V31,
@@ -34,10 +32,4 @@ pub enum MPAMVPMV_EL2Field {
     VPM_V2,
     VPM_V1,
     VPM_V0,
-}
-
-impl RegisterField<u64> for MPAMVPMV_EL2Field {
-    fn fetch_bit(self, mpamvpmv_el2_v: u64) -> bool {
-        nth_bit(mpamvpmv_el2_v, self as usize)
-    }
 }

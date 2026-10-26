@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 use crate::cpu::{
     Cpu, Feature,
     common::*,
@@ -11,13 +9,13 @@ use crate::cpu::{
     },
     regs::{
         E2H_TCR2_EL2Field, E2H0_TCR_EL2Field, E2H1_TCR_EL2Field, HCR_EL2Field, MAIRType,
-        MECID_A0_EL2Field, MECID_A1_EL2Field, MECID_P0_EL2Field, MECID_P1_EL2Field,
+        MDSCR_EL1Field, MECID_A0_EL2Field, MECID_A1_EL2Field, MECID_P0_EL2Field, MECID_P1_EL2Field,
         MECID_RL_A_EL3Field, RegisterField, RegisterFieldRange, S1PIRType, S1PORType, SCR_EL3Field,
         SCTLR_EL1Field, SCTLR_EL2Field, SCTLR_EL3Field, SCTLR2_EL2Field, SCTLR2_EL3Field,
         SCTLRField, TCR_EL1Field, TCR_EL2CommonField, TCR_EL3Field, TCR2_EL1Field, TCR2_EL2Field,
         VMECID_P_EL2Field, VTCR_EL2Field, mairtype_from_mair,
     },
-    shared::{EL, EL0, EL3, Faultable, Regime, SecurityState},
+    shared::{EL, EL0, EL2, EL3, Faultable, Regime, SecurityState},
 };
 
 pub type AddressSize = u8;
@@ -601,6 +599,37 @@ impl Cpu {
         }
     }
 
+    pub fn aarch64_check_watchpoint(
+        &self,
+        fault_in: &FaultRecord,
+        vaddress_in: u64,
+        accdesc: &AccessDescriptor,
+        size_in: usize,
+    ) -> MDSCR_EL1Field {
+        assert!(!self.el_using_aarch32(self.s1translationregime_raw()));
+
+        let mut fault = fault_in.clone();
+        let mut fault_match = fault_in.clone();
+        let mut fault_mismatch = fault_in.clone();
+
+        let mut vaddress = vaddress_in;
+        let mut size = size_in;
+
+        let mut roundeed_match = false;
+
+        let original_vaddress = vaddress_in;
+        let original_size = size_in;
+
+        let mut addr_match_wp = false;
+        let mut addr_mismatch_wp = false;
+        let mut addr_match = false;
+        let mut addr_mismatch = true;
+
+        if self.is_relaxed_watchpoint_access(accdesc) {}
+
+        todo!()
+    }
+
     pub fn aarch64_check_debug(
         &self,
         vaddress: u64,
@@ -612,11 +641,21 @@ impl Cpu {
         let d_side = self.is_watchpointable_access(accdesc);
         let i_side = accdesc.acctype == AccessType::IFETCH;
 
-        let generate_exception = if accdesc.acctype == AccessType::NV2 {
+        let generate_exceptions = if accdesc.acctype == AccessType::NV2 {
             let mask = false;
             let ss = self.current_security_state();
+            self.aarch64_generate_debug_exceptions_from(EL2, ss, mask)
         } else {
-        };
+            self.aarch64_generate_debug_exceptions()
+        } && MDSCR_EL1Field::MDE.fetch_bit(self.mdscr_el1);
+
+        let halt = self.halt_on_breakpoint_or_watchpoint();
+
+        if generate_exceptions || halt {
+            fault = if d_side {
+                self.aarch64_check_wa
+            }
+        }
 
         todo!()
     }

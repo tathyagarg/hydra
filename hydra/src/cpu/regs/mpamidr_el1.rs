@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 #[allow(non_camel_case_types)]
 pub enum MPAMIDR_EL1Field {
@@ -15,12 +12,6 @@ pub enum MPAMIDR_EL1Field {
     VPMR_MAX = -2, // 20-18
     HAS_HCR = 17,
     PARTID_MAX = -3, // 15-0
-}
-
-impl RegisterField<u64> for MPAMIDR_EL1Field {
-    fn fetch_bit(self, mpamidr_el1_v: u64) -> bool {
-        nth_bit(mpamidr_el1_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for MPAMIDR_EL1Field {

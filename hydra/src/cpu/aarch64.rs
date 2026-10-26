@@ -5,8 +5,8 @@ use crate::cpu::{
     exeception::{Exception, ExceptionRecord},
     regs::{
         BRBCR_EL1Field, BRBCR_EL2Field, BRBFCR_EL0Field, BRBFCR_EL1Field, HCR_EL2Field,
-        HCRX_EL2Field, MDCR_EL3Field, OSLSR_EL1Field, RegisterField, RegisterFieldRange,
-        SCR_EL3Field, SCTLRField,
+        HCRX_EL2Field, MDCR_EL2Field, MDCR_EL3Field, MDSCR_EL1Field, OSLSR_EL1Field, RegisterField,
+        RegisterFieldRange, SCR_EL3Field, SCTLRField, SDER32_EL3Field,
     },
     shared::{EL, EL0, EL1, EL2, EL3, SecurityState},
 };
@@ -429,7 +429,40 @@ impl Cpu {
         from_state: SecurityState,
         mask: bool,
     ) -> bool {
-        // if OSLSR_EL1Field::OSLK.
-        todo!()
+        if OSLSR_EL1Field::OSLK.fetch_bit(self.oslsr_el1)
+            || self.double_lock_status()
+            || self.halted()
+        {
+            return false;
+        }
+
+        let route_to_el2 = self.have_el(EL2)
+            && (from_state != SecurityState::Secure || self.is_secure_el2_enabled())
+            && (HCR_EL2Field::TGE.fetch_bit(self.hcr_el2)
+                || MDCR_EL2Field::TDE.fetch_bit(self.mdcr_el2));
+
+        let target = if route_to_el2 { EL2 } else { EL1 };
+        let enabled = if self.have_el(EL3) && from_state == SecurityState::Secure {
+            let mut en = !MDCR_EL3Field::SDD.fetch_bit(self.mdcr_el3);
+            if from_el == EL0 && self.el_using_aarch32(EL1) {
+                en = en || SDER32_EL3Field::SUIDEN.fetch_bit(self.sder32_el3);
+            }
+
+            en
+        } else {
+            true
+        };
+
+        enabled
+            && if from_el == target {
+                MDSCR_EL1Field::KDE.fetch_bit(self.mdscr_el1) && !mask
+            } else {
+                target > from_el
+            }
+    }
+
+    pub fn aarch64_generate_debug_exceptions(&self) -> bool {
+        let ss = self.current_security_state();
+        self.aarch64_generate_debug_exceptions_from(self.pstate.EL(), ss, self.pstate.D)
     }
 }

@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::*,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 #[allow(non_camel_case_types)]
 pub enum TCR_EL1Field {
@@ -47,12 +44,6 @@ pub enum TCR_EL1Field {
     T0SZ = -11, // 5-0
 }
 
-impl RegisterField<u64> for TCR_EL1Field {
-    fn fetch_bit(self, tcr_el1_v: u64) -> bool {
-        nth_bit(tcr_el1_v, self as usize)
-    }
-}
-
 impl RegisterFieldRange<u64, u8> for TCR_EL1Field {
     fn fetch_range(self, tcr_el1_v: u64) -> u8 {
         (match self {
@@ -92,12 +83,6 @@ pub enum E2H0_TCR_EL2Field {
     ORGN0 = -4, // 11-10
     IRGN0 = -5, // 9-8
     T0SZ = -6,  // 5-0
-}
-
-impl RegisterField<u64> for E2H0_TCR_EL2Field {
-    fn fetch_bit(self, tcr_el2_v: u64) -> bool {
-        nth_bit(tcr_el2_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for E2H0_TCR_EL2Field {
@@ -156,12 +141,6 @@ pub enum E2H1_TCR_EL2Field {
     IRGN0 = -10, // 9-8
     EPD0 = 7,
     T0SZ = -11, // 5-0
-}
-
-impl RegisterField<u64> for E2H1_TCR_EL2Field {
-    fn fetch_bit(self, tcr_el2_v: u64) -> bool {
-        nth_bit(tcr_el2_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for E2H1_TCR_EL2Field {
@@ -232,12 +211,6 @@ pub enum TCR_EL3Field {
     ORGN0 = -4, // 11-10
     IRGN0 = -5, // 9-8
     T0SZ = -6,  // 5-0
-}
-
-impl RegisterField<u64> for TCR_EL3Field {
-    fn fetch_bit(self, tcr_el3_v: u64) -> bool {
-        nth_bit(tcr_el3_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for TCR_EL3Field {

@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 #[allow(non_camel_case_types)]
 pub enum TTBR0_128_EL1Field {
@@ -10,12 +7,6 @@ pub enum TTBR0_128_EL1Field {
     BADDR_42_0 = -3,  // 47-5
     SKL = -4,         // 2-1
     CnP = 0,
-}
-
-impl RegisterField<u128> for TTBR0_128_EL1Field {
-    fn fetch_bit(self, v: u128) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u128, u8> for TTBR0_128_EL1Field {
@@ -59,12 +50,6 @@ pub enum TTBR0_64_EL1Field {
     CnP = 0,
 }
 
-impl RegisterField<u64> for TTBR0_64_EL1Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
-}
-
 impl RegisterFieldRange<u64, u16> for TTBR0_64_EL1Field {
     fn fetch_range(self, v: u64) -> u16 {
         if let Self::ASID = self {
@@ -92,12 +77,6 @@ pub enum TTBR0_128_EL2Field {
     BADDR_42_0 = -3,  // 47-5
     SKL = -4,         // 2-1
     CnP = 0,
-}
-
-impl RegisterField<u128> for TTBR0_128_EL2Field {
-    fn fetch_bit(self, v: u128) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u128, u8> for TTBR0_128_EL2Field {
@@ -141,12 +120,6 @@ pub enum TTBR0_64_EL2Field {
     CnP = 0,
 }
 
-impl RegisterField<u64> for TTBR0_64_EL2Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
-}
-
 impl RegisterFieldRange<u64, u16> for TTBR0_64_EL2Field {
     fn fetch_range(self, v: u64) -> u16 {
         if let Self::ASID = self {
@@ -174,12 +147,6 @@ pub enum TTBR0_128_EL3Field {
     CnP = 0,
 }
 
-impl RegisterField<u64> for TTBR0_128_EL3Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
-}
-
 impl RegisterFieldRange<u64, u8> for TTBR0_128_EL3Field {
     fn fetch_range(self, v: u64) -> u8 {
         if let Self::SKL = self {
@@ -204,12 +171,6 @@ impl RegisterFieldRange<u64, u64> for TTBR0_128_EL3Field {
 pub enum TTBR0_64_EL3Field {
     BADDR = -1, // 47-1
     CnP = 0,
-}
-
-impl RegisterField<u64> for TTBR0_64_EL3Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u64> for TTBR0_64_EL3Field {

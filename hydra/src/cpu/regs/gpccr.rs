@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 #[allow(non_camel_case_types)]
 pub enum GPCCR_EL3Field {
@@ -25,12 +22,6 @@ pub enum GPCCR_EL3Field {
     RLPAD = 5,
     PPS3 = 3,
     PPS = -6, // 2-0
-}
-
-impl RegisterField<u64> for GPCCR_EL3Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for GPCCR_EL3Field {

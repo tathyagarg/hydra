@@ -1,7 +1,6 @@
 use crate::cpu::{
     Cpu, Feature, Register,
     exeception::{FullAddress, PASpace},
-    memory_acc::MemoryAttributes,
     shared::{EL, EL1, Faultable, SecurityState},
 };
 

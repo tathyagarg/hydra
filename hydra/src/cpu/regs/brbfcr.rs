@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 #[allow(non_camel_case_types)]
 pub enum BRBFCR_EL0Field {
@@ -14,12 +11,6 @@ pub enum BRBFCR_EL0Field {
     DIRECT = 17,
     EnI = 16,
     PAUSED = 7,
-}
-
-impl RegisterField<u64> for BRBFCR_EL0Field {
-    fn fetch_bit(self, brbfcr_el0_v: u64) -> bool {
-        nth_bit(brbfcr_el0_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for BRBFCR_EL0Field {
@@ -43,12 +34,6 @@ pub enum BRBFCR_EL1Field {
     DIRECT = 17,
     EnI = 16,
     PAUSED = 7,
-}
-
-impl RegisterField<u64> for BRBFCR_EL1Field {
-    fn fetch_bit(self, brbfcr_el1_v: u64) -> bool {
-        nth_bit(brbfcr_el1_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for BRBFCR_EL1Field {

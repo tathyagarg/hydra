@@ -1,7 +1,45 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
+
+#[allow(non_camel_case_types)]
+pub enum MDCR_EL2Field {
+    EnSTEPOP = 50,
+    EBWE = 43,
+    PMEE = -1, // 41-40
+    HPMFZS = 36,
+    PMSSE = -2, // 31-30
+    HPMFZO = 29,
+    MTPME = 28,
+    TDCC = 27,
+    HLP = 26,
+    E2TB = -3, // 25-24
+    HCCD = 23,
+    TTRF = 19,
+    HPMD = 17,
+    EnSPM = 15,
+    TPMS = 14,
+    E2PB = -4, // 13-12
+    TDRA = 11,
+    TDOSA = 10,
+    TDA = 9,
+    TDE = 8,
+    HPME = 7,
+    TPM = 6,
+    TPMCR = 5,
+    HPMN = -5, // 4-0
+}
+
+impl RegisterFieldRange<u64, u8> for MDCR_EL2Field {
+    fn fetch_range(self, v: u64) -> u8 {
+        (match self {
+            Self::PMEE => (v >> 40) & 0b11,
+            Self::PMSSE => (v >> 30) & 0b11,
+            Self::E2TB => (v >> 24) & 0b11,
+            Self::E2PB => (v >> 12) & 0b11,
+            Self::HPMN => v & 0b11111,
+            _ => unreachable!(),
+        }) as u8
+    }
+}
 
 #[allow(non_camel_case_types)]
 pub enum MDCR_EL3Field {
@@ -47,12 +85,6 @@ pub enum MDCR_EL3Field {
     ETADE = 3,
     EPMADE = 2,
     RLTE = 0,
-}
-
-impl RegisterField<u64> for MDCR_EL3Field {
-    fn fetch_bit(self, mdcr_el3_v: u64) -> bool {
-        nth_bit(mdcr_el3_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for MDCR_EL3Field {

@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 pub enum HCRField {
     TRVM = 30,
@@ -33,12 +30,6 @@ pub enum HCRField {
     PTW = 2,
     SWIO = 1,
     VM = 0,
-}
-
-impl RegisterField<u32> for HCRField {
-    fn fetch_bit(self, v: u32) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u32, u8> for HCRField {

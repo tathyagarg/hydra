@@ -1,7 +1,4 @@
-use crate::cpu::{
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::regs::RegisterFieldRange;
 
 pub enum EDSCRField {
     TFO = 31,
@@ -25,12 +22,6 @@ pub enum EDSCRField {
     A = 7,
     ERR = 6,
     STATUS = -4, // 5-0
-}
-
-impl RegisterField<u32> for EDSCRField {
-    fn fetch_bit(self, edscr_v: u32) -> bool {
-        nth_bit(edscr_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u32, u8> for EDSCRField {

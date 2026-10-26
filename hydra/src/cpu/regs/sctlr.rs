@@ -1,8 +1,4 @@
-use crate::cpu::{
-    accessors::SCTLRType,
-    common::nth_bit,
-    regs::{RegisterField, RegisterFieldRange},
-};
+use crate::cpu::{accessors::SCTLRType, regs::RegisterFieldRange};
 
 #[allow(non_camel_case_types)]
 pub enum SCTLR_EL1Field {
@@ -60,12 +56,6 @@ pub enum SCTLR_EL1Field {
     C = 2,
     A = 1,
     M = 0,
-}
-
-impl RegisterField<u64> for SCTLR_EL1Field {
-    fn fetch_bit(self, sctlr_el1_v: u64) -> bool {
-        nth_bit(sctlr_el1_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for SCTLR_EL1Field {
@@ -143,12 +133,6 @@ pub enum SCTLR_EL2Field {
     M = 0,
 }
 
-impl RegisterField<u64> for SCTLR_EL2Field {
-    fn fetch_bit(self, sctlr_el2_v: u64) -> bool {
-        nth_bit(sctlr_el2_v, self as usize)
-    }
-}
-
 impl RegisterFieldRange<u64, u8> for SCTLR_EL2Field {
     fn fetch_range(self, sctlr_el2_v: u64) -> u8 {
         if let Self::TWEDEL = self {
@@ -194,12 +178,6 @@ pub enum SCTLR_EL3Field {
     M = 0,
 }
 
-impl RegisterField<u64> for SCTLR_EL3Field {
-    fn fetch_bit(self, sctlr_el3_v: u64) -> bool {
-        nth_bit(sctlr_el3_v, self as usize)
-    }
-}
-
 impl RegisterFieldRange<u64, u8> for SCTLR_EL3Field {
     fn fetch_range(self, sctlr_el3_v: u64) -> u8 {
         if let Self::TCF = self {
@@ -236,12 +214,6 @@ pub enum SCTLRField {
     C = 2,
     A = 1,
     M = 0,
-}
-
-impl RegisterField<u64> for SCTLRField {
-    fn fetch_bit(self, sctlr_v: SCTLRType) -> bool {
-        nth_bit(sctlr_v, self as usize)
-    }
 }
 
 impl RegisterFieldRange<u64, u8> for SCTLRField {

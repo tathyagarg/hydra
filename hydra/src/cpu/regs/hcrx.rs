@@ -1,5 +1,3 @@
-use crate::cpu::{common::nth_bit, regs::RegisterField};
-
 #[allow(non_camel_case_types)]
 pub enum HCRX_EL2Field {
     SRMASKEn = 26,
@@ -26,10 +24,4 @@ pub enum HCRX_EL2Field {
     EnASR = 2,
     EnALS = 1,
     EnAS0 = 0,
-}
-
-impl RegisterField<u64> for HCRX_EL2Field {
-    fn fetch_bit(self, v: u64) -> bool {
-        nth_bit(v, self as usize)
-    }
 }
