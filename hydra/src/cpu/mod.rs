@@ -3,7 +3,7 @@
 use crate::{
     cpu::{
         brbe::{BRBINF_EL1_Type, BRBSRC_EL1_Type, BRBTGT_EL1_Type, Brbe},
-        common::NZCV,
+        common::*,
         decode::Instruction,
         pmu::Pmu,
         regs::{MPAMVPMnEL2Type, S1PIRType, S1PORType},
@@ -389,6 +389,7 @@ pub struct Cpu {
     sctlr2_el3: u64,
 
     edscr: u32,
+    edscr2: u32,
 
     hcr_el2: u64,
 
@@ -465,6 +466,9 @@ pub struct Cpu {
 
     sder32_el3: u64,
 
+    dbgwcr_el1: [u64; NUM_WATCHPOINTS_IMPLEMENTED],
+    dbgbcr_el1: [u64; NUM_BREAKPOINTS_IMPLEMENTED],
+
     brbe: Brbe,
     pmu: Pmu,
 
@@ -502,6 +506,7 @@ impl Default for Cpu {
             sctlr2_el2: 0,
             sctlr2_el3: 0,
             edscr: 0,
+            edscr2: 0,
             hcr_el2: 0,
             brbfcr_el0: 0,
             brbfcr_el1: 0,
@@ -555,6 +560,8 @@ impl Default for Cpu {
             dbgprcr: 0,
             dbgprcr_el1: 0,
             sder32_el3: 0,
+            dbgwcr_el1: [0; NUM_WATCHPOINTS_IMPLEMENTED],
+            dbgbcr_el1: [0; NUM_BREAKPOINTS_IMPLEMENTED],
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
@@ -600,13 +607,16 @@ pub enum Feature {
     AA64EL1,
     AA64EL2,
     AA64EL3,
+    ABLE,
     AIE,
     BRBE,
     BRBEv1p1,
     BTI,
+    BWE2,
     CMPBR,
     CSSC,
     D128,
+    Debugv8p9,
     DoubleFault2,
     DoubleLock,
     E2H0,
@@ -650,7 +660,7 @@ pub enum Feature {
     S1PIE,
     S1POE,
     SCTLR2,
-    SECURE,
+    Secure,
     SEL2,
     SME,
     SPE,
@@ -676,13 +686,16 @@ impl Cpu {
             Feature::AA64EL1 => false,
             Feature::AA64EL2 => false,
             Feature::AA64EL3 => false,
+            Feature::ABLE => false,
             Feature::AIE => false,
             Feature::BRBE => false,
             Feature::BRBEv1p1 => false,
             Feature::BTI => false,
+            Feature::BWE2 => false,
             Feature::CMPBR => true,
             Feature::CSSC => true,
             Feature::D128 => false,
+            Feature::Debugv8p9 => false,
             Feature::DoubleFault2 => false,
             Feature::DoubleLock => false,
             Feature::E2H0 => false,
@@ -720,7 +733,7 @@ impl Cpu {
             Feature::S1PIE => false,
             Feature::S1POE => false,
             Feature::SCTLR2 => false,
-            Feature::SECURE => false,
+            Feature::Secure => false,
             Feature::SEL2 => false,
             Feature::SME => false,
             Feature::SPE => false,

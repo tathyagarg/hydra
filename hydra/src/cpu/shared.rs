@@ -110,6 +110,14 @@ pub enum Regime {
     EL10,
 }
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum BreakpointType {
+    Inactive,
+    AddrMatch,
+    AddrMismatch,
+    CtxtMatch,
+}
+
 pub fn replicate(val: u64, elem_bits: u32, total_bits: u32) -> u64 {
     let elem = val & ones(elem_bits);
 
@@ -718,7 +726,7 @@ impl Cpu {
     /// =================
     /// Return TRUE if Secure State is supported.
     pub fn have_secure_state(&self) -> bool {
-        Cpu::is_feature_implemented(Feature::SECURE)
+        Cpu::is_feature_implemented(Feature::Secure)
     }
 
     /// EffectiveSCR_EL3_NS()
@@ -779,7 +787,7 @@ impl Cpu {
     /// ==========================
     /// Returns TRUE if the security state is always Secure for this implementation.
     pub fn secure_only_implementation(&self) -> bool {
-        return Cpu::is_feature_implemented(Feature::SECURE) && !self.have_el(EL3);
+        return Cpu::is_feature_implemented(Feature::Secure) && !self.have_el(EL3);
     }
 
     /// IsSecureEL2Enabled()
@@ -2837,6 +2845,151 @@ impl Cpu {
         self.is_contiguous_sve_access(accdesc)
             || self.is_sme_access(accdesc)
             || (self.is_simdfp_access(accdesc) && self.in_streaming_mode())
+    }
+
+    /// NumWatchpointsImplemented()
+    /// ===========================
+    /// Returns the number of watchpoints implemented.
+    pub const fn num_watchpoints_implemented(&self) -> usize {
+        NUM_WATCHPOINTS_IMPLEMENTED
+    }
+
+    // NumBreakpointsImplemented()
+    // ===========================
+    // Returns the number of breakpoints implemented.
+    pub const fn num_breakpoints_implemented(&self) -> usize {
+        NUM_BREAKPOINTS_IMPLEMENTED
+    }
+
+    /// NumContextAwareBreakpointsImplemented()
+    /// =======================================
+    /// Returns the number of context-aware breakpoints implemented.
+    pub const fn num_context_aware_breakpoints_implemented(&self) -> usize {
+        NUM_CONTEXT_AWARE_BREAKPOINTS_IMPLEMENTED
+    }
+
+    /// CheckValidStateMatch()
+    /// ======================
+    /// Checks for an invalid state match that will generate Constrained
+    /// Unpredictable behavior, otherwise returns Constraint_NONE.
+    pub fn check_valid_state_match(
+        &self,
+        ssc: u8,
+        ssce: bool,
+        hmc: bool,
+        pxc: u8,
+        isbreakpnt: bool,
+    ) -> (Constraint, u8, bool, bool, u8) {
+        if !Cpu::is_feature_implemented(Feature::RME) {
+            assert!(!ssce);
+        }
+
+        let mut reserved = match (hmc, ssce, ssc, pxc) {
+            (false, false, 0b11, 0b10) => true,
+            (false, true, 0b01, 0b00) => true,
+            (true, false, 0b00, 0b10 | 0b00) => true,
+            (true, false, 0b01, 0b10) => true,
+            (true, false, 0b10 | 0b11, 0b10) => true,
+            (true, true, 0b01, 0b10) => true,
+            (_, true, 0b00 | 0b10, _) => true,
+            (_, true, 0b11, _) => true,
+            _ => false,
+        };
+
+        if !Cpu::is_feature_implemented(Feature::Secure) && !hmc && !ssce && ssc == 0b10 {
+            reserved = true;
+        }
+
+        if !Cpu::is_feature_implemented(Feature::RME)
+            && !Cpu::is_feature_implemented(Feature::Secure)
+            && ((!hmc && ssc == 0b01) || (hmc && ssc == 0b10 && pxc == 0b00))
+        {
+            reserved = true;
+        }
+
+        if !self.have_el(EL3) && self.have_el(EL2) && (ssc == 0b01 || ssc == 0b10) {
+            reserved = true;
+        }
+
+        if !self.have_el(EL3) && self.have_el(EL2) && (hmc || ssc != 0b00) {
+            reserved = true;
+        }
+
+        if !self.have_el(EL2) && hmc && ssc == 0b11 && pxc == 0b00 {
+            reserved = true;
+        }
+
+        if !Cpu::is_feature_implemented(Feature::SEL2)
+            && ssc == 0b11
+            && !(hmc && !ssce && ssc == 0b11 && pxc == 0b00)
+        {
+            reserved = true;
+        }
+
+        if (!self.have_el(EL3) || !Cpu::is_feature_implemented(Feature::SEL2))
+            && hmc
+            && !ssce
+            && ssc == 0b01
+            && pxc == 0b00
+        {
+            reserved = true;
+        }
+
+        if self.have_aarch64() && hmc && ssc == 0b10 && pxc == 0b00 {
+            reserved = true;
+        }
+
+        if (!self.have_aarch32_el(EL1) || !isbreakpnt) && !hmc && pxc == 0b00 && ssc != 0b11 {
+            reserved = true;
+        }
+
+        if reserved {
+            let (c, unpred_state_bits) = Unpredictable::RESBPWPCTRL.constrain_bits();
+            assert!(matches!(c, Constraint::DISABLED | Constraint::UNKNOWN));
+
+            if c == Constraint::DISABLED {
+                return (c, 0, false, false, 0);
+            } else {
+                let unpred_hmc = nth_bit(unpred_state_bits, 5);
+                let unpred_ssc = get_bits(unpred_state_bits, 4, 3) as u8;
+                let unpred_ssce = nth_bit(unpred_state_bits, 2);
+                let unpred_pxc = get_bits(unpred_state_bits, 1, 0) as u8;
+
+                return (
+                    Constraint::NONE,
+                    unpred_ssc,
+                    unpred_ssce,
+                    unpred_hmc,
+                    unpred_pxc,
+                );
+            }
+        }
+
+        (Constraint::NONE, ssc, ssce, hmc, pxc)
+    }
+
+    /// ContextAwareBreakpointRange()
+    /// =============================
+    /// Returns two numbers indicating the index of the first and last context-aware breakpoint.
+    pub fn context_aware_breakpoint_range(&self) -> (usize, usize) {
+        let b = self.num_breakpoints_implemented();
+        let c = self.num_breakpoints_implemented();
+
+        if b <= 16 {
+            (b - c, b - 1)
+        } else if c <= 16 {
+            (16 - c, 15)
+        } else {
+            (0, c - 1)
+        }
+    }
+
+    /// IsContextAwareBreakpoint()
+    /// ==========================
+    /// Returns TRUE if DBGBCR_EL1[n] is a context-aware breakpoint.
+    pub fn is_context_aware_breakpoint(&self, n: usize) -> bool {
+        let (lower, upper) = self.context_aware_breakpoint_range();
+        n >= lower && n <= upper
     }
 }
 

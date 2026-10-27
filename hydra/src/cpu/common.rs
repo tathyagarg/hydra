@@ -1,6 +1,11 @@
 pub const FINAL_LEVEL: u8 = 3;
 pub const NUM_PABITS: u8 = 56;
 
+pub const NUM_WATCHPOINTS_IMPLEMENTED: usize = 16;
+pub const NUM_BREAKPOINTS_IMPLEMENTED: usize = 16;
+pub const NUM_CONTEXT_AWARE_BREAKPOINTS_IMPLEMENTED: usize = 0;
+pub const NUM_ADDRESS_LINKING_BREAKPOINTS: usize = 0;
+
 #[derive(PartialEq, Debug)]
 pub struct NZCV(bool, bool, bool, bool);
 
@@ -126,6 +131,10 @@ pub fn align_down_p2<const N: u32>(x: u64, p2: u32) -> u64 {
 
 pub fn align_down_size(x: u64, size: u64) -> u64 {
     x - (x % size)
+}
+
+pub fn align_up_size(x: u64, size: u64) -> u64 {
+    align_down_size(x + (size - 1), size)
 }
 
 pub fn align_down_p2_as<T>(x: T, p2: u32) -> T

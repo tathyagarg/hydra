@@ -37,6 +37,7 @@ pub enum Constraint {
     ANYREG,
 }
 
+#[derive(PartialEq, Clone, Copy)]
 #[allow(non_camel_case_types)]
 pub enum Unpredictable {
     /// VMSR on MVFR
@@ -404,7 +405,6 @@ impl Unpredictable {
         if c == Constraint::UNKNOWN {
             (c, low)
         } else {
-            // (c, arbitrary)
             (c, high)
         }
     }
@@ -414,6 +414,22 @@ impl Unpredictable {
         assert!([Constraint::TRUE, Constraint::FALSE].contains(&c));
 
         c == Constraint::TRUE
+    }
+
+    pub fn constrain_bits(&self) -> (Constraint, u8) {
+        let c = self.constrain();
+
+        match c {
+            Constraint::UNKNOWN => (c, 0),
+            Constraint::PMSCR_PCT_VIRT => (c, 0),
+            Constraint::NC if Self::S2RESMEMATTR == *self => (c, 0b0101),
+            Constraint::WT if Self::S2RESMEMATTR == *self => (c, 0b1010),
+            Constraint::WB if Self::S2RESMEMATTR == *self => (c, 0b1111),
+            Constraint::EL1TIMESTAMP => (c, 0b01),
+            Constraint::EL2TIMESTAMP => (c, 0b01),
+            Constraint::MAPTOALLOCATED => (c, 0b010),
+            _ => (c, 0),
+        }
     }
 
     pub const fn constrain(&self) -> Constraint {

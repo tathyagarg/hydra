@@ -1,5 +1,7 @@
 mod brbcr;
 mod brbfcr;
+mod dbgbcr_n;
+mod dbgwcr_n;
 mod edscr;
 mod gpcbw;
 mod gpccr;
@@ -31,6 +33,8 @@ use crate::cpu::common::nth_bit;
 
 pub use self::brbcr::{BRBCR_EL1Field, BRBCR_EL2Field};
 pub use self::brbfcr::{BRBFCR_EL0Field, BRBFCR_EL1Field};
+pub use self::dbgbcr_n::DBGBCR_N_EL1Field;
+pub use self::dbgwcr_n::DBGWCR_N_EL1Field;
 pub use self::edscr::EDSCRField;
 pub use self::gpcbw::GPCBW_EL3Field;
 pub use self::gpccr::GPCCR_EL3Field;
@@ -248,6 +252,11 @@ impl RegisterFieldRange<u64, u8> for MDSCR_EL1Field {
     }
 }
 
+pub enum EDSCR2Field {
+    EHBWE = 3,
+    TTA = 1,
+}
+
 register_field!(
     BRBCR_EL1Field { u64 },
     BRBCR_EL2Field { u64 },
@@ -301,4 +310,7 @@ register_field!(
     TTBR1_128_EL2Field { u128 },
     TTBR1_64_EL2Field { u64 },
     VTCR_EL2Field { u64 },
+    EDSCR2Field { u32 },
+    DBGWCR_N_EL1Field { u64 },
+    DBGBCR_N_EL1Field { u64 }
 );
