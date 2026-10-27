@@ -9,7 +9,7 @@ use crate::cpu::{
         FaultRecord, GPCF, GPCFRecord, MPAMData, MPAMinfo, MemAtomicOp, MemOp, PARTIDSpaceType,
         PARTIDType, PMGType, VARange,
     },
-    memory_acc::{
+    memory::{
         AddressDescriptor, AddressSize, DeviceType, MemAttr_NC, MemAttr_WB, MemAttr_WT,
         MemAttrHints, MemHint_No, MemHint_RA, MemHint_RWA, MemTagType, MemType, MemoryAttributes,
         PhysMemRetStatus, S1TTWParams, Shareability, TGx, TTWState,
