@@ -423,10 +423,24 @@ impl Cpu {
         }
 
         if linked {
+            let linked_to = true;
             let mut bp_type: BreakpointType;
+            let from_linking_enabled = true;
+
+            (bp_type, linked_match) = self.aarch64_breakpoint_value_match(
+                linked_n as usize,
+                vaddress,
+                linked_to,
+                isbreakpnt,
+                from_linking_enabled,
+            );
+
+            if bp_type == BreakpointType::AddrMismatch {
+                linked_match = !linked_match;
+            }
         }
 
-        todo!()
+        priv_match && ss_match && (!linked || linked_match)
     }
 
     #[allow(unused_variables, unused_mut)]
