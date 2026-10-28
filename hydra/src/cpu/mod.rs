@@ -468,6 +468,7 @@ pub struct Cpu {
     sder32_el3: u64,
 
     dbgwcr_el1: [u64; NUM_WATCHPOINTS_IMPLEMENTED],
+    dbgwvr_el1: [u64; NUM_WATCHPOINTS_IMPLEMENTED],
     dbgbcr_el1: [u64; NUM_BREAKPOINTS_IMPLEMENTED],
     dbgbvr_el1: [u64; NUM_BREAKPOINTS_IMPLEMENTED],
 
@@ -476,6 +477,8 @@ pub struct Cpu {
 
     vttbr: u64,
     vttbr_el2: u128,
+
+    edwar: u64,
 
     brbe: Brbe,
     pmu: Pmu,
@@ -569,12 +572,14 @@ impl Default for Cpu {
             dbgprcr_el1: 0,
             sder32_el3: 0,
             dbgwcr_el1: [0; NUM_WATCHPOINTS_IMPLEMENTED],
+            dbgwvr_el1: [0; NUM_WATCHPOINTS_IMPLEMENTED],
             dbgbcr_el1: [0; NUM_BREAKPOINTS_IMPLEMENTED],
             dbgbvr_el1: [0; NUM_BREAKPOINTS_IMPLEMENTED],
             contextidr_el1: 0,
             contextidr_el2: 0,
             vttbr: 0,
             vttbr_el2: 0,
+            edwar: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],

@@ -2,7 +2,7 @@ use crate::cpu::{
     Cpu, Feature,
     common::*,
     constraint::{Constraint, Unpredictable},
-    fault::{AccessDescriptor, AccessType, FaultRecord, WatchpointInfo},
+    fault::{AccessDescriptor, AccessType, Fault, FaultRecord, WatchpointInfo, WatchpointType},
     memory::AddressSize,
     regs::{
         DBGBCR_N_EL1Field, DBGWCR_N_EL1Field, EDSCR2Field, MDCR_EL2Field, MDCR_EL3Field,
@@ -10,6 +10,18 @@ use crate::cpu::{
     },
     shared::{BreakpointType, EL0, EL1, EL2, EL3, SecurityState},
 };
+
+pub const DEBUG_HALT_BREAKPOINT: u8 = 0b000111;
+pub const DEBUG_HALT_EDBGRQ: u8 = 0b010011;
+pub const DEBUG_HALT_STEP_NORMAL: u8 = 0b011011;
+pub const DEBUG_HALT_STEP_EXCLUSIVE: u8 = 0b011111;
+pub const DEBUG_HALT_OSUNLOCKCATCH: u8 = 0b100011;
+pub const DEBUG_HALT_RESETCATCH: u8 = 0b100111;
+pub const DEBUG_HALT_WATCHPOINT: u8 = 0b101011;
+pub const DEBUG_HALT_HALTINSTRUCTION: u8 = 0b101111;
+pub const DEBUG_HALT_SOFTWAREACCESS: u8 = 0b110011;
+pub const DEBUG_HALT_EXCEPTIONCATCH: u8 = 0b110111;
+pub const DEBUG_HALT_STEP_NOSYNDROME: u8 = 0b111011;
 
 impl Cpu {
     pub fn self_hosted_extended_bpwp_enabled(&self) -> bool {
@@ -65,7 +77,7 @@ impl Cpu {
     }
 
     pub fn aarch64_reserved_breakpoint_type(&self, n: usize, bt_in: u8) -> (Constraint, u8) {
-        let bt = bt_in;
+        let mut bt = bt_in;
         let mut reserved = false;
         let context_aware = self.is_context_aware_breakpoint(n);
 
@@ -96,7 +108,8 @@ impl Cpu {
         }
 
         if reserved {
-            let (c, bt) = Unpredictable::RESBPTYPE.constrain_bits();
+            let c: Constraint;
+            (c, bt) = Unpredictable::RESBPTYPE.constrain_bits();
             assert!(matches!(c, Constraint::DISABLED | Constraint::UNKNOWN));
 
             if c == Constraint::DISABLED {
@@ -443,6 +456,81 @@ impl Cpu {
         priv_match && ss_match && (!linked || linked_match)
     }
 
+    pub fn aarch64_watchpoint_byte_match(&self, n: usize, vaddress: u64) -> bool {
+        let dbgtop = self.debug_addr_top();
+        let cmpbottom = if nth_bit(self.dbgwvr_el1[n], 2) { 2 } else { 3 };
+        let mut bottom = cmpbottom as u8;
+        let select = get_bits(vaddress, cmpbottom - 1, 0) as usize;
+        let mut byte_select_match = nth_bit(
+            DBGWCR_N_EL1Field::BAS.fetch_range(self.dbgwcr_el1[n]),
+            select,
+        );
+        let mut mask = DBGWCR_N_EL1Field::MASK.fetch_range(self.dbgwcr_el1[n]);
+
+        if mask > 0
+            && !is_ones(
+                DBGWCR_N_EL1Field::BAS.fetch_range(self.dbgwcr_el1[n]),
+                7 - 0,
+            )
+        {
+            byte_select_match = Unpredictable::WPMASKANDBAS.constrain_bool();
+        } else {
+            let lsb = DBGWCR_N_EL1Field::BAS.fetch_range(self.dbgwcr_el1[n])
+                & !(DBGWCR_N_EL1Field::BAS.fetch_range(self.dbgwcr_el1[n]) - 1);
+            let msb = DBGWCR_N_EL1Field::BAS.fetch_range(self.dbgwcr_el1[n]) + lsb;
+
+            if (msb & (msb - 1)) != 0 {
+                byte_select_match = Unpredictable::WPBASCONTIGUOUS.constrain_bool();
+                bottom = 3;
+            }
+        }
+
+        if mask > 0 && mask <= 2 {
+            let (c, unpred_mask) = Unpredictable::RESWPMASK.constrain_integer(3, 31);
+            assert!(matches!(
+                c,
+                Constraint::DISABLED | Constraint::NONE | Constraint::UNKNOWN
+            ));
+
+            match c {
+                Constraint::DISABLED => return false,
+                Constraint::NONE => mask = 0,
+                _ => mask = unpred_mask as u8,
+            }
+        }
+
+        let unpredictable_ress = dbgtop < 55
+            && !is_ones(
+                get_bits(self.dbgwvr_el1[n], 63, dbgtop as usize),
+                63 - dbgtop as u32,
+            )
+            && !is_zeros(
+                get_bits(self.dbgwvr_el1[n], 63, dbgtop as usize),
+                63 - dbgtop as u32,
+            )
+            && Unpredictable::DBGxVR_RESS.constrain_bool();
+
+        let cmpmsb = if unpredictable_ress { 63 } else { dbgtop };
+        let cmplsb = if mask > bottom { mask } else { bottom };
+        let bottombit = bottom;
+
+        let mut wvr_match = get_bits(vaddress, cmpmsb as usize, cmplsb as usize)
+            == get_bits(self.dbgwvr_el1[n], cmpmsb as usize, cmplsb as usize);
+
+        if mask > bottom {
+            if wvr_match
+                && !is_zeros(
+                    get_bits(self.dbgwvr_el1[n], cmplsb as usize, bottombit as usize),
+                    cmplsb as u32 - bottombit as u32,
+                )
+            {
+                wvr_match = Unpredictable::WPMASKEDBITS.constrain_bool();
+            }
+        }
+
+        wvr_match && byte_select_match
+    }
+
     #[allow(unused_variables, unused_mut)]
     pub fn aarch64_watchpoint_match(
         &self,
@@ -470,19 +558,68 @@ impl Cpu {
         };
         let mismatch = Cpu::is_feature_implemented(Feature::BWE2)
             && DBGWCR_N_EL1Field::WT2.fetch_bit(self.dbgwcr_el1[n]);
-        // let state_match = self.aarch64_state_match(ssc_in, ssce_in, hmc_in, pxc_in, linked_in, linked_n_in, isbreakpnt, vaddress, accdesc)
+        let state_match = self.aarch64_state_match(
+            DBGWCR_N_EL1Field::SSC.fetch_range(self.dbgwcr_el1[n]),
+            ssce,
+            DBGWCR_N_EL1Field::HMC.fetch_bit(self.dbgwcr_el1[n]),
+            DBGWCR_N_EL1Field::PAC.fetch_range(self.dbgwcr_el1[n]),
+            linked,
+            linked_n,
+            isbreakpoint,
+            self.get_PC64(),
+            accdesc,
+        );
 
-        todo!()
+        let ls_match = match get_bits(DBGWCR_N_EL1Field::LSC.fetch_range(self.dbgwcr_el1[n]), 1, 0)
+        {
+            0b00 => false,
+            0b01 => accdesc.read,
+            0b10 => accdesc.write || accdesc.acctype == AccessType::DC,
+            0b11 => true,
+            _ => unreachable!(),
+        };
+
+        let mut watchpt_va = vaddress;
+        let mut value_match = false;
+
+        for byte in 0..size {
+            if !value_match && !self.address_in_naturally_aligned_block(watchpt_va, vaddress + byte)
+            {
+                watchpt_va = vaddress + byte;
+            }
+
+            value_match = value_match || self.aarch64_watchpoint_byte_match(n, vaddress + byte);
+        }
+
+        let w_value_match = if !(state_match && ls_match && enabled) {
+            false
+        } else {
+            value_match
+        };
+
+        WatchpointInfo {
+            vaddress,
+            watchpt_num: n,
+            value_match: w_value_match,
+            wptype: if !(state_match && ls_match && enabled) {
+                WatchpointType::Inactive
+            } else if mismatch {
+                WatchpointType::AddrMismatch
+            } else {
+                WatchpointType::AddrMatch
+            },
+            maybe_false_match: false,
+        }
     }
 
     #[allow(unused_variables, unused_mut, unused_assignments)]
     pub fn aarch64_check_watchpoint(
-        &self,
+        &mut self,
         fault_in: &FaultRecord,
         vaddress_in: u64,
         accdesc: &AccessDescriptor,
         size_in: u64,
-    ) -> MDSCR_EL1Field {
+    ) -> FaultRecord {
         assert!(!self.el_using_aarch32(self.s1translationregime_raw()));
 
         let mut fault = fault_in.clone();
@@ -518,15 +655,70 @@ impl Cpu {
         }
 
         for i in 0..self.num_watchpoints_implemented() {
-            // let watchptinfo = self.aarch64_watch
+            let watchptinfo = self.aarch64_watchpoint_match(i, vaddress, size, accdesc);
+            if watchptinfo.wptype == WatchpointType::AddrMatch {
+                addr_match_wp = true;
+                addr_match = addr_match || watchptinfo.value_match;
+                if watchptinfo.value_match {
+                    fault_match.statuscode = Fault::Debug;
+                    if DBGWCR_N_EL1Field::LSC.fetch_range(self.dbgwcr_el1[i]) & 0b01 != 0
+                        && accdesc.read
+                    {
+                        fault_match.write = false;
+                    } else if DBGWCR_N_EL1Field::LSC.fetch_range(self.dbgwcr_el1[i]) & 0b10 != 0
+                        && accdesc.write
+                    {
+                        fault_match.write = true;
+                    }
+                    fault_match.watchptinfo = watchptinfo;
+                }
+            } else if watchptinfo.wptype == WatchpointType::AddrMismatch {
+                addr_mismatch_wp = true;
+                addr_mismatch = addr_mismatch && !watchptinfo.value_match;
+                if !watchptinfo.value_match {
+                    fault_mismatch.statuscode = Fault::Debug;
+                    if DBGWCR_N_EL1Field::LSC.fetch_range(self.dbgwcr_el1[i]) & 0b01 != 0
+                        && accdesc.read
+                    {
+                        fault_mismatch.write = false;
+                    } else if DBGWCR_N_EL1Field::LSC.fetch_range(self.dbgwcr_el1[i]) & 0b10 != 0
+                        && accdesc.write
+                    {
+                        fault_mismatch.write = true;
+                    }
+                    fault_mismatch.watchptinfo = watchptinfo;
+                }
+            }
         }
 
-        todo!()
+        if (addr_match_wp && addr_mismatch_wp && addr_match && addr_mismatch)
+            || (addr_match_wp && !addr_mismatch_wp && addr_match)
+        {
+            fault = fault_match;
+        } else if !addr_match_wp && addr_mismatch_wp && addr_mismatch {
+            fault = fault_mismatch;
+        }
+
+        fault.vaddress = vaddress;
+        fault.watchptinfo.maybe_false_match = rounded_match;
+
+        if fault.statuscode == Fault::Debug
+            && self.halt_on_breakpoint_or_watchpoint()
+            && !accdesc.nonfault
+            && !(accdesc.firstfault && !accdesc.first)
+        {
+            let reason: u8 = DEBUG_HALT_WATCHPOINT;
+            self.edwar = fault.vaddress;
+            let is_async: bool = false;
+            self.halt(reason, is_async, &fault);
+        }
+
+        fault
     }
 
     #[allow(unused_variables, unused_mut, unused_assignments, unreachable_code)]
     pub fn aarch64_check_debug(
-        &self,
+        &mut self,
         vaddress: u64,
         accdesc: &AccessDescriptor,
         size: usize,
@@ -548,8 +740,7 @@ impl Cpu {
 
         if generate_exceptions || halt {
             fault = if d_side {
-                // self.aarch64_check_wa
-                todo!()
+                self.aarch64_check_watchpoint(&fault, vaddress, accdesc, size as u64)
             } else {
                 todo!()
             };

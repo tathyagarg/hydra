@@ -433,7 +433,7 @@ impl Cpu {
         }
 
         let fault = FaultRecord::no_fault();
-        self.halt(DebugHalt::HaltInstruction as u8, false, fault);
+        self.halt(DebugHalt::HaltInstruction as u8, false, &fault);
     }
 
     /// **RET**: Return from subroutine

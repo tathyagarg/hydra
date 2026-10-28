@@ -353,7 +353,7 @@ pub enum ErrorState {
     CE,  // Corrected
 }
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum WatchpointType {
     Inactive,     // Watchpoint inactive or disabled
     AddrMatch,    // Address Match watchpoint
@@ -362,11 +362,11 @@ pub enum WatchpointType {
 
 #[derive(Clone)]
 pub struct WatchpointInfo {
-    wptype: WatchpointType,
-    maybe_false_match: bool,
-    watchpt_num: u64,
-    value_match: bool,
-    vaddress: u64,
+    pub(crate) wptype: WatchpointType,
+    pub(crate) maybe_false_match: bool,
+    pub(crate) watchpt_num: usize,
+    pub(crate) value_match: bool,
+    pub(crate) vaddress: u64,
 }
 
 #[derive(Clone)]

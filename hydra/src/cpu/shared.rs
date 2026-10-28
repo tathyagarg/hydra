@@ -296,7 +296,7 @@ impl Cpu {
     /// Halt()
     /// ======
     #[allow(unused_variables)]
-    pub fn halt(&mut self, reason: u8, is_async: bool, fault: FaultRecord) {
+    pub fn halt(&mut self, reason: u8, is_async: bool, fault: &FaultRecord) {
         todo!("not doing alll this")
     }
 
@@ -3034,6 +3034,21 @@ impl Cpu {
         } else {
             0
         }
+    }
+
+    /// AddressInNaturallyAlignedBlock()
+    /// ================================
+    /// Returns TRUE if the given addresses are in the same naturally aligned block, and FALSE otherwise.
+    /// An address is in a naturally aligned block if it meets any of the below conditions:
+    /// * is a power-of-two size.
+    /// * Is no larger than the DC ZVA block size if ESR_ELx.FnP is being set to 0b0, or EDHSR is not
+    /// implemented or EDHSR.FnP is being set to 0b0 (as appropriate).
+    /// * Is no larger than the smallest implemented translation granule if ESR_ELx.FnP, or EDHSR.FnP
+    /// (as appropriate) is being set to 0b1.
+    /// * Contains a watchpointed address accessed by the memory access or set of contiguous memory
+    /// accesses that triggered the watchpoint.
+    pub fn address_in_naturally_aligned_block(&self, _address1: u64, _address2: u64) -> bool {
+        false
     }
 }
 
