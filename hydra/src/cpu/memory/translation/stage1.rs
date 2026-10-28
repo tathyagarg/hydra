@@ -45,7 +45,7 @@ impl Cpu {
     }
 
     pub fn aarch64_translate_address(
-        &self,
+        &mut self,
         va: u64,
         accdesc: &AccessDescriptor,
         aligned: bool,

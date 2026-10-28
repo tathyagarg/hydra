@@ -2,7 +2,10 @@ use crate::cpu::{
     Cpu, Feature,
     common::*,
     constraint::{Constraint, Unpredictable},
-    fault::{AccessDescriptor, AccessType, Fault, FaultRecord, WatchpointInfo, WatchpointType},
+    fault::{
+        AccessDescriptor, AccessType, BreakpointInfo, Fault, FaultRecord, WatchpointInfo,
+        WatchpointType,
+    },
     memory::AddressSize,
     regs::{
         DBGBCR_N_EL1Field, DBGWCR_N_EL1Field, EDSCR2Field, MDCR_EL2Field, MDCR_EL3Field,
@@ -716,7 +719,158 @@ impl Cpu {
         fault
     }
 
-    #[allow(unused_variables, unused_mut, unused_assignments, unreachable_code)]
+    pub fn aarch64_breakpoint_match(
+        &self,
+        n: usize,
+        vaddress: u64,
+        accdesc: &AccessDescriptor,
+        size: u64,
+    ) -> BreakpointInfo {
+        assert!(!self.el_using_aarch32(self.s1translationregime_raw()));
+        assert!(n < self.num_breakpoints_implemented());
+
+        let linking_enabled = matches_pattern(
+            DBGBCR_N_EL1Field::BT.fetch_range(self.dbgbcr_el1[n]),
+            0b0011,
+        ) || matches_pattern(
+            DBGBCR_N_EL1Field::BT.fetch_range(self.dbgbcr_el1[n]),
+            0b1001,
+        ) || (Cpu::is_feature_implemented(Feature::ABLE)
+            && DBGBCR_N_EL1Field::BT2.fetch_bit(self.dbgbcr_el1[n]));
+
+        if linking_enabled {
+            return BreakpointInfo {
+                bptype: BreakpointType::Inactive,
+                match_found: false,
+                mismatch: false,
+            };
+        }
+
+        let enabled = self.is_breakpoint_enabled(n);
+        let linked = matches_pattern(
+            DBGBCR_N_EL1Field::BT.fetch_range(self.dbgbcr_el1[n]),
+            0b0001,
+        );
+        let isbreakpnt = true;
+        let linked_to = false;
+        let from_linking_enabled = false;
+        let lbnx = if Cpu::is_feature_implemented(Feature::Debugv8p9) {
+            DBGBCR_N_EL1Field::LBNX.fetch_range(self.dbgbcr_el1[n])
+        } else {
+            0b00
+        };
+        let linked_n = (lbnx << 4) | DBGBCR_N_EL1Field::LBN.fetch_range(self.dbgbcr_el1[n]);
+        let ssce = if Cpu::is_feature_implemented(Feature::RME) {
+            DBGBCR_N_EL1Field::SSCE.fetch_bit(self.dbgbcr_el1[n])
+        } else {
+            false
+        };
+        let state_match = self.aarch64_state_match(
+            DBGBCR_N_EL1Field::SSC.fetch_range(self.dbgbcr_el1[n]),
+            ssce,
+            DBGBCR_N_EL1Field::HMC.fetch_bit(self.dbgbcr_el1[n]),
+            DBGBCR_N_EL1Field::PMC.fetch_range(self.dbgbcr_el1[n]),
+            linked,
+            linked_n,
+            isbreakpnt,
+            vaddress,
+            accdesc,
+        );
+
+        let (mut bp_type, mut value_match) = self.aarch64_breakpoint_value_match(
+            n,
+            vaddress,
+            linked_to,
+            isbreakpnt,
+            from_linking_enabled,
+        );
+
+        if self.have_aarch32() && size == 4 {
+            let (_, match_i) = self.aarch64_breakpoint_value_match(
+                n,
+                vaddress + 2,
+                linked_to,
+                isbreakpnt,
+                from_linking_enabled,
+            );
+
+            if !value_match && match_i {
+                value_match = Unpredictable::BPMATCHHALF.constrain_bool();
+            }
+        }
+
+        if nth_bit(vaddress, 1) && DBGBCR_N_EL1Field::BAS.fetch_range(self.dbgbcr_el1[n]) == 0b1111
+        {
+            if value_match {
+                value_match = Unpredictable::BPMATCHHALF.constrain_bool();
+            }
+        }
+
+        let match_found = if !(state_match && enabled) {
+            bp_type = BreakpointType::Inactive;
+            false
+        } else {
+            value_match
+        };
+
+        BreakpointInfo {
+            bptype: bp_type,
+            match_found,
+            mismatch: false,
+        }
+    }
+
+    pub fn aarch64_check_breakpoint(
+        &mut self,
+        fault_in: &FaultRecord,
+        vaddress: u64,
+        accdesc: &AccessDescriptor,
+        size: u64,
+    ) -> FaultRecord {
+        assert!(!self.el_using_aarch32(self.s1translationregime_raw()));
+        assert!((self.using_aarch32() && (size == 2 || size == 4)) || size == 4);
+
+        let mut fault = fault_in.clone();
+        let mut addr_match_bp = false;
+        let mut addr_mismatch_bp = false;
+        let mut addr_match = false;
+        let mut addr_mismatch = true;
+        let mut ctxt_match = false;
+
+        for i in 0..self.num_breakpoints_implemented() {
+            let brkptinfo = self.aarch64_breakpoint_match(i, vaddress, accdesc, size);
+            if brkptinfo.bptype == BreakpointType::AddrMatch {
+                addr_match_bp = true;
+                addr_match = addr_match || brkptinfo.match_found;
+            } else if brkptinfo.bptype == BreakpointType::AddrMismatch {
+                addr_mismatch_bp = true;
+                addr_mismatch = addr_mismatch && !brkptinfo.match_found;
+            } else if brkptinfo.bptype == BreakpointType::CtxtMatch {
+                ctxt_match = ctxt_match || brkptinfo.match_found;
+            }
+        }
+
+        let mut match_found = if addr_match_bp && addr_mismatch_bp {
+            addr_match && addr_mismatch
+        } else {
+            (addr_match_bp && addr_match) || (addr_mismatch_bp && addr_mismatch)
+        };
+
+        match_found = match_found || ctxt_match;
+
+        if match_found {
+            fault.statuscode = Fault::Debug;
+            fault.vaddress = vaddress;
+
+            if self.halt_on_breakpoint_or_watchpoint() {
+                let reason: u8 = DEBUG_HALT_BREAKPOINT;
+                self.halt_with_reason(reason);
+            }
+        }
+
+        fault
+    }
+
     pub fn aarch64_check_debug(
         &mut self,
         vaddress: u64,
@@ -739,13 +893,13 @@ impl Cpu {
         let halt = self.halt_on_breakpoint_or_watchpoint();
 
         if generate_exceptions || halt {
-            fault = if d_side {
-                self.aarch64_check_watchpoint(&fault, vaddress, accdesc, size as u64)
-            } else {
-                todo!()
+            if d_side {
+                fault = self.aarch64_check_watchpoint(&fault, vaddress, accdesc, size as u64);
+            } else if i_side {
+                fault = self.aarch64_check_breakpoint(&fault, vaddress, accdesc, size as u64);
             };
         }
 
-        todo!()
+        fault
     }
 }

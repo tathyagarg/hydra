@@ -300,6 +300,14 @@ impl Cpu {
         todo!("not doing alll this")
     }
 
+    /// Halt()
+    /// ======
+    pub fn halt_with_reason(&mut self, reason: u8) {
+        let is_async = false;
+        let fault = FaultRecord::no_fault();
+        self.halt(reason, is_async, &fault);
+    }
+
     /// Halted()
     /// ========
     pub fn halted(&self) -> bool {

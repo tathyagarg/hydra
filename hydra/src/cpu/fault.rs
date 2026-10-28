@@ -1,7 +1,7 @@
 use crate::cpu::{
     Cpu, Feature, Register,
     exeception::{FullAddress, PASpace},
-    shared::{EL, EL1, Faultable, SecurityState},
+    shared::{BreakpointType, EL, EL1, Faultable, SecurityState},
 };
 
 #[derive(PartialEq, Clone)]
@@ -367,6 +367,13 @@ pub struct WatchpointInfo {
     pub(crate) watchpt_num: usize,
     pub(crate) value_match: bool,
     pub(crate) vaddress: u64,
+}
+
+#[derive(Clone)]
+pub struct BreakpointInfo {
+    pub(crate) bptype: BreakpointType,
+    pub(crate) match_found: bool,
+    pub(crate) mismatch: bool,
 }
 
 #[derive(Clone)]
