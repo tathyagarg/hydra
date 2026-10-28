@@ -1,5 +1,7 @@
 pub const FINAL_LEVEL: u8 = 3;
 pub const NUM_PABITS: u8 = 56;
+pub const NUM_VMIDBITS: u8 = 8;
+pub type BitsNumVMIDBits = u8;
 
 pub const NUM_WATCHPOINTS_IMPLEMENTED: usize = 16;
 pub const NUM_BREAKPOINTS_IMPLEMENTED: usize = 16;
@@ -46,7 +48,10 @@ pub fn nth_bit<T: Into<u128>>(v: T, n: usize) -> bool {
     return (v.into() >> n) & 1 == 1;
 }
 
-pub fn get_bits<T: Into<u128>>(v: T, x: usize, y: usize) -> u128 {
+pub fn get_bits<T: Into<u128>>(v: T, start: usize, end: usize) -> u128 {
+    assert!(start > end);
+    let x = end;
+    let y = start;
     let mask = if y - x + 1 == 128 {
         u128::MAX
     } else {
@@ -152,4 +157,37 @@ where
     }
 
     x & !(ones_as::<T>(p2))
+}
+
+pub fn matches_pattern<T: Into<u128>>(value: T, mask: T) -> bool {
+    let value = value.into();
+    let mask = mask.into();
+
+    (value & mask) == mask
+}
+
+pub fn is_ones<T: Into<u128>>(value: T, size: u32) -> bool {
+    let value = value.into();
+    if size == 0 {
+        return true;
+    }
+
+    if size > 128 {
+        return false;
+    }
+
+    value == ones_as::<u128>(size)
+}
+
+pub fn is_zeros<T: Into<u128>>(value: T, size: u32) -> bool {
+    let value = value.into();
+    if size == 0 {
+        return true;
+    }
+
+    if size > 128 {
+        return false;
+    }
+
+    value == 0
 }

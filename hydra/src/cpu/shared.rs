@@ -19,7 +19,8 @@ use crate::cpu::{
         GPTBR_EL3Field, HCR_EL2Field, HCR2Field, HCRField, HCRX_EL2Field, MPAM0_EL1Field,
         MPAM1_EL1Field, MPAM2_EL2Field, MPAM3_EL3Field, MPAMHCR_EL2Field, MPAMIDR_EL1Field,
         MPAMSM_EL1Field, MPAMVPMV_EL2Field, OSDLR_EL1Field, OSLSR_EL1Field, RegisterField,
-        RegisterFieldRange, SCR_EL3Field, SCRField, TCR_EL1Field,
+        RegisterFieldRange, SCR_EL3Field, SCRField, TCR_EL1Field, VMSAv8_64_VTTBR_EL2Field,
+        VMSAv9_128_VTTBR_EL2Field, VTCR_EL2Field, VTTBRField,
     },
 };
 
@@ -692,6 +693,13 @@ impl Cpu {
             EL3 => Cpu::is_feature_implemented(Feature::AA32EL3),
             _ => unreachable!(),
         }
+    }
+
+    /// HaveAArch32()
+    /// =============
+    /// Return TRUE if AArch32 state is supported from at least EL0.
+    pub fn have_aarch32(&self) -> bool {
+        Cpu::is_feature_implemented(Feature::AA32EL0)
     }
 
     /// HaveAArch64()
@@ -2990,6 +2998,42 @@ impl Cpu {
     pub fn is_context_aware_breakpoint(&self, n: usize) -> bool {
         let (lower, upper) = self.context_aware_breakpoint_range();
         n >= lower && n <= upper
+    }
+
+    /// IsInHost()
+    /// ==========
+    pub fn is_in_host(&self) -> bool {
+        self.el_is_in_host(self.pstate.EL())
+    }
+
+    /// VMID
+    /// ====
+    /// Effective VMID.
+    pub fn vmid(&self) -> BitsNumVMIDBits {
+        if self.el2_enabled() {
+            if !self.el_using_aarch32(EL2) {
+                if Cpu::is_feature_implemented(Feature::VMID16)
+                    && VTCR_EL2Field::VS.fetch_bit(self.vtcr_el2)
+                {
+                    let vmid: u16 = VMSAv9_128_VTTBR_EL2Field::VMID.fetch_range(self.vttbr_el2);
+
+                    vmid as BitsNumVMIDBits
+                } else {
+                    let vmid: u16 =
+                        VMSAv8_64_VTTBR_EL2Field::VMID.fetch_range(self.vttbr_el2 as u64);
+
+                    get_bits(vmid, 7, 0) as BitsNumVMIDBits
+                }
+            } else {
+                let vmid: u8 = VTTBRField::VMID.fetch_range(self.vttbr_el2 as u64);
+
+                vmid as BitsNumVMIDBits
+            }
+        } else if self.have_el(EL2) && Cpu::is_feature_implemented(Feature::SEL2) {
+            0
+        } else {
+            0
+        }
     }
 }
 

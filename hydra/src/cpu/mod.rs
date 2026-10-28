@@ -469,6 +469,13 @@ pub struct Cpu {
 
     dbgwcr_el1: [u64; NUM_WATCHPOINTS_IMPLEMENTED],
     dbgbcr_el1: [u64; NUM_BREAKPOINTS_IMPLEMENTED],
+    dbgbvr_el1: [u64; NUM_BREAKPOINTS_IMPLEMENTED],
+
+    contextidr_el1: u64,
+    contextidr_el2: u64,
+
+    vttbr: u64,
+    vttbr_el2: u128,
 
     brbe: Brbe,
     pmu: Pmu,
@@ -563,6 +570,11 @@ impl Default for Cpu {
             sder32_el3: 0,
             dbgwcr_el1: [0; NUM_WATCHPOINTS_IMPLEMENTED],
             dbgbcr_el1: [0; NUM_BREAKPOINTS_IMPLEMENTED],
+            dbgbvr_el1: [0; NUM_BREAKPOINTS_IMPLEMENTED],
+            contextidr_el1: 0,
+            contextidr_el2: 0,
+            vttbr: 0,
+            vttbr_el2: 0,
             brbe: Brbe {
                 records_src: [BRBSRC_EL1_Type(0); 64],
                 records_tgt: [BRBTGT_EL1_Type(0); 64],
@@ -613,10 +625,12 @@ pub enum Feature {
     BRBE,
     BRBEv1p1,
     BTI,
+    BWE,
     BWE2,
     CMPBR,
     CSSC,
     D128,
+    Debugv8p2,
     Debugv8p9,
     DoubleFault2,
     DoubleLock,
@@ -636,6 +650,8 @@ pub enum Feature {
     LPA2,
     LS64WB,
     LSE2,
+    LVA3,
+    LVA,
     MEC,
     MPAMv0p1,
     MPAMv1p1,
@@ -668,6 +684,7 @@ pub enum Feature {
     TCR2,
     THE,
     VHE,
+    VMID16,
 }
 
 impl Cpu {
@@ -692,10 +709,12 @@ impl Cpu {
             Feature::BRBE => false,
             Feature::BRBEv1p1 => false,
             Feature::BTI => false,
+            Feature::BWE => false,
             Feature::BWE2 => false,
             Feature::CMPBR => true,
             Feature::CSSC => true,
             Feature::D128 => false,
+            Feature::Debugv8p2 => false,
             Feature::Debugv8p9 => false,
             Feature::DoubleFault2 => false,
             Feature::DoubleLock => false,
@@ -715,6 +734,8 @@ impl Cpu {
             Feature::LPA2 => false,
             Feature::LS64WB => false,
             Feature::LSE2 => false,
+            Feature::LVA3 => false,
+            Feature::LVA => false,
             Feature::MEC => false,
             Feature::MPAMv0p1 => false,
             Feature::MPAMv1p1 => false,
@@ -741,6 +762,7 @@ impl Cpu {
             Feature::TCR2 => false,
             Feature::THE => false,
             Feature::VHE => false,
+            Feature::VMID16 => false,
         }
     }
 

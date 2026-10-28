@@ -28,8 +28,14 @@ mod tcr2;
 mod ttbr0;
 mod ttbr1;
 mod vtcr;
+mod vttbr;
 
 use crate::cpu::common::nth_bit;
+
+// pub use self::sctlr_el1::SCTLR_EL1Field;
+// pub use self::sctlr_el2::SCTLR_EL2Field;
+// pub use self::sctlr_el3::SCTLR_EL3Field;
+// pub use self::sctlr2_el1::SCTLR2_EL1Field;
 
 pub use self::brbcr::{BRBCR_EL1Field, BRBCR_EL2Field};
 pub use self::brbfcr::{BRBFCR_EL0Field, BRBFCR_EL1Field};
@@ -56,10 +62,6 @@ pub use self::scr::SCRField;
 pub use self::scr_el3::SCR_EL3Field;
 #[allow(unused_imports)]
 pub use self::sctlr::{SCTLR_EL1Field, SCTLR_EL2Field, SCTLR_EL3Field, SCTLRField};
-// pub use self::sctlr_el1::SCTLR_EL1Field;
-// pub use self::sctlr_el2::SCTLR_EL2Field;
-// pub use self::sctlr_el3::SCTLR_EL3Field;
-// pub use self::sctlr2_el1::SCTLR2_EL1Field;
 #[allow(unused_imports)]
 pub use self::sctlr2::{SCTLR2_EL1Field, SCTLR2_EL2Field, SCTLR2_EL3Field};
 pub use self::tcr::{
@@ -77,6 +79,7 @@ pub use self::ttbr1::{
     TTBR1_64_EL1Field, TTBR1_64_EL2Field, TTBR1_128_EL1Field, TTBR1_128_EL2Field,
 };
 pub use self::vtcr::VTCR_EL2Field;
+pub use self::vttbr::{VMSAv8_64_VTTBR_EL2Field, VMSAv9_128_VTTBR_EL2Field, VTTBRField};
 
 pub trait RegisterField<T> {
     fn fetch_bit(self, v: T) -> bool;
@@ -312,5 +315,8 @@ register_field!(
     VTCR_EL2Field { u64 },
     EDSCR2Field { u32 },
     DBGWCR_N_EL1Field { u64 },
-    DBGBCR_N_EL1Field { u64 }
+    DBGBCR_N_EL1Field { u64 },
+    VMSAv9_128_VTTBR_EL2Field { u128 },
+    VMSAv8_64_VTTBR_EL2Field { u64 },
+    VTTBRField { u64 }
 );

@@ -3,9 +3,10 @@ use crate::cpu::{
     common::*,
     constraint::{Constraint, Unpredictable},
     fault::{AccessDescriptor, AccessType, FaultRecord, WatchpointInfo},
+    memory::AddressSize,
     regs::{
         DBGBCR_N_EL1Field, DBGWCR_N_EL1Field, EDSCR2Field, MDCR_EL2Field, MDCR_EL3Field,
-        MDSCR_EL1Field, RegisterField, RegisterFieldRange,
+        MDSCR_EL1Field, RegisterField, RegisterFieldRange, VTCR_EL2Field,
     },
     shared::{BreakpointType, EL0, EL1, EL2, EL3, SecurityState},
 };
@@ -63,6 +64,59 @@ impl Cpu {
         DBGBCR_N_EL1Field::E.fetch_bit(self.dbgbcr_el1[n])
     }
 
+    pub fn aarch64_reserved_breakpoint_type(&self, n: usize, bt_in: u8) -> (Constraint, u8) {
+        let bt = bt_in;
+        let mut reserved = false;
+        let context_aware = self.is_context_aware_breakpoint(n);
+
+        if !nth_bit(bt, 4) {
+            if !(bt == 0b00000 || bt == 0b00001 || bt == 0b00100 || bt == 0b00101) && !context_aware
+            {
+                reserved = true;
+            }
+
+            if !nth_bit(bt, 5)
+                && nth_bit(bt, 4)
+                && !Cpu::is_feature_implemented(Feature::VHE)
+                && !Cpu::is_feature_implemented(Feature::Debugv8p2)
+            {
+                reserved = true;
+            }
+
+            if (bt == 0b00100 || bt == 0b00101)
+                && !Cpu::is_feature_implemented(Feature::BWE)
+                && !self.have_aarch32_el(EL1)
+            {
+                reserved = true;
+            }
+        } else {
+            if !(bt == 0b10000 || bt == 0b10001 || bt == 0b10100 || bt == 0b10101) {
+                reserved = true;
+            }
+        }
+
+        if reserved {
+            let (c, bt) = Unpredictable::RESBPTYPE.constrain_bits();
+            assert!(matches!(c, Constraint::DISABLED | Constraint::UNKNOWN));
+
+            if c == Constraint::DISABLED {
+                return (c, 0);
+            }
+        }
+
+        (Constraint::NONE, bt)
+    }
+
+    pub fn debug_addr_top(&self) -> AddressSize {
+        if Cpu::is_feature_implemented(Feature::LVA3) {
+            55
+        } else if Cpu::is_feature_implemented(Feature::LVA) {
+            52
+        } else {
+            48
+        }
+    }
+
     #[allow(unused_variables, unused_mut)]
     pub fn aarch64_breakpoint_value_match(
         &self,
@@ -89,14 +143,307 @@ impl Cpu {
             return (BreakpointType::Inactive, false);
         }
 
-        let dbgtype = if Cpu::is_feature_implemented(Feature::ABLE) {
+        let mut dbgtype = if Cpu::is_feature_implemented(Feature::ABLE) {
             ((DBGBCR_N_EL1Field::BT2.fetch_bit(self.dbgbcr_el1[n]) as u8) << 1)
                 | (DBGBCR_N_EL1Field::BT.fetch_bit(self.dbgbcr_el1[n]) as u8)
         } else {
             DBGBCR_N_EL1Field::BT.fetch_bit(self.dbgbcr_el1[n]) as u8
         };
 
-        todo!()
+        (c, dbgtype) = self.aarch64_reserved_breakpoint_type(n, dbgtype);
+        if c == Constraint::DISABLED {
+            return (BreakpointType::Inactive, false);
+        }
+
+        let match_addr = matches_pattern(dbgtype, 0b00000);
+        let mismatch = matches_pattern(dbgtype, 0b00100);
+        let match_vmid = matches_pattern(dbgtype, 0b01000);
+        let match_cid = matches_pattern(dbgtype, 0b00010);
+        let match_cid1 = matches_pattern(dbgtype, 0b01010) || matches_pattern(dbgtype, 0b00110);
+        let match_cid2 = matches_pattern(dbgtype, 0b01100);
+        let linking_enabled = matches_pattern(dbgtype, 0b00011)
+            || matches_pattern(dbgtype, 0b01001)
+            || matches_pattern(dbgtype, 0b10000);
+
+        if linked_to && !linking_enabled {
+            return (BreakpointType::Inactive, false);
+        }
+
+        if !linked_to && linking_enabled {
+            return (BreakpointType::Inactive, false);
+        }
+
+        let linked = matches_pattern(dbgtype, 0b00001);
+        if from_linking_enabled {
+            assert!(linked_to && isbreakpnt);
+            if linked {
+                return (BreakpointType::Inactive, false);
+            }
+        }
+
+        if linked_to && match_addr && isbreakpnt {
+            if !Unpredictable::BPLINKEDADDRMATCH.constrain_bool() {
+                return (BreakpointType::Inactive, false);
+            }
+        }
+
+        if mismatch && self.using_aarch32() {
+            return (BreakpointType::Inactive, false);
+        }
+
+        let mut bvr_match = false;
+        let mut bxvr_match = false;
+        let mut bp_type: BreakpointType;
+        let mut mask: u8;
+
+        if Cpu::is_feature_implemented(Feature::BWE) {
+            mask = DBGBCR_N_EL1Field::MASK.fetch_range(self.dbgbcr_el1[n]);
+
+            if mask == 1 || mask == 2 {
+                let mut unpred_mask;
+                (c, unpred_mask) = Unpredictable::RESBPMASK.constrain_integer(3, 31);
+                assert!(matches!(
+                    c,
+                    Constraint::DISABLED | Constraint::UNKNOWN | Constraint::NONE
+                ));
+
+                match c {
+                    Constraint::DISABLED => {
+                        return (BreakpointType::Inactive, false);
+                    }
+                    Constraint::NONE => mask = 0,
+                    _ => mask = unpred_mask,
+                }
+            }
+
+            if mask != 0 {
+                if (match_cid || match_cid1 || match_cid2)
+                    || (DBGBCR_N_EL1Field::BAS.fetch_range(self.dbgbcr_el1[n]) != 0b1111
+                        && self.have_aarch32())
+                {
+                    if !Unpredictable::BPMASK.constrain_bool() {
+                        return (BreakpointType::Inactive, false);
+                    }
+                }
+            } else {
+                if mismatch {
+                    return (BreakpointType::Inactive, false);
+                }
+            }
+        } else {
+            mask = 0;
+        }
+
+        // if match_addr then
+        // var byte_select_match : boolean;
+        // let byte : integer = UInt(vaddress[1:0]);
+        // if HaveAArch32() then
+        // // T32 instructions can be executed at EL0 in an AArch64 translation regime.
+        // assert byte IN {0,2}; // "vaddress" is halfword aligned
+        // byte_select_match = (DBGBCR_EL1(n).BAS[byte] == '1');
+        // else
+        // assert byte == 0; // "vaddress" is word aligned
+        // byte_select_match = TRUE; // DBGBCR_EL1(n).BAS[byte] is RES1
+        // end;
+        // // When FEAT_LVA3 is not implemented, if the DBGBVR_EL1(n).RESS field bits are not a
+        // // sign extension of the MSB of DBGBVR_EL1(n).VA, it is UNPREDICTABLE whether they
+        // // appear to be included in the match.
+        // // If 'vaddress' is outside of the current virtual address space, then the access
+        // // generates a Translation fault.
+        // let dbgtop : AddressSize = DebugAddrTop();
+        // let unpredictable_ress : boolean = (dbgtop < 55 && !IsOnes(DBGBVR_EL1(n)[63:dbgtop]) &&
+        // !IsZero(DBGBVR_EL1(n)[63:dbgtop]) &&
+        // ConstrainUnpredictableBool(Unpredictable_DBGxVR_RESS));
+        // let cmpmsb : integer{} = if unpredictable_ress then 63 else dbgtop;
+        // let cmplsb : integer{} = if mask > 2 then mask else 2;
+        // bvr_match = ((vaddress[cmpmsb:cmplsb] == DBGBVR_EL1(n)[cmpmsb:cmplsb]) &&
+        // byte_select_match);
+        // if mask > 2 then
+        // // If masked bits of DBGBVR_EL1(n) are not zero, the behavior
+        // // is CONSTRAINED UNPREDICTABLE.
+        // let masktop : integer{} = mask - 1;
+        // if bvr_match && !IsZero(DBGBVR_EL1(n)[masktop:2]) then
+        // bvr_match = ConstrainUnpredictableBool(Unpredictable_BPMASKEDBITS);
+        // end;
+        // end;
+        // elsif match_cid then
+        // if IsInHost() then
+        // bvr_match = (CONTEXTIDR_EL2()[31:0] == DBGBVR_EL1(n)[31:0]);
+        // else
+        // bvr_match = (PSTATE.EL IN {EL0, EL1} && CONTEXTIDR_EL1()[31:0] == DBGBVR_EL1(n)[31:0]);
+        // end;
+        // elsif match_cid1 then
+        // bvr_match = (PSTATE.EL IN {EL0, EL1} && !IsInHost() &&
+        // CONTEXTIDR_EL1()[31:0] == DBGBVR_EL1(n)[31:0]);
+        // end;
+        // if match_vmid then
+        // let vmid : bits(NUM_VMIDBITS) = VMID();
+        // var bvr_vmid : bits(NUM_VMIDBITS);
+        // if !IsFeatureImplemented(FEAT_VMID16) || VTCR_EL2().VS == '0' then
+        // bvr_vmid = ZeroExtend{NUM_VMIDBITS}(DBGBVR_EL1(n)[39:32]);
+        // else
+        // bvr_vmid = DBGBVR_EL1(n)[47:32];
+        // end;
+        // bxvr_match = (PSTATE.EL IN {EL0, EL1} && EL2Enabled() && !IsInHost() && vmid == bvr_vmid);
+        // elsif match_cid2 then
+        // bxvr_match = (PSTATE.EL != EL3 && EL2Enabled() &&
+        // DBGBVR_EL1(n)[63:32] == CONTEXTIDR_EL2()[31:0]);
+        // end;
+        // let bvr_match_valid : boolean = (match_addr || match_cid || match_cid1);
+        // let bxvr_match_valid : boolean = (match_vmid || match_cid2);
+        // var value_match : boolean = ((!bxvr_match_valid || bxvr_match) &&
+        // (!bvr_match_valid || bvr_match));
+        // // A watchpoint might be linked to a linked address matching breakpoint with linking enabled,
+        // // which is in turn linked to a context matching breakpoint.
+        // if linked_to && linked then
+        // // If called from StateMatch and breakpoint is a linked breakpoint then it must be a
+        // // watchpoint that is linked to an address matching breakpoint which is linked to a
+        // // context matching breakpoint.
+        // assert !isbreakpnt && match_addr && IsFeatureImplemented(FEAT_ABLE);
+        // let lbnx : bits(2) = (if IsFeatureImplemented(FEAT_Debugv8p9) then DBGBCR_EL1(n).LBNX
+        // else '00');
+        // let linked_linked_n : integer{} = UInt(lbnx :: DBGBCR_EL1(n).LBN);
+        // var linked_value_match : boolean;
+        // let linked_vaddress = ARBITRARY : bits(64);
+        // let linked_linked_to = TRUE;
+        // let linked_isbreakpnt = TRUE;
+        // let linked_from_linking_enabled = TRUE;
+        // (bp_type, linked_value_match) = AArch64_BreakpointValueMatch(linked_linked_n,
+        // linked_vaddress,
+        // linked_linked_to,
+        // linked_isbreakpnt,
+        // linked_from_linking_enabled);
+        // value_match = value_match && linked_value_match;
+        // end;
+        // if match_addr && !mismatch then
+        // bp_type = BreakpointType_AddrMatch;
+        // elsif match_addr && mismatch then
+        // bp_type = BreakpointType_AddrMismatch;
+        // elsif match_vmid || match_cid || match_cid1 || match_cid2 then
+        // bp_type = BreakpointType_CtxtMatch;
+        // else
+        // unreachable;
+        // end;
+        // return (bp_type, value_match);
+
+        if match_addr {
+            let byte = get_bits(vaddress, 1, 0) as u8;
+            let byte_select_match = if self.have_aarch32() {
+                assert!(byte == 0 || byte == 2);
+                nth_bit(
+                    DBGBCR_N_EL1Field::BAS.fetch_range(self.dbgbcr_el1[n]),
+                    byte as usize,
+                )
+            } else {
+                assert!(byte == 0);
+                true
+            };
+
+            let dbgtop = self.debug_addr_top();
+            let unpredictable_ress = dbgtop < 55
+                && !is_ones(
+                    get_bits(self.dbgbvr_el1[n], 63, dbgtop as usize),
+                    63 - dbgtop as u32,
+                )
+                && !is_zeros(
+                    get_bits(self.dbgbvr_el1[n], 63, dbgtop as usize),
+                    63 - dbgtop as u32,
+                )
+                && Unpredictable::DBGxVR_RESS.constrain_bool();
+
+            let cmpmsb = if unpredictable_ress { 63 } else { dbgtop };
+            let cmplsb = if mask > 2 { mask } else { 2 };
+
+            bvr_match = get_bits(vaddress, cmpmsb as usize, cmplsb as usize)
+                == get_bits(self.dbgbvr_el1[n], cmpmsb as usize, cmplsb as usize)
+                && byte_select_match;
+
+            if mask > 2 {
+                let masktop = mask - 1;
+                if bvr_match
+                    && !is_zeros(
+                        get_bits(self.dbgbvr_el1[n], masktop as usize, 2),
+                        masktop as u32 - 2,
+                    )
+                {
+                    bvr_match = Unpredictable::BPMASKEDBITS.constrain_bool();
+                }
+            }
+        } else if match_cid {
+            if self.is_in_host() {
+                bvr_match =
+                    get_bits(self.contextidr_el2, 31, 0) == get_bits(self.dbgbvr_el1[n], 31, 0);
+            } else {
+                bvr_match = (self.pstate.EL() == EL0 || self.pstate.EL() == EL1)
+                    && get_bits(self.contextidr_el1, 31, 0) == get_bits(self.dbgbvr_el1[n], 31, 0);
+            }
+        } else if match_cid1 {
+            bvr_match = (self.pstate.EL() == EL0 || self.pstate.EL() == EL1)
+                && !self.is_in_host()
+                && get_bits(self.contextidr_el1, 31, 0) == get_bits(self.dbgbvr_el1[n], 31, 0);
+        }
+
+        if match_vmid {
+            let vmid = self.vmid();
+            let bvr_vmid = if !Cpu::is_feature_implemented(Feature::VMID16)
+                || !VTCR_EL2Field::VS.fetch_bit(self.vtcr_el2)
+            {
+                get_bits(self.dbgbvr_el1[n], 39, 32)
+            } else {
+                get_bits(self.dbgbvr_el1[n], 47, 32)
+            } as BitsNumVMIDBits;
+
+            bxvr_match = (self.pstate.EL() == EL0 || self.pstate.EL() == EL1)
+                && self.el2_enabled()
+                && !self.is_in_host()
+                && vmid == bvr_vmid;
+        } else if match_cid2 {
+            bxvr_match = (self.pstate.EL() != EL3)
+                && self.el2_enabled()
+                && get_bits(self.dbgbvr_el1[n], 63, 32) == get_bits(self.contextidr_el2, 31, 0);
+        }
+
+        let bvr_match_valid = match_addr || match_cid || match_cid1;
+        let bxvr_match_valid = match_vmid || match_cid2;
+
+        let mut value_match = (!bxvr_match_valid || bxvr_match) && (!bvr_match_valid || bvr_match);
+
+        if linked_to && linked {
+            assert!(!isbreakpnt && match_addr && Cpu::is_feature_implemented(Feature::ABLE));
+            let lbnx = if Cpu::is_feature_implemented(Feature::Debugv8p9) {
+                DBGBCR_N_EL1Field::LBNX.fetch_range(self.dbgbcr_el1[n])
+            } else {
+                0b00
+            };
+            let linked_linked_n =
+                (lbnx << 4) | DBGBCR_N_EL1Field::LBN.fetch_range(self.dbgbcr_el1[n]);
+            let linked_vaddress = 0; // ARBITRARY
+            let linked_linked_to = true;
+            let linked_isbreakpnt = true;
+            let linked_from_linking_enabled = true;
+
+            let (bp_type, linked_value_match) = self.aarch64_breakpoint_value_match(
+                linked_linked_n as usize,
+                linked_vaddress,
+                linked_linked_to,
+                linked_isbreakpnt,
+                linked_from_linking_enabled,
+            );
+
+            value_match = value_match && linked_value_match;
+        }
+
+        if match_addr && !mismatch {
+            bp_type = BreakpointType::AddrMatch;
+        } else if match_addr && mismatch {
+            bp_type = BreakpointType::AddrMismatch;
+        } else if match_vmid || match_cid || match_cid1 || match_cid2 {
+            bp_type = BreakpointType::CtxtMatch;
+        } else {
+            unreachable!();
+        }
+
+        (bp_type, value_match)
     }
 
     #[allow(unused_variables, unused_mut)]
